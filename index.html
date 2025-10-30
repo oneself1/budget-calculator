@@ -464,11 +464,7 @@
     <!-- Top Status Bar -->
     <div class="status-bar">
         <div class="status-time" id="current-time">--:--</div>
-        <div class="status-icons">
-            <span class="cellular-icon">📶</span>
-            <span class="wifi-icon">WiFi</span>
-            <span class="battery-icon">🔋</span>
-        </div>
+        <div class="status-date" id="current-date">--.--.----</div>
     </div>
 
     <!-- Main App Container -->
@@ -948,15 +944,24 @@
             return date.toLocaleDateString('ru-RU');
         }
 
-        // Часы
+        // Часы и дата
         function startClock() {
             function updateTime() {
                 const now = new Date();
                 const timeElement = document.getElementById('current-time');
+                const dateElement = document.getElementById('current-date');
+                
                 if (timeElement) {
                     timeElement.textContent = 
                         now.getHours().toString().padStart(2, '0') + ':' + 
                         now.getMinutes().toString().padStart(2, '0');
+                }
+                
+                if (dateElement) {
+                    dateElement.textContent = 
+                        now.getDate().toString().padStart(2, '0') + '.' + 
+                        (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+                        now.getFullYear();
                 }
             }
             
