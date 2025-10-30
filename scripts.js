@@ -10,7 +10,6 @@ let appData = {
         { id: 5, name: "Одежда", amount: 0 },
         { id: 6, name: "Здоровье", amount: 0 }
     ],
-    transactions: [],
     settings: { currency: "₽" }
 };
 
@@ -62,56 +61,8 @@ function switchScreen(screenName) {
     document.getElementById(`${screenName}-screen`).classList.add('active');
     
     if (screenName === 'operations') {
-        // ПЕРЕСТРАИВАЕМ ТРАНЗАКЦИИ ПЕРЕД ОТОБРАЖЕНИЕМ
-        rebuildAllTransactions();
         updateOperationsList();
     }
-}
-
-// Полное перестроение всех транзакций из актуальных данных
-function rebuildAllTransactions() {
-    console.log("Rebuilding transactions from current data...");
-    
-    // Очищаем текущие транзакции
-    appData.transactions = [];
-    
-    // Добавляем доходы
-    appData.incomes.forEach(income => {
-        appData.transactions.push({
-            id: income.id,
-            amount: income.amount,
-            description: income.description,
-            date: income.date,
-            type: 'income'
-        });
-    });
-    
-    // Добавляем долги
-    appData.debts.forEach(debt => {
-        appData.transactions.push({
-            id: debt.id,
-            amount: -debt.amount,
-            description: debt.description,
-            date: debt.date,
-            type: 'debt'
-        });
-    });
-    
-    // Добавляем расходы
-    appData.expenseCategories.forEach(category => {
-        appData.transactions.push({
-            id: category.id,
-            amount: -category.amount,
-            description: category.name,
-            date: new Date().toISOString().split('T')[0],
-            type: 'expense'
-        });
-    });
-    
-    // Сортируем по дате (новые сверху)
-    appData.transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    console.log("Transactions rebuilt:", appData.transactions);
 }
 
 // Получение названия типа
@@ -157,8 +108,6 @@ function addNewCircle(type) {
         appData.debts.push(newItem);
     }
     
-    // Перестраиваем все транзакции
-    rebuildAllTransactions();
     saveData();
 }
 
@@ -180,9 +129,6 @@ function addNewExpenseCategory() {
     };
     
     appData.expenseCategories.push(newCategory);
-    
-    // Перестраиваем все транзакции
-    rebuildAllTransactions();
     saveData();
 }
 
@@ -204,8 +150,6 @@ function editCircle(type, id) {
             const newDescription = prompt('Изменить описание:', item.description) || item.description;
             item.description = newDescription;
             
-            // Перестраиваем все транзакции
-            rebuildAllTransactions();
             saveData();
         }
     }
@@ -223,9 +167,6 @@ function editExpenseCategory(categoryId) {
         const newAmount = prompt('Изменить сумму:', category.amount);
         if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
             category.amount = parseFloat(newAmount);
-            
-            // Перестраиваем все транзакции
-            rebuildAllTransactions();
             saveData();
         }
     }
@@ -244,9 +185,6 @@ function deleteCircle(type, id) {
         const index = items.findIndex(i => i.id === id);
         if (index !== -1) {
             items.splice(index, 1);
-            
-            // Перестраиваем все транзакции
-            rebuildAllTransactions();
             saveData();
         }
     }
@@ -258,9 +196,6 @@ function deleteExpenseCategory(categoryId) {
         const index = appData.expenseCategories.findIndex(c => c.id === categoryId);
         if (index !== -1) {
             appData.expenseCategories.splice(index, 1);
-            
-            // Перестраиваем все транзакции
-            rebuildAllTransactions();
             saveData();
         }
     }
@@ -310,7 +245,6 @@ function clearAllData() {
                 { id: 5, name: "Одежда", amount: 0 },
                 { id: 6, name: "Здоровье", amount: 0 }
             ],
-            transactions: [],
             settings: { currency: "₽" }
         };
         saveData();
@@ -383,17 +317,56 @@ function updateBalance() {
     document.getElementById('balance-amount').textContent = appData.settings.currency + balance;
 }
 
-// Обновление списка операций
+// Обновление списка операций - ВАЖНО: транзакции создаются на лету из текущих данных
 function updateOperationsList() {
     const container = document.getElementById('operations-list');
     if (!container) return;
     
-    if (appData.transactions.length === 0) {
+    // Создаем транзакции на основе текущих данных
+    const transactions = [];
+    
+    // Добавляем доходы
+    appData.incomes.forEach(income => {
+        transactions.push({
+            id: income.id,
+            amount: income.amount,
+            description: income.description,
+            date: income.date,
+            type: 'income'
+        });
+    });
+    
+    // Добавляем долги
+    appData.debts.forEach(debt => {
+        transactions.push({
+            id: debt.id,
+            amount: -debt.amount,
+            description: debt.description,
+            date: debt.date,
+            type: 'debt'
+        });
+    });
+    
+    // Добавляем расходы
+    appData.expenseCategories.forEach(category => {
+        transactions.push({
+            id: category.id,
+            amount: -category.amount,
+            description: category.name,
+            date: new Date().toISOString().split('T')[0],
+            type: 'expense'
+        });
+    });
+    
+    // Сортируем по дате (новые сверху)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (transactions.length === 0) {
         container.innerHTML = '<div class="empty-state">Нет операций</div>';
         return;
     }
     
-    container.innerHTML = appData.transactions.map(transaction => {
+    container.innerHTML = transactions.map(transaction => {
         const typeClass = transaction.amount > 0 ? 'income' : 'expense';
         const typeIcon = transaction.amount > 0 ? '💰' : '🛒';
         const typeColor = transaction.amount > 0 ? '#34C759' : '#FF3B30';
@@ -453,6 +426,5 @@ function debugData() {
     console.log("Incomes:", appData.incomes);
     console.log("Debts:", appData.debts);
     console.log("Expense Categories:", appData.expenseCategories);
-    console.log("Transactions:", appData.transactions);
     console.log("===================");
 }
