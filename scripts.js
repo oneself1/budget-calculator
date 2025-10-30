@@ -2,14 +2,7 @@
 let appData = {
     incomes: [],
     debts: [], 
-    expenseCategories: [
-        { id: 1, name: "Еда", amount: 0 },
-        { id: 2, name: "Транспорт", amount: 0 },
-        { id: 3, name: "Развлечения", amount: 0 },
-        { id: 4, name: "Коммуналка", amount: 0 },
-        { id: 5, name: "Одежда", amount: 0 },
-        { id: 6, name: "Здоровье", amount: 0 }
-    ],
+    expenseCategories: [],
     settings: { currency: "₽" }
 };
 
@@ -42,47 +35,33 @@ function saveData() {
 
 // Переключение экранов
 function switchScreen(screenName) {
+    console.log("Switching to screen:", screenName);
+    
+    // Обновляем навигацию
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
+    
+    // Активируем правильную кнопку навигации
+    const navItems = document.querySelectorAll('.nav-item');
+    if (screenName === 'overview') {
+        navItems[0].classList.add('active');
+    } else if (screenName === 'operations') {
+        navItems[1].classList.add('active');
+    }
+    
+    // Скрываем все экраны
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
     
-    // Находим правильный элемент навигации
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        const onclickAttr = item.getAttribute('onclick');
-        if (onclickAttr && onclickAttr.includes(`switchScreen('${screenName}')`)) {
-            item.classList.add('active');
-        }
-    });
-    
+    // Показываем нужный экран
     document.getElementById(`${screenName}-screen`).classList.add('active');
     
+    // Обновляем список операций если перешли на этот экран
     if (screenName === 'operations') {
         updateOperationsList();
     }
-}
-
-// Получение названия типа
-function getTypeName(type) {
-    const names = {
-        income: 'дохода',
-        debt: 'долга', 
-        expense: 'расхода'
-    };
-    return names[type] || 'операции';
-}
-
-// Описание по умолчанию
-function getDefaultDescription(type) {
-    const defaults = {
-        income: 'Доход',
-        debt: 'Долг', 
-        expense: 'Расход'
-    };
-    return defaults[type] || 'Операция';
 }
 
 // Добавление нового кружка для доходов и долгов
@@ -201,6 +180,26 @@ function deleteExpenseCategory(categoryId) {
     }
 }
 
+// Получение названия типа
+function getTypeName(type) {
+    const names = {
+        income: 'дохода',
+        debt: 'долга', 
+        expense: 'расхода'
+    };
+    return names[type] || 'операции';
+}
+
+// Описание по умолчанию
+function getDefaultDescription(type) {
+    const defaults = {
+        income: 'Доход',
+        debt: 'Долг', 
+        expense: 'Расход'
+    };
+    return defaults[type] || 'Операция';
+}
+
 // Расчет бюджета
 function calculateBudget() {
     const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
@@ -237,14 +236,7 @@ function clearAllData() {
         appData = {
             incomes: [],
             debts: [], 
-            expenseCategories: [
-                { id: 1, name: "Еда", amount: 0 },
-                { id: 2, name: "Транспорт", amount: 0 },
-                { id: 3, name: "Развлечения", amount: 0 },
-                { id: 4, name: "Коммуналка", amount: 0 },
-                { id: 5, name: "Одежда", amount: 0 },
-                { id: 6, name: "Здоровье", amount: 0 }
-            ],
+            expenseCategories: [],
             settings: { currency: "₽" }
         };
         saveData();
@@ -322,12 +314,12 @@ function updateOperationsList() {
     const container = document.getElementById('operations-list');
     if (!container) return;
     
-    // Создаем транзакции на основе текущих данных
-    const transactions = [];
+    // Создаем временный массив для операций
+    const operations = [];
     
     // Добавляем доходы
     appData.incomes.forEach(income => {
-        transactions.push({
+        operations.push({
             id: income.id,
             amount: income.amount,
             description: income.description,
@@ -338,7 +330,7 @@ function updateOperationsList() {
     
     // Добавляем долги
     appData.debts.forEach(debt => {
-        transactions.push({
+        operations.push({
             id: debt.id,
             amount: -debt.amount,
             description: debt.description,
@@ -349,7 +341,7 @@ function updateOperationsList() {
     
     // Добавляем расходы
     appData.expenseCategories.forEach(category => {
-        transactions.push({
+        operations.push({
             id: category.id,
             amount: -category.amount,
             description: category.name,
@@ -359,17 +351,17 @@ function updateOperationsList() {
     });
     
     // Сортируем по дате (новые сверху)
-    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    operations.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    if (transactions.length === 0) {
+    if (operations.length === 0) {
         container.innerHTML = '<div class="empty-state">Нет операций</div>';
         return;
     }
     
-    container.innerHTML = transactions.map(transaction => {
-        const typeClass = transaction.amount > 0 ? 'income' : 'expense';
-        const typeIcon = transaction.amount > 0 ? '💰' : '🛒';
-        const typeColor = transaction.amount > 0 ? '#34C759' : '#FF3B30';
+    container.innerHTML = operations.map(operation => {
+        const typeClass = operation.amount > 0 ? 'income' : 'expense';
+        const typeIcon = operation.amount > 0 ? '💰' : '🛒';
+        const typeColor = operation.amount > 0 ? '#34C759' : '#FF3B30';
         
         return `
             <div class="operation-item">
@@ -378,12 +370,12 @@ function updateOperationsList() {
                         ${typeIcon}
                     </div>
                     <div class="operation-details">
-                        <div class="operation-title">${transaction.description}</div>
-                        <div class="operation-meta">${formatDate(transaction.date)}</div>
+                        <div class="operation-title">${operation.description}</div>
+                        <div class="operation-meta">${formatDate(operation.date)}</div>
                     </div>
                 </div>
                 <div class="operation-amount ${typeClass}">
-                    ${transaction.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(transaction.amount)}
+                    ${operation.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(operation.amount)}
                 </div>
             </div>
         `;
@@ -420,11 +412,13 @@ function showSettingsModal() {
     }
 }
 
-// Функция для отладки - показывает все данные в консоли
+// Функция для отладки
 function debugData() {
     console.log("=== DEBUG DATA ===");
     console.log("Incomes:", appData.incomes);
     console.log("Debts:", appData.debts);
     console.log("Expense Categories:", appData.expenseCategories);
     console.log("===================");
+    
+    alert(`Доходы: ${appData.incomes.length}, Долги: ${appData.debts.length}, Расходы: ${appData.expenseCategories.length}`);
 }
