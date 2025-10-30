@@ -88,18 +88,21 @@ function initFAB() {
 
 // Показ модального окна
 function showAddTransactionModal(type = 'expense') {
+    // Закрываем предыдущее модальное окно если есть
+    closeModal();
+    
     // Создаем модальное окно
     const modalHTML = `
         <div class="modal" id="transaction-modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>${type === 'income' ? 'Доход' : type === 'expense' ? 'Расход' : 'Перевод'}</h3>
+                    <h3>${type === 'income' ? '💸 Добавить доход' : type === 'expense' ? '🛒 Добавить расход' : '↔️ Перевод'}</h3>
                     <button class="close-modal">&times;</button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>Сумма</label>
-                        <input type="number" id="transaction-amount" placeholder="0" class="amount-input">
+                        <label>Сумма (${appData.settings.currency})</label>
+                        <input type="number" id="transaction-amount" placeholder="0" class="amount-input" autofocus>
                     </div>
                     <div class="form-group">
                         <label>Категория</label>
@@ -123,14 +126,27 @@ function showAddTransactionModal(type = 'expense') {
                         <input type="date" id="transaction-date" class="date-input" value="${new Date().toISOString().split('T')[0]}">
                     </div>
                     <div class="form-group">
-                        <label>Описание</label>
-                        <input type="text" id="transaction-description" placeholder="Описание" class="description-input">
+                        <label>Описание (необязательно)</label>
+                        <input type="text" id="transaction-description" placeholder="Например: Продукты" class="description-input">
                     </div>
-                    <button class="save-btn" id="save-transaction">Сохранить</button>
+                    <button class="save-btn" id="save-transaction">💾 Сохранить</button>
                 </div>
             </div>
         </div>
     `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Обработчики модального окна
+    document.getElementById('save-transaction').addEventListener('click', saveTransaction);
+    document.querySelector('.close-modal').addEventListener('click', closeModal);
+    document.getElementById('transaction-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+    
+    // Фокус на поле суммы
+    document.getElementById('transaction-amount').focus();
+}
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
     
