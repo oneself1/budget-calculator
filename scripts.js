@@ -2,7 +2,6 @@
 let appData = {
     incomes: [],
     debts: [], 
-    expenses: [],
     expenseCategories: [
         { id: 1, name: "Еда", amount: 0 },
         { id: 2, name: "Транспорт", amount: 0 },
@@ -51,7 +50,14 @@ function switchScreen(screenName) {
         screen.classList.remove('active');
     });
     
-    document.querySelector(`.nav-item[onclick="switchScreen('${screenName}')"]`).classList.add('active');
+    // Исправляем вызов функции
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        if (item.getAttribute('onclick') === `switchScreen('${screenName}')`) {
+            item.classList.add('active');
+        }
+    });
+    
     document.getElementById(`${screenName}-screen`).classList.add('active');
     
     if (screenName === 'operations') {
@@ -59,10 +65,28 @@ function switchScreen(screenName) {
     }
 }
 
+// Получение названия типа
+function getTypeName(type) {
+    const names = {
+        income: 'дохода',
+        debt: 'долга', 
+        expense: 'расхода'
+    };
+    return names[type] || 'операции';
+}
+
+// Описание по умолчанию
+function getDefaultDescription(type) {
+    const defaults = {
+        income: 'Доход',
+        debt: 'Долг', 
+        expense: 'Расход'
+    };
+    return defaults[type] || 'Операция';
+}
+
 // Добавление нового кружка для доходов и долгов
 function addNewCircle(type) {
-    console.log("Adding circle:", type);
-    
     const amount = prompt(`Введите сумму ${getTypeName(type)}:`);
     if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
         alert("Пожалуйста, введите корректную сумму");
@@ -84,15 +108,16 @@ function addNewCircle(type) {
         appData.debts.push(newItem);
     }
     
-    // Добавляем транзакцию с правильным ID
-    appData.transactions.unshift({
+    // Создаем транзакцию
+    const transaction = {
         id: newItem.id,
         amount: type === 'income' ? newItem.amount : -newItem.amount,
         description: newItem.description,
         date: newItem.date,
         type: type
-    });
+    };
     
+    appData.transactions.unshift(transaction);
     saveData();
 }
 
@@ -115,16 +140,44 @@ function addNewExpenseCategory() {
     
     appData.expenseCategories.push(newCategory);
     
-    // Добавляем в историю операций
-    appData.transactions.unshift({
+    // Создаем транзакцию
+    const transaction = {
         id: newCategory.id,
         amount: -parseFloat(amount),
         description: categoryName,
         date: new Date().toISOString().split('T')[0],
         type: 'expense'
-    });
+    };
     
+    appData.transactions.unshift(transaction);
     saveData();
+}
+
+// Редактирование кружка доходов/долгов
+function editCircle(type, id) {
+    let items;
+    if (type === 'income') {
+        items = appData.incomes;
+    } else if (type === 'debt') {
+        items = appData.debts;
+    }
+    
+    const item = items.find(i => i.id === id);
+    if (item) {
+        const newAmount = prompt('Изменить сумму:', item.amount);
+        if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
+            const oldAmount = item.amount;
+            item.amount = parseFloat(newAmount);
+            
+            const newDescription = prompt('Изменить описание:', item.description) || item.description;
+            item.description = newDescription;
+            
+            // Обновляем транзакцию
+            updateTransaction(type, id, item.amount, item.description);
+            
+            saveData();
+        }
+    }
 }
 
 // Редактирование категории расходов
@@ -141,7 +194,54 @@ function editExpenseCategory(categoryId) {
             category.amount = parseFloat(newAmount);
             
             // Обновляем транзакцию
-            updateTransactionForItem('expense', categoryId, category.amount, category.name);
+            updateTransaction('expense', categoryId, category.amount, category.name);
+            
+            saveData();
+        }
+    }
+}
+
+// Обновление транзакции
+function updateTransaction(type, id, amount, description) {
+    // Ищем транзакцию по ID
+    const transactionIndex = appData.transactions.findIndex(t => t.id === id);
+    
+    if (transactionIndex !== -1) {
+        // Обновляем существующую транзакцию
+        appData.transactions[transactionIndex].amount = type === 'income' ? amount : -amount;
+        appData.transactions[transactionIndex].description = description;
+    } else {
+        // Создаем новую транзакцию, если не нашли
+        const transaction = {
+            id: id,
+            amount: type === 'income' ? amount : -amount,
+            description: description,
+            date: new Date().toISOString().split('T')[0],
+            type: type
+        };
+        appData.transactions.unshift(transaction);
+    }
+}
+
+// Удаление кружка доходов/долгов
+function deleteCircle(type, id) {
+    if (confirm('Удалить эту запись?')) {
+        let items;
+        if (type === 'income') {
+            items = appData.incomes;
+        } else if (type === 'debt') {
+            items = appData.debts;
+        }
+        
+        const index = items.findIndex(i => i.id === id);
+        if (index !== -1) {
+            items.splice(index, 1);
+            
+            // Удаляем транзакцию
+            const transactionIndex = appData.transactions.findIndex(t => t.id === id);
+            if (transactionIndex !== -1) {
+                appData.transactions.splice(transactionIndex, 1);
+            }
             
             saveData();
         }
@@ -155,11 +255,8 @@ function deleteExpenseCategory(categoryId) {
         if (index !== -1) {
             appData.expenseCategories.splice(index, 1);
             
-            // Удаляем соответствующую транзакцию
-            const transactionIndex = appData.transactions.findIndex(t => 
-                t.id === categoryId && t.type === 'expense'
-            );
-            
+            // Удаляем транзакцию
+            const transactionIndex = appData.transactions.findIndex(t => t.id === categoryId);
             if (transactionIndex !== -1) {
                 appData.transactions.splice(transactionIndex, 1);
             }
@@ -167,26 +264,6 @@ function deleteExpenseCategory(categoryId) {
             saveData();
         }
     }
-}
-
-// Получение названия типа
-function getTypeName(type) {
-    const names = {
-        income: 'дохода',
-        debt: 'долга', 
-        expense: 'расхода'
-    };
-    return names[type] || 'операции';
-}
-
-// Описание по умолчанию
-function getDefaultDescription(type) {
-    const defaults = {
-        income: 'Доход',
-        debt: 'Долг', 
-        expense: 'Расход'
-    };
-    return defaults[type] || 'Операция';
 }
 
 // Расчет бюджета
@@ -225,7 +302,6 @@ function clearAllData() {
         appData = {
             incomes: [],
             debts: [], 
-            expenses: [],
             expenseCategories: [
                 { id: 1, name: "Еда", amount: 0 },
                 { id: 2, name: "Транспорт", amount: 0 },
@@ -297,79 +373,6 @@ function updateExpenseCategories() {
     `).join('');
 }
 
-// Редактирование кружка доходов/долгов
-function editCircle(type, id) {
-    let items;
-    if (type === 'income') {
-        items = appData.incomes;
-    } else if (type === 'debt') {
-        items = appData.debts;
-    }
-    
-    const item = items.find(i => i.id === id);
-    if (item) {
-        const newAmount = prompt('Изменить сумму:', item.amount);
-        if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
-            item.amount = parseFloat(newAmount);
-            
-            const newDescription = prompt('Изменить описание:', item.description) || item.description;
-            item.description = newDescription;
-            
-            // Обновляем транзакцию
-            updateTransactionForItem(type, id, item.amount, item.description);
-            
-            saveData();
-        }
-    }
-}
-
-// Функция для обновления транзакции
-function updateTransactionForItem(type, id, amount, description) {
-    const transactionIndex = appData.transactions.findIndex(t => 
-        t.id === id && t.type === type
-    );
-    
-    if (transactionIndex !== -1) {
-        appData.transactions[transactionIndex].amount = type === 'income' ? amount : -amount;
-        appData.transactions[transactionIndex].description = description;
-    } else {
-        appData.transactions.unshift({
-            id: id,
-            amount: type === 'income' ? amount : -amount,
-            description: description,
-            date: new Date().toISOString().split('T')[0],
-            type: type
-        });
-    }
-}
-
-// Удаление кружка доходов/долгов
-function deleteCircle(type, id) {
-    if (confirm('Удалить эту запись?')) {
-        let items;
-        if (type === 'income') {
-            items = appData.incomes;
-        } else if (type === 'debt') {
-            items = appData.debts;
-        }
-        
-        const index = items.findIndex(i => i.id === id);
-        if (index !== -1) {
-            items.splice(index, 1);
-            
-            const transactionIndex = appData.transactions.findIndex(t => 
-                t.id === id && t.type === type
-            );
-            
-            if (transactionIndex !== -1) {
-                appData.transactions.splice(transactionIndex, 1);
-            }
-            
-            saveData();
-        }
-    }
-}
-
 // Обновление баланса
 function updateBalance() {
     const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
@@ -384,6 +387,9 @@ function updateBalance() {
 function updateOperationsList() {
     const container = document.getElementById('operations-list');
     if (!container) return;
+    
+    // Перестраиваем транзакции на основе актуальных данных
+    rebuildTransactions();
     
     const transactions = appData.transactions;
     
@@ -414,6 +420,48 @@ function updateOperationsList() {
             </div>
         `;
     }).join('');
+}
+
+// Перестроение транзакций на основе актуальных данных
+function rebuildTransactions() {
+    // Очищаем текущие транзакции
+    appData.transactions = [];
+    
+    // Добавляем доходы
+    appData.incomes.forEach(income => {
+        appData.transactions.push({
+            id: income.id,
+            amount: income.amount,
+            description: income.description,
+            date: income.date,
+            type: 'income'
+        });
+    });
+    
+    // Добавляем долги
+    appData.debts.forEach(debt => {
+        appData.transactions.push({
+            id: debt.id,
+            amount: -debt.amount,
+            description: debt.description,
+            date: debt.date,
+            type: 'debt'
+        });
+    });
+    
+    // Добавляем расходы
+    appData.expenseCategories.forEach(category => {
+        appData.transactions.push({
+            id: category.id,
+            amount: -category.amount,
+            description: category.name,
+            date: new Date().toISOString().split('T')[0],
+            type: 'expense'
+        });
+    });
+    
+    // Сортируем по дате (новые сверху)
+    appData.transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
 // Форматирование даты
