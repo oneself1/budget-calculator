@@ -755,10 +755,18 @@
             
             const description = prompt('Введите описание:') || getDefaultDescription(type);
             
+            // Запрашиваем иконку для всех типов операций
+            let defaultIcon = '💰';
+            if (type === 'debt') defaultIcon = '💳';
+            if (type === 'income') defaultIcon = '💰';
+            
+            const icon = prompt('Введите смайлик (иконку):', defaultIcon) || defaultIcon;
+            
             const newItem = {
                 id: Date.now(),
                 amount: parseFloat(amount),
                 description: description,
+                icon: icon,
                 date: new Date().toISOString(),
                 paid: false // Для долгов - изначально не оплачен
             };
@@ -814,12 +822,15 @@
                 const newAmount = prompt('Изменить сумму:', item.amount);
                 if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
                     item.amount = parseFloat(newAmount);
-                    
-                    const newDescription = prompt('Изменить описание:', item.description) || item.description;
-                    item.description = newDescription;
-                    
-                    saveData();
                 }
+                
+                const newDescription = prompt('Изменить описание:', item.description) || item.description;
+                item.description = newDescription;
+                
+                const newIcon = prompt('Изменить иконку (смайлик):', item.icon) || item.icon;
+                item.icon = newIcon;
+                
+                saveData();
             }
         }
 
@@ -913,11 +924,13 @@
             return defaults[type] || 'Операция';
         }
 
-        // Расчет бюджета
+        // Расчет бюджета - ВАЖНО: долги учитываются только если оплачены!
         function calculateBudget() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
+            // ИСПРАВЛЕНИЕ: долги учитываются только если paid: true
             const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
+            // ИСПРАВЛЕНИЕ: баланс = доходы - оплаченные долги - расходы
             const balance = totalIncome - totalDebts - totalExpenses;
             
             const resultsHTML = `
@@ -982,26 +995,38 @@
             }
             
             if (type === 'debt') {
-                container.innerHTML = items.map(item => `
-                    <div class="circle-item circle-${type} ${item.paid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
-                        <div class="circle-actions">
-                            <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
-                            <button class="circle-action-btn circle-check" onclick="event.stopPropagation(); markDebtAsPaid(${item.id})">✓</button>
+                container.innerHTML = items.map(item => {
+                    const showAmount = item.amount > 0;
+                    const icon = item.icon || '💳';
+                    
+                    return `
+                        <div class="circle-item circle-${type} ${item.paid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
+                            <div class="circle-actions">
+                                <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
+                                <button class="circle-action-btn circle-check" onclick="event.stopPropagation(); markDebtAsPaid(${item.id})">✓</button>
+                            </div>
+                            <div class="circle-icon">${icon}</div>
+                            ${showAmount ? `<div class="circle-amount">${appData.settings.currency}${item.amount}</div>` : ''}
+                            <div class="circle-label">${item.description}</div>
                         </div>
-                        <div class="circle-amount">${appData.settings.currency}${item.amount}</div>
-                        <div class="circle-label">${item.description}</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } else {
-                container.innerHTML = items.map(item => `
-                    <div class="circle-item circle-${type}" onclick="editCircle('${type}', ${item.id})">
-                        <div class="circle-actions">
-                            <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
+                container.innerHTML = items.map(item => {
+                    const showAmount = item.amount > 0;
+                    const icon = item.icon || (type === 'income' ? '💰' : '💳');
+                    
+                    return `
+                        <div class="circle-item circle-${type}" onclick="editCircle('${type}', ${item.id})">
+                            <div class="circle-actions">
+                                <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
+                            </div>
+                            <div class="circle-icon">${icon}</div>
+                            ${showAmount ? `<div class="circle-amount">${appData.settings.currency}${item.amount}</div>` : ''}
+                            <div class="circle-label">${item.description}</div>
                         </div>
-                        <div class="circle-amount">${appData.settings.currency}${item.amount}</div>
-                        <div class="circle-label">${item.description}</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
         }
 
@@ -1036,11 +1061,13 @@
             }).join('');
         }
 
-        // Обновление баланса
+        // Обновление баланса - ВАЖНО: долги учитываются только если оплачены!
         function updateBalance() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
+            // ИСПРАВЛЕНИЕ: долги учитываются только если paid: true
             const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
+            // ИСПРАВЛЕНИЕ: баланс = доходы - оплаченные долги - расходы
             const balance = totalIncome - totalDebts - totalExpenses;
             
             const balanceElement = document.getElementById('balance-amount');
@@ -1065,7 +1092,8 @@
                         amount: income.amount,
                         description: income.description,
                         date: income.date,
-                        type: 'income'
+                        type: 'income',
+                        icon: income.icon
                     });
                 });
             }
@@ -1078,7 +1106,8 @@
                         amount: -debt.amount,
                         description: debt.description,
                         date: debt.date,
-                        type: debt.paid ? 'debt-paid' : 'debt'
+                        type: debt.paid ? 'debt-paid' : 'debt',
+                        icon: debt.icon
                     });
                 });
             }
@@ -1115,7 +1144,7 @@
                 
                 switch(operation.type) {
                     case 'income':
-                        typeIcon = '💰';
+                        typeIcon = operation.icon || '💰';
                         typeColor = '#34C759';
                         amountSign = '+';
                         break;
@@ -1125,17 +1154,17 @@
                         amountSign = '-';
                         break;
                     case 'debt':
-                        typeIcon = '💳';
+                        typeIcon = operation.icon || '💳';
                         typeColor = '#FF9500';
                         amountSign = '-';
                         break;
                     case 'debt-paid':
-                        typeIcon = '✅';
+                        typeIcon = operation.icon || '✅';
                         typeColor = '#8E8E93';
                         amountSign = '-';
                         break;
                     default:
-                        typeIcon = '🛒';
+                        typeIcon = operation.icon || '🛒';
                         typeColor = '#8E8E93';
                         amountSign = '';
                 }
@@ -1232,10 +1261,10 @@
 - Баланс: ${appData.settings.currency}${balance.toFixed(2)}
 
 ДЕТАЛИ ДОХОДОВ:
-${appData.incomes ? appData.incomes.map(income => `  • ${income.description}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' : '  Нет доходов'}
+${appData.incomes ? appData.incomes.map(income => `  • ${income.description} ${income.icon || ''}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' : '  Нет доходов'}
 
 ДЕТАЛИ ДОЛГОВ:
-${appData.debts ? appData.debts.map(debt => `  • ${debt.description}: ${appData.settings.currency}${debt.amount} ${debt.paid ? '(ОПЛАЧЕНО)' : '(НЕ ОПЛАЧЕНО)'}`).join('\n') || '  Нет долгов' : '  Нет долгов'}
+${appData.debts ? appData.debts.map(debt => `  • ${debt.description} ${debt.icon || ''}: ${appData.settings.currency}${debt.amount} ${debt.paid ? '(ОПЛАЧЕНО)' : '(НЕ ОПЛАЧЕНО)'}`).join('\n') || '  Нет долгов' : '  Нет долгов'}
 
 КАТЕГОРИИ РАСХОДОВ:
 ${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий' : '  Нет категорий'}
