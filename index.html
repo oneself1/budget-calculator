@@ -225,25 +225,6 @@
             transform: scale(0.98);
         }
 
-        /* Clear Button */
-        .clear-btn {
-            width: 100%;
-            padding: 16px;
-            background: #FF9500;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin: 10px 0;
-        }
-
-        .clear-btn:active {
-            background: #E68500;
-            transform: scale(0.98);
-        }
-
         /* Results Card */
         .results-card {
             background: var(--ios-card);
@@ -543,9 +524,6 @@
 
             <!-- Кнопка расчета -->
             <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
-
-            <!-- Кнопка очистки -->
-            <button class="clear-btn" onclick="clearAllData()">🧹 Очистить все</button>
 
             <!-- Результаты -->
             <div class="results-card" id="results-card" style="display: none">
