@@ -32,6 +32,9 @@
             overflow-x: hidden;
             padding: 0;
             margin: 0;
+            /* Исправление для плавной прокрутки */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: none;
         }
 
         /* Status Bar */
@@ -44,6 +47,10 @@
             padding: 0 16px;
             font-size: 15px;
             font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--ios-background);
         }
 
         /* Main Container */
@@ -52,6 +59,9 @@
             margin: 0 auto;
             min-height: calc(100vh - 120px);
             padding: 0 16px 80px;
+            /* Исправление для плавной прокрутки */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Header */
@@ -282,6 +292,7 @@
             border-top: 1px solid var(--ios-light-gray);
             max-width: 390px;
             margin: 0 auto;
+            z-index: 100;
         }
 
         .nav-item {
