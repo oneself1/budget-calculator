@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget</title>
     <style>
-        /* Ваши стили остаются без изменений */
+        /* iOS-specific styles */
         :root {
             --ios-blue: #007AFF;
             --ios-gray: #8E8E93;
@@ -34,6 +34,7 @@
             margin: 0;
         }
 
+        /* Status Bar */
         .status-bar {
             height: 44px;
             background: transparent;
@@ -45,6 +46,7 @@
             font-weight: 600;
         }
 
+        /* Main Container */
         .app-container {
             max-width: 390px;
             margin: 0 auto;
@@ -52,6 +54,7 @@
             padding: 0 16px 80px;
         }
 
+        /* Header */
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -72,6 +75,7 @@
             cursor: pointer;
         }
 
+        /* Balance Card */
         .balance-card {
             background: var(--ios-card);
             border-radius: 16px;
@@ -92,6 +96,7 @@
             font-size: 16px;
         }
 
+        /* Sections with Circles */
         .circles-section {
             background: var(--ios-card);
             border-radius: 16px;
@@ -106,6 +111,7 @@
             color: #000;
         }
 
+        /* Circles Container */
         .circles-container {
             display: flex;
             flex-wrap: wrap;
@@ -114,6 +120,7 @@
             min-height: 60px;
         }
 
+        /* Circle Items */
         .circle-item {
             width: 80px;
             height: 80px;
@@ -176,6 +183,7 @@
             display: block;
         }
 
+        /* Add Circle Button */
         .add-circle-btn {
             width: 60px;
             height: 60px;
@@ -197,6 +205,7 @@
             color: white;
         }
 
+        /* Calculate Button */
         .calculate-btn {
             width: 100%;
             padding: 18px;
@@ -216,6 +225,7 @@
             transform: scale(0.98);
         }
 
+        /* Clear Button */
         .clear-btn {
             width: 100%;
             padding: 16px;
@@ -234,6 +244,7 @@
             transform: scale(0.98);
         }
 
+        /* Results Card */
         .results-card {
             background: var(--ios-card);
             border-radius: 16px;
@@ -247,6 +258,7 @@
             margin-bottom: 15px;
         }
 
+        /* Results Styles */
         .result-item {
             display: flex;
             justify-content: space-between;
@@ -276,6 +288,7 @@
             font-weight: 600;
         }
 
+        /* Bottom Navigation */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -317,6 +330,7 @@
             font-size: 10px;
         }
 
+        /* Operations List */
         .operations-list {
             background: var(--ios-card);
             border-radius: 16px;
@@ -385,6 +399,7 @@
             color: var(--ios-red);
         }
 
+        /* Empty State */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -392,25 +407,75 @@
             font-size: 16px;
         }
 
+        /* Safe areas для iPhone */
+        @supports (padding: max(0px)) {
+            .bottom-nav {
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+            
+            .status-bar {
+                padding-top: max(0px, env(safe-area-inset-top));
+            }
+        }
+
+        /* Адаптивность для маленьких экранов */
+        @media (max-width: 390px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 12px 80px;
+            }
+            
+            .circle-item {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .circle-amount {
+                font-size: 14px;
+            }
+            
+            .circle-label {
+                font-size: 9px;
+            }
+            
+            .add-circle-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .balance-amount {
+                font-size: 42px;
+            }
+        }
+
+        /* Анимации */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .circle-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .operation-item {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Screens */
         .screen {
             display: none;
         }
 
         .screen.active {
             display: block;
-        }
-
-        .debug-btn {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #007AFF;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            padding: 5px 10px;
-            font-size: 12px;
-            z-index: 1000;
         }
     </style>
 </head>
@@ -424,9 +489,6 @@
             <span class="battery-icon">🔋</span>
         </div>
     </div>
-
-    <!-- Debug Button -->
-    <button class="debug-btn" onclick="debugData()">Debug</button>
 
     <!-- Main App Container -->
     <div class="app-container">
@@ -523,7 +585,6 @@
             incomes: [],
             debts: [], 
             expenseCategories: [],
-            transactions: [],
             settings: { currency: "₽" }
         };
 
@@ -608,15 +669,6 @@
                 appData.debts.push(newItem);
             }
             
-            // Добавляем транзакцию
-            appData.transactions.push({
-                id: newItem.id,
-                amount: type === 'income' ? newItem.amount : -newItem.amount,
-                description: newItem.description,
-                date: newItem.date,
-                type: type
-            });
-            
             saveData();
         }
 
@@ -638,16 +690,6 @@
             };
             
             appData.expenseCategories.push(newCategory);
-            
-            // Добавляем транзакцию
-            appData.transactions.push({
-                id: newCategory.id,
-                amount: -parseFloat(amount),
-                description: categoryName,
-                date: new Date().toISOString().split('T')[0],
-                type: 'expense'
-            });
-            
             saveData();
         }
 
@@ -669,9 +711,6 @@
                     const newDescription = prompt('Изменить описание:', item.description) || item.description;
                     item.description = newDescription;
                     
-                    // Обновляем транзакцию
-                    updateTransaction(type, id, item.amount, item.description);
-                    
                     saveData();
                 }
             }
@@ -689,22 +728,8 @@
                 const newAmount = prompt('Изменить сумму:', category.amount);
                 if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
                     category.amount = parseFloat(newAmount);
-                    
-                    // Обновляем транзакцию
-                    updateTransaction('expense', categoryId, category.amount, category.name);
-                    
                     saveData();
                 }
-            }
-        }
-
-        // Обновление транзакции
-        function updateTransaction(type, id, amount, description) {
-            const transaction = appData.transactions.find(t => t.id === id);
-            if (transaction) {
-                transaction.amount = type === 'income' ? amount : -amount;
-                transaction.description = description;
-                transaction.date = new Date().toISOString().split('T')[0];
             }
         }
 
@@ -721,13 +746,6 @@
                 const index = items.findIndex(i => i.id === id);
                 if (index !== -1) {
                     items.splice(index, 1);
-                    
-                    // Удаляем транзакцию
-                    const transactionIndex = appData.transactions.findIndex(t => t.id === id);
-                    if (transactionIndex !== -1) {
-                        appData.transactions.splice(transactionIndex, 1);
-                    }
-                    
                     saveData();
                 }
             }
@@ -739,13 +757,6 @@
                 const index = appData.expenseCategories.findIndex(c => c.id === categoryId);
                 if (index !== -1) {
                     appData.expenseCategories.splice(index, 1);
-                    
-                    // Удаляем транзакцию
-                    const transactionIndex = appData.transactions.findIndex(t => t.id === categoryId);
-                    if (transactionIndex !== -1) {
-                        appData.transactions.splice(transactionIndex, 1);
-                    }
-                    
                     saveData();
                 }
             }
@@ -808,7 +819,6 @@
                     incomes: [],
                     debts: [], 
                     expenseCategories: [],
-                    transactions: [],
                     settings: { currency: "₽" }
                 };
                 saveData();
@@ -881,23 +891,59 @@
             document.getElementById('balance-amount').textContent = appData.settings.currency + balance;
         }
 
-        // Обновление списка операций
+        // Обновление списка операций - ВАЖНО: транзакции создаются на лету из текущих данных
         function updateOperationsList() {
             const container = document.getElementById('operations-list');
             if (!container) return;
             
-            // Сортируем транзакции по дате (новые сверху)
-            const sortedTransactions = [...appData.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Создаем временный массив для операций
+            const operations = [];
             
-            if (sortedTransactions.length === 0) {
+            // Добавляем доходы
+            appData.incomes.forEach(income => {
+                operations.push({
+                    id: income.id,
+                    amount: income.amount,
+                    description: income.description,
+                    date: income.date,
+                    type: 'income'
+                });
+            });
+            
+            // Добавляем долги
+            appData.debts.forEach(debt => {
+                operations.push({
+                    id: debt.id,
+                    amount: -debt.amount,
+                    description: debt.description,
+                    date: debt.date,
+                    type: 'debt'
+                });
+            });
+            
+            // Добавляем расходы
+            appData.expenseCategories.forEach(category => {
+                operations.push({
+                    id: category.id,
+                    amount: -category.amount,
+                    description: category.name,
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'expense'
+                });
+            });
+            
+            // Сортируем по дате (новые сверху)
+            operations.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (operations.length === 0) {
                 container.innerHTML = '<div class="empty-state">Нет операций</div>';
                 return;
             }
             
-            container.innerHTML = sortedTransactions.map(transaction => {
-                const typeClass = transaction.amount > 0 ? 'income' : 'expense';
-                const typeIcon = transaction.amount > 0 ? '💰' : '🛒';
-                const typeColor = transaction.amount > 0 ? '#34C759' : '#FF3B30';
+            container.innerHTML = operations.map(operation => {
+                const typeClass = operation.amount > 0 ? 'income' : 'expense';
+                const typeIcon = operation.amount > 0 ? '💰' : '🛒';
+                const typeColor = operation.amount > 0 ? '#34C759' : '#FF3B30';
                 
                 return `
                     <div class="operation-item">
@@ -906,12 +952,12 @@
                                 ${typeIcon}
                             </div>
                             <div class="operation-details">
-                                <div class="operation-title">${transaction.description}</div>
-                                <div class="operation-meta">${formatDate(transaction.date)}</div>
+                                <div class="operation-title">${operation.description}</div>
+                                <div class="operation-meta">${formatDate(operation.date)}</div>
                             </div>
                         </div>
                         <div class="operation-amount ${typeClass}">
-                            ${transaction.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(transaction.amount)}
+                            ${operation.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(operation.amount)}
                         </div>
                     </div>
                 `;
@@ -940,25 +986,43 @@
             setInterval(updateTime, 60000);
         }
 
-        // Настройки
+        // Настройки - теперь показывает отладочную информацию
         function showSettingsModal() {
-            const action = confirm("Настройки:\n\nОК - Очистить все данные\nОтмена - Отмена");
-            if (action) {
+            // Собираем информацию для отладки
+            const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalDebts = appData.debts.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + category.amount, 0);
+            const balance = totalIncome - totalDebts - totalExpenses;
+            
+            const debugInfo = `
+=== ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
+
+Доходы: ${appData.incomes.length} записей
+Долги: ${appData.debts.length} записей  
+Категории расходов: ${appData.expenseCategories.length}
+
+ОБЩАЯ СТАТИСТИКА:
+- Доходы: ${appData.settings.currency}${totalIncome}
+- Долги: ${appData.settings.currency}${totalDebts}
+- Расходы: ${appData.settings.currency}${totalExpenses}
+- Баланс: ${appData.settings.currency}${balance}
+
+ДЕТАЛИ ДОХОДОВ:
+${appData.incomes.map(income => `  • ${income.description}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов'}
+
+ДЕТАЛИ ДОЛГОВ:
+${appData.debts.map(debt => `  • ${debt.description}: ${appData.settings.currency}${debt.amount}`).join('\n') || '  Нет долгов'}
+
+КАТЕГОРИИ РАСХОДОВ:
+${appData.expenseCategories.map(cat => `  • ${cat.name}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий'}
+            `.trim();
+            
+            // Показываем информацию и предлагаем очистить данные
+            const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
+            
+            if (userChoice) {
                 clearAllData();
             }
-        }
-
-        // Функция для отладки
-        function debugData() {
-            console.log("=== DEBUG DATA ===");
-            console.log("Incomes:", appData.incomes);
-            console.log("Debts:", appData.debts);
-            console.log("Expense Categories:", appData.expenseCategories);
-            console.log("Transactions:", appData.transactions);
-            console.log("===================");
-            
-            // Также покажем alert с информацией
-            alert(`Доходы: ${appData.incomes.length}, Долги: ${appData.debts.length}, Расходы: ${appData.expenseCategories.length}, Транзакции: ${appData.transactions.length}`);
         }
     </script>
 </body>
