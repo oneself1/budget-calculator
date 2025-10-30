@@ -5,147 +5,856 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget</title>
     <style>
-        /* Базовые стили */
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f5f5f7;
-            margin: 0;
-            padding: 20px;
-            max-width: 400px;
-            margin: 0 auto;
+        /* iOS-specific styles */
+        :root {
+            --ios-blue: #007AFF;
+            --ios-gray: #8E8E93;
+            --ios-light-gray: #C6C6C8;
+            --ios-background: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --ios-red: #FF3B30;
+            --ios-green: #34C759;
         }
-        
-        .section {
-            background: white;
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: var(--ios-background);
+            color: #000;
+            height: 100vh;
+            max-height: -webkit-fill-available;
+            overflow-x: hidden;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 44px;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* Main Container */
+        .app-container {
+            max-width: 390px;
+            margin: 0 auto;
+            min-height: calc(100vh - 120px);
+            padding: 0 16px 80px;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 20px 0;
+        }
+
+        .app-title {
+            font-size: 34px;
+            font-weight: 700;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        /* Balance Card */
+        .balance-card {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .balance-amount {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .balance-label {
+            color: var(--ios-gray);
+            font-size: 16px;
+        }
+
+        /* Sections with Circles */
+        .circles-section {
+            background: var(--ios-card);
             border-radius: 16px;
             padding: 20px;
             margin-bottom: 16px;
         }
-        
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #000;
+        }
+
+        /* Circles Container */
         .circles-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 15px;
+            min-height: 60px;
         }
-        
-        .circle {
+
+        /* Circle Items */
+        .circle-item {
             width: 80px;
             height: 80px;
-            border-radius: 50%;
+            border-radius: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .circle-item:active {
+            transform: scale(0.95);
+        }
+
+        .circle-income {
+            background: var(--ios-green);
+        }
+
+        .circle-debt {
+            background: #FF9500;
+        }
+
+        .circle-expense {
+            background: var(--ios-red);
+        }
+
+        .circle-amount {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .circle-label {
+            font-size: 10px;
+            opacity: 0.9;
+            text-align: center;
+            padding: 0 4px;
+        }
+
+        /* Add Circle Button */
+        .add-circle-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 30px;
+            background: var(--ios-light-gray);
+            border: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .income { background: #34C759; }
-        .debt { background: #FF9500; }
-        .expense { background: #FF3B30; }
-        
-        .add-btn {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #007AFF;
-            color: white;
-            border: none;
-            font-size: 24px;
             cursor: pointer;
+            font-size: 24px;
+            color: var(--ios-gray);
+            transition: all 0.3s ease;
         }
-        
+
+        .add-circle-btn:active {
+            transform: scale(0.95);
+            background: var(--ios-gray);
+            color: white;
+        }
+
+        /* Calculate Button */
         .calculate-btn {
             width: 100%;
-            padding: 16px;
-            background: #007AFF;
+            padding: 18px;
+            background: var(--ios-blue);
             color: white;
             border: none;
             border-radius: 12px;
             font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.2s;
+        }
+
+        .calculate-btn:active {
+            background: #0056CC;
+            transform: scale(0.98);
+        }
+
+        /* Clear Button */
+        .clear-btn {
+            width: 100%;
+            padding: 16px;
+            background: #FF3B30;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+
+        .clear-btn:active {
+            background: #D70015;
+            transform: scale(0.98);
+        }
+
+        /* Results Card */
+        .results-card {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 20px;
             margin-top: 20px;
+        }
+
+        .results-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        /* Results Styles */
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--ios-light-gray);
+        }
+
+        .result-item.total {
+            font-weight: bold;
+            border-top: 2px solid var(--ios-blue);
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+
+        .income { 
+            color: var(--ios-green);
+            font-weight: 600;
+        }
+
+        .expense { 
+            color: var(--ios-red);
+            font-weight: 600;
+        }
+
+        .debt { 
+            color: #FF9500;
+            font-weight: 600;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--ios-card);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid var(--ios-light-gray);
+            max-width: 390px;
+            margin: 0 auto;
+        }
+
+        .nav-item {
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        .nav-item:active {
+            transform: scale(0.95);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+        }
+
+        /* Operations List */
+        .operations-list {
+            background: var(--ios-card);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .operation-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--ios-light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .operation-item:active {
+            background-color: var(--ios-background);
+        }
+
+        .operation-item:last-child {
+            border-bottom: none;
+        }
+
+        .operation-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .operation-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .operation-details {
+            flex: 1;
+        }
+
+        .operation-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .operation-meta {
+            font-size: 14px;
+            color: var(--ios-gray);
+        }
+
+        .operation-amount {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .operation-amount.income {
+            color: var(--ios-green);
+        }
+
+        .operation-amount.expense {
+            color: var(--ios-red);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--ios-gray);
+            font-size: 16px;
+        }
+
+        /* Safe areas для iPhone */
+        @supports (padding: max(0px)) {
+            .bottom-nav {
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+            
+            .status-bar {
+                padding-top: max(0px, env(safe-area-inset-top));
+            }
+        }
+
+        /* Адаптивность для маленьких экранов */
+        @media (max-width: 390px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 12px 80px;
+            }
+            
+            .circle-item {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .circle-amount {
+                font-size: 14px;
+            }
+            
+            .circle-label {
+                font-size: 9px;
+            }
+            
+            .add-circle-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .balance-amount {
+                font-size: 42px;
+            }
+        }
+
+        /* Анимации */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .circle-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .operation-item {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Screens */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <h1>💰 Budget</h1>
-    
-    <!-- Доходы -->
-    <div class="section">
-        <h2>Доходы</h2>
-        <div class="circles-container" id="income-circles"></div>
-        <button class="add-btn" onclick="addCircle('income')">+</button>
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+        <div class="status-time" id="current-time">--:--</div>
+        <div class="status-icons">
+            <span class="cellular-icon">📶</span>
+            <span class="wifi-icon">WiFi</span>
+            <span class="battery-icon">🔋</span>
+        </div>
     </div>
-    
-    <!-- Долги -->
-    <div class="section">
-        <h2>Долги</h2>
-        <div class="circles-container" id="debt-circles"></div>
-        <button class="add-btn" onclick="addCircle('debt')">+</button>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        
+        <!-- ЭКРАН 1: ОБЗОР (Главная) -->
+        <div class="screen active" id="overview-screen">
+            <header class="app-header">
+                <h1 class="app-title">Budget</h1>
+                <div class="header-actions">
+                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
+                </div>
+            </header>
+
+            <!-- Карта баланса -->
+            <section class="balance-card">
+                <div class="balance-amount" id="balance-amount">₽0</div>
+                <div class="balance-label">Общий баланс</div>
+            </section>
+
+            <!-- Доходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Доходы</h2>
+                <div class="circles-container" id="income-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewCircle('income')">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Долги с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Долги</h2>
+                <div class="circles-container" id="debt-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewCircle('debt')">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Расходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Расходы</h2>
+                <div class="circles-container" id="expense-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewCircle('expense')">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Кнопка расчета -->
+            <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
+
+            <!-- Кнопка очистки -->
+            <button class="clear-btn" onclick="clearAllData()">🧹 Очистить все</button>
+
+            <!-- Результаты -->
+            <div class="results-card" id="results-card" style="display: none">
+                <h3>Результаты</h3>
+                <div id="results-content"></div>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 2: ОПЕРАЦИИ -->
+        <div class="screen" id="operations-screen">
+            <header class="screen-header">
+                <h2>Операции</h2>
+            </header>
+
+            <div class="operations-list" id="operations-list">
+                <div class="empty-state">Нет операций</div>
+            </div>
+        </div>
+
     </div>
-    
-    <!-- Расходы -->
-    <div class="section">
-        <h2>Расходы</h2>
-        <div class="circles-container" id="expense-circles"></div>
-        <button class="add-btn" onclick="addCircle('expense')">+</button>
-    </div>
-    
-    <button class="calculate-btn" onclick="calculate()">Рассчитать</button>
-    
-    <div id="results" style="margin-top: 20px;"></div>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchScreen('overview')">
+            <div class="nav-icon">💰</div>
+            <div class="nav-label">Бюджет</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('operations')">
+            <div class="nav-icon">📝</div>
+            <div class="nav-label">Операции</div>
+        </div>
+    </nav>
 
     <script>
-        // ПРОСТОЙ РАБОЧИЙ КОД
-        console.log("Script loaded!");
-        
-        let incomes = [];
-        let debts = [];
-        let expenses = [];
-        
-        function addCircle(type) {
-            console.log("Adding circle:", type);
-            const amount = prompt("Введите сумму:");
-            if (amount && !isNaN(amount)) {
-                const circle = document.createElement('div');
-                circle.className = `circle ${type}`;
-                circle.innerHTML = `₽${amount}`;
-                
-                if (type === 'income') {
-                    document.getElementById('income-circles').appendChild(circle);
-                    incomes.push(parseFloat(amount));
-                } else if (type === 'debt') {
-                    document.getElementById('debt-circles').appendChild(circle);
-                    debts.push(parseFloat(amount));
-                } else {
-                    document.getElementById('expense-circles').appendChild(circle);
-                    expenses.push(parseFloat(amount));
+        // Данные приложения
+        let appData = {
+            incomes: [],
+            debts: [], 
+            expenses: [],
+            transactions: [],
+            settings: { currency: "₽" }
+        };
+
+        // Инициализация приложения
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("App started!");
+            loadData();
+            updateUI();
+            startClock();
+        });
+
+        // Загрузка данных
+        function loadData() {
+            const saved = localStorage.getItem('budgetAppData');
+            if (saved) {
+                try {
+                    appData = JSON.parse(saved);
+                    console.log("Data loaded:", appData);
+                } catch (e) {
+                    console.error("Error loading data:", e);
                 }
             }
         }
-        
-        function calculate() {
-            const totalIncome = incomes.reduce((a, b) => a + b, 0);
-            const totalDebts = debts.reduce((a, b) => a + b, 0);
-            const totalExpenses = expenses.reduce((a, b) => a + b, 0);
+
+        // Сохранение данных
+        function saveData() {
+            localStorage.setItem('budgetAppData', JSON.stringify(appData));
+            updateUI();
+        }
+
+        // Переключение экранов
+        function switchScreen(screenName) {
+            // Убираем активный класс у всех
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Добавляем активный класс выбранному
+            document.querySelector(`.nav-item[onclick="switchScreen('${screenName}')"]`).classList.add('active');
+            document.getElementById(`${screenName}-screen`).classList.add('active');
+            
+            if (screenName === 'operations') {
+                updateOperationsList();
+            }
+        }
+
+        // Добавление нового кружка
+        function addNewCircle(type) {
+            console.log("Adding circle:", type);
+            
+            const amount = prompt(`Введите сумму ${getTypeName(type)}:`);
+            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
+                alert("Пожалуйста, введите корректную сумму");
+                return;
+            }
+            
+            const description = prompt('Введите описание:') || getDefaultDescription(type);
+            
+            const newItem = {
+                id: Date.now(),
+                amount: parseFloat(amount),
+                description: description,
+                date: new Date().toISOString().split('T')[0]
+            };
+            
+            // Добавляем в соответствующий массив
+            if (type === 'income') {
+                appData.incomes.push(newItem);
+            } else if (type === 'debt') {
+                appData.debts.push(newItem);
+            } else {
+                appData.expenses.push(newItem);
+            }
+            
+            // Добавляем в историю
+            appData.transactions.unshift({
+                ...newItem,
+                type: type,
+                amount: type === 'income' ? newItem.amount : -newItem.amount
+            });
+            
+            saveData();
+        }
+
+        // Получение названия типа
+        function getTypeName(type) {
+            const names = {
+                income: 'дохода',
+                debt: 'долга', 
+                expense: 'расхода'
+            };
+            return names[type] || 'операции';
+        }
+
+        // Описание по умолчанию
+        function getDefaultDescription(type) {
+            const defaults = {
+                income: 'Доход',
+                debt: 'Долг', 
+                expense: 'Расход'
+            };
+            return defaults[type] || 'Операция';
+        }
+
+        // Расчет бюджета
+        function calculateBudget() {
+            const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalDebts = appData.debts.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpenses = appData.expenses.reduce((sum, item) => sum + item.amount, 0);
             const balance = totalIncome - totalDebts - totalExpenses;
             
-            document.getElementById('results').innerHTML = `
-                <div class="section">
-                    <h3>Результаты:</h3>
-                    <p>Доходы: ₽${totalIncome}</p>
-                    <p>Долги: ₽${totalDebts}</p>
-                    <p>Расходы: ₽${totalExpenses}</p>
-                    <p><strong>Баланс: ₽${balance}</strong></p>
+            const resultsHTML = `
+                <div class="result-item">
+                    <span>Общий доход:</span>
+                    <span class="income">${appData.settings.currency}${totalIncome}</span>
+                </div>
+                <div class="result-item">
+                    <span>Общие долги:</span>
+                    <span class="debt">${appData.settings.currency}${totalDebts}</span>
+                </div>
+                <div class="result-item">
+                    <span>Общие расходы:</span>
+                    <span class="expense">${appData.settings.currency}${totalExpenses}</span>
+                </div>
+                <div class="result-item total">
+                    <span>Итоговый баланс:</span>
+                    <span class="${balance >= 0 ? 'income' : 'expense'}">${appData.settings.currency}${Math.abs(balance)}</span>
                 </div>
             `;
+            
+            document.getElementById('results-content').innerHTML = resultsHTML;
+            document.getElementById('results-card').style.display = 'block';
         }
-        
-        // Проверка что функции работают
-        setTimeout(() => {
-            alert("Приложение загружено! Нажмите + чтобы добавить кружок");
-        }, 1000);
+
+        // Очистка всех данных
+        function clearAllData() {
+            if (confirm('Вы уверены? Все данные будут удалены.')) {
+                appData = {
+                    incomes: [],
+                    debts: [], 
+                    expenses: [],
+                    transactions: [],
+                    settings: { currency: "₽" }
+                };
+                saveData();
+                
+                // Очищаем результаты
+                document.getElementById('results-content').innerHTML = '';
+                document.getElementById('results-card').style.display = 'none';
+                
+                alert('Все данные очищены!');
+            }
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            updateCircles();
+            updateBalance();
+        }
+
+        // Обновление кружков
+        function updateCircles() {
+            updateCircleSection('income', appData.incomes);
+            updateCircleSection('debt', appData.debts);
+            updateCircleSection('expense', appData.expenses);
+        }
+
+        // Обновление секции с кружками
+        function updateCircleSection(type, items) {
+            const container = document.getElementById(`${type}-circles`);
+            if (!container) return;
+            
+            if (items.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
+                return;
+            }
+            
+            container.innerHTML = items.map(item => `
+                <div class="circle-item circle-${type}" onclick="editCircle('${type}', ${item.id})">
+                    <div class="circle-amount">${appData.settings.currency}${item.amount}</div>
+                    <div class="circle-label">${item.description}</div>
+                </div>
+            `).join('');
+        }
+
+        // Редактирование кружка
+        function editCircle(type, id) {
+            const items = getItemsByType(type);
+            const item = items.find(i => i.id === id);
+            if (item) {
+                const newAmount = prompt('Изменить сумму:', item.amount);
+                if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
+                    item.amount = parseFloat(newAmount);
+                    const newDescription = prompt('Изменить описание:', item.description) || item.description;
+                    item.description = newDescription;
+                    saveData();
+                }
+            }
+        }
+
+        // Получение массива по типу
+        function getItemsByType(type) {
+            switch(type) {
+                case 'income': return appData.incomes;
+                case 'debt': return appData.debts;
+                case 'expense': return appData.expenses;
+                default: return [];
+            }
+        }
+
+        // Обновление баланса
+        function updateBalance() {
+            const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalDebts = appData.debts.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpenses = appData.expenses.reduce((sum, item) => sum + item.amount, 0);
+            const balance = totalIncome - totalDebts - totalExpenses;
+            
+            document.getElementById('balance-amount').textContent = appData.settings.currency + balance;
+        }
+
+        // Обновление списка операций
+        function updateOperationsList() {
+            const container = document.getElementById('operations-list');
+            if (!container) return;
+            
+            const transactions = appData.transactions;
+            
+            if (transactions.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нет операций</div>';
+                return;
+            }
+            
+            container.innerHTML = transactions.map(transaction => {
+                const typeClass = transaction.amount > 0 ? 'income' : 'expense';
+                const typeIcon = transaction.amount > 0 ? '💰' : transaction.type === 'debt' ? '🏦' : '🛒';
+                const typeColor = transaction.amount > 0 ? '#34C759' : transaction.type === 'debt' ? '#FF9500' : '#FF3B30';
+                
+                return `
+                    <div class="operation-item">
+                        <div class="operation-info">
+                            <div class="operation-icon" style="background: ${typeColor}">
+                                ${typeIcon}
+                            </div>
+                            <div class="operation-details">
+                                <div class="operation-title">${transaction.description}</div>
+                                <div class="operation-meta">${formatDate(transaction.date)}</div>
+                            </div>
+                        </div>
+                        <div class="operation-amount ${typeClass}">
+                            ${transaction.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(transaction.amount)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Форматирование даты
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        // Часы
+        function startClock() {
+            function updateTime() {
+                const now = new Date();
+                const timeElement = document.getElementById('current-time');
+                if (timeElement) {
+                    timeElement.textContent = 
+                        now.getHours().toString().padStart(2, '0') + ':' + 
+                        now.getMinutes().toString().padStart(2, '0');
+                }
+            }
+            
+            updateTime();
+            setInterval(updateTime, 60000);
+        }
+
+        // Настройки
+        function showSettingsModal() {
+            const action = confirm("Настройки:\n\nОК - Очистить все данные\nОтмена - Отмена");
+            if (action) {
+                clearAllData();
+            }
+        }
     </script>
 </body>
 </html>
