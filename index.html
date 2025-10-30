@@ -181,16 +181,17 @@
         /* Circle action buttons */
         .circle-actions {
             position: absolute;
-            top: -5px;
-            right: -5px;
+            top: -8px;
+            right: -8px;
             display: flex;
-            gap: 2px;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .circle-action-btn {
-            width: 20px;
-            height: 20px;
-            border-radius: 10px;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
             border: none;
             font-size: 12px;
             cursor: pointer;
@@ -198,19 +199,20 @@
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .circle-action-btn:active {
             transform: scale(0.9);
         }
 
-        .circle-check {
-            background: var(--ios-green);
+        .circle-delete {
+            background: var(--ios-red);
             color: white;
         }
 
-        .circle-delete {
-            background: var(--ios-red);
+        .circle-check {
+            background: var(--ios-green);
             color: white;
         }
 
@@ -396,11 +398,18 @@
         .operation-title {
             font-size: 16px;
             font-weight: 500;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .operation-meta {
-            font-size: 14px;
+            font-size: 12px;
+            color: var(--ios-gray);
+            display: flex;
+            gap: 8px;
+        }
+
+        .operation-time {
+            font-size: 12px;
             color: var(--ios-gray);
         }
 
@@ -680,7 +689,7 @@
                 id: Date.now(),
                 amount: parseFloat(amount),
                 description: description,
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toISOString(),
                 paid: false // Для долгов - изначально не оплачен
             };
             
@@ -707,7 +716,8 @@
             const newCategory = {
                 id: Date.now(),
                 name: categoryName,
-                amount: parseFloat(amount)
+                amount: parseFloat(amount),
+                date: new Date().toISOString()
             };
             
             appData.expenseCategories.push(newCategory);
@@ -887,8 +897,8 @@
                 container.innerHTML = items.map(item => `
                     <div class="circle-item circle-${type} ${item.paid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
                         <div class="circle-actions">
-                            <button class="circle-action-btn circle-check" onclick="event.stopPropagation(); markDebtAsPaid(${item.id})">✓</button>
                             <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
+                            <button class="circle-action-btn circle-check" onclick="event.stopPropagation(); markDebtAsPaid(${item.id})">✓</button>
                         </div>
                         <div class="circle-amount">${appData.settings.currency}${item.amount}</div>
                         <div class="circle-label">${item.description}</div>
@@ -974,7 +984,7 @@
                     id: category.id,
                     amount: -category.amount,
                     description: category.name,
-                    date: new Date().toISOString().split('T')[0],
+                    date: category.date,
                     type: 'expense'
                 });
             });
@@ -990,23 +1000,29 @@
             container.innerHTML = operations.map(operation => {
                 let typeClass = operation.type;
                 let typeIcon, typeColor;
+                let amountSign = '';
+                let displayAmount = Math.abs(operation.amount);
                 
                 switch(operation.type) {
                     case 'income':
                         typeIcon = '💰';
                         typeColor = '#34C759';
+                        amountSign = '+';
                         break;
                     case 'expense':
                         typeIcon = '🛒';
                         typeColor = '#FF3B30';
+                        amountSign = '-';
                         break;
                     case 'debt':
                         typeIcon = '💳';
                         typeColor = '#FF9500';
+                        amountSign = '-';
                         break;
                     case 'debt-paid':
                         typeIcon = '✅';
                         typeColor = '#8E8E93';
+                        amountSign = '-';
                         break;
                 }
                 
@@ -1018,11 +1034,14 @@
                             </div>
                             <div class="operation-details">
                                 <div class="operation-title">${operation.description}</div>
-                                <div class="operation-meta">${formatDate(operation.date)}</div>
+                                <div class="operation-meta">
+                                    <span>${formatDate(operation.date)}</span>
+                                    <span class="operation-time">${formatTime(operation.date)}</span>
+                                </div>
                             </div>
                         </div>
                         <div class="operation-amount ${typeClass}">
-                            ${operation.amount > 0 ? '+' : ''}${appData.settings.currency}${Math.abs(operation.amount)}
+                            ${amountSign}${appData.settings.currency}${displayAmount}
                         </div>
                     </div>
                 `;
@@ -1033,6 +1052,12 @@
         function formatDate(dateString) {
             const date = new Date(dateString);
             return date.toLocaleDateString('ru-RU');
+        }
+
+        // Форматирование времени
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
 
         // Часы и дата
