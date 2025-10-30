@@ -2,109 +2,150 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Базовые стили */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f7;
+            margin: 0;
+            padding: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .circles-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .income { background: #34C759; }
+        .debt { background: #FF9500; }
+        .expense { background: #FF3B30; }
+        
+        .add-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #007AFF;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            padding: 16px;
+            background: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-    <!-- Top Status Bar -->
-    <div class="status-bar">
-        <div class="status-time" id="current-time">--:--</div>
-        <div class="status-icons">
-            <span class="cellular-icon">📶</span>
-            <span class="wifi-icon">WiFi</span>
-            <span class="battery-icon">🔋</span>
-        </div>
+    <h1>💰 Budget</h1>
+    
+    <!-- Доходы -->
+    <div class="section">
+        <h2>Доходы</h2>
+        <div class="circles-container" id="income-circles"></div>
+        <button class="add-btn" onclick="addCircle('income')">+</button>
     </div>
+    
+    <!-- Долги -->
+    <div class="section">
+        <h2>Долги</h2>
+        <div class="circles-container" id="debt-circles"></div>
+        <button class="add-btn" onclick="addCircle('debt')">+</button>
+    </div>
+    
+    <!-- Расходы -->
+    <div class="section">
+        <h2>Расходы</h2>
+        <div class="circles-container" id="expense-circles"></div>
+        <button class="add-btn" onclick="addCircle('expense')">+</button>
+    </div>
+    
+    <button class="calculate-btn" onclick="calculate()">Рассчитать</button>
+    
+    <div id="results" style="margin-top: 20px;"></div>
 
-    <!-- Main App Container -->
-    <div class="app-container">
+    <script>
+        // ПРОСТОЙ РАБОЧИЙ КОД
+        console.log("Script loaded!");
         
-        <!-- ЭКРАН 1: ОБЗОР (Главная) -->
-        <div class="screen active" id="overview-screen">
-            <header class="app-header">
-                <h1 class="app-title">Budget</h1>
-                <div class="header-actions">
-                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
+        let incomes = [];
+        let debts = [];
+        let expenses = [];
+        
+        function addCircle(type) {
+            console.log("Adding circle:", type);
+            const amount = prompt("Введите сумму:");
+            if (amount && !isNaN(amount)) {
+                const circle = document.createElement('div');
+                circle.className = `circle ${type}`;
+                circle.innerHTML = `₽${amount}`;
+                
+                if (type === 'income') {
+                    document.getElementById('income-circles').appendChild(circle);
+                    incomes.push(parseFloat(amount));
+                } else if (type === 'debt') {
+                    document.getElementById('debt-circles').appendChild(circle);
+                    debts.push(parseFloat(amount));
+                } else {
+                    document.getElementById('expense-circles').appendChild(circle);
+                    expenses.push(parseFloat(amount));
+                }
+            }
+        }
+        
+        function calculate() {
+            const totalIncome = incomes.reduce((a, b) => a + b, 0);
+            const totalDebts = debts.reduce((a, b) => a + b, 0);
+            const totalExpenses = expenses.reduce((a, b) => a + b, 0);
+            const balance = totalIncome - totalDebts - totalExpenses;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="section">
+                    <h3>Результаты:</h3>
+                    <p>Доходы: ₽${totalIncome}</p>
+                    <p>Долги: ₽${totalDebts}</p>
+                    <p>Расходы: ₽${totalExpenses}</p>
+                    <p><strong>Баланс: ₽${balance}</strong></p>
                 </div>
-            </header>
-
-            <!-- Карта баланса -->
-            <section class="balance-card">
-                <div class="balance-amount" id="balance-amount">₽0</div>
-                <div class="balance-label">Общий баланс</div>
-            </section>
-
-            <!-- Доходы с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Доходы</h2>
-                <div class="circles-container" id="income-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
-                </div>
-                <button class="add-circle-btn" onclick="addNewCircle('income')">
-                    <span class="plus-icon">+</span>
-                </button>
-            </section>
-
-            <!-- Долги с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Долги</h2>
-                <div class="circles-container" id="debt-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
-                </div>
-                <button class="add-circle-btn" onclick="addNewCircle('debt')">
-                    <span class="plus-icon">+</span>
-                </button>
-            </section>
-
-            <!-- Расходы с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Расходы</h2>
-                <div class="circles-container" id="expense-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
-                </div>
-                <button class="add-circle-btn" onclick="addNewCircle('expense')">
-                    <span class="plus-icon">+</span>
-                </button>
-            </section>
-
-            <!-- Кнопка расчета -->
-            <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
-
-            <!-- Результаты -->
-            <div class="results-card" id="results-card" style="display: none">
-                <h3>Результаты</h3>
-                <div id="results-content"></div>
-            </div>
-        </div>
-
-        <!-- ЭКРАН 2: ОПЕРАЦИИ -->
-        <div class="screen" id="operations-screen">
-            <header class="screen-header">
-                <h2>Операции</h2>
-            </header>
-
-            <div class="operations-list" id="operations-list">
-                <div class="empty-state">Нет операций</div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Нижняя навигация -->
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchScreen('overview')">
-            <div class="nav-icon">💰</div>
-            <div class="nav-label">Бюджет</div>
-        </div>
-        <div class="nav-item" onclick="switchScreen('operations')">
-            <div class="nav-icon">📝</div>
-            <div class="nav-label">Операции</div>
-        </div>
-    </nav>
-
-    <script src="scripts.js"></script>
+            `;
+        }
+        
+        // Проверка что функции работают
+        setTimeout(() => {
+            alert("Приложение загружено! Нажмите + чтобы добавить кружок");
+        }, 1000);
+    </script>
 </body>
 </html>
