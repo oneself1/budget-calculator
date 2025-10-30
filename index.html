@@ -11,11 +11,11 @@
 <body>
     <!-- Top Status Bar -->
     <div class="status-bar">
-        <div class="status-time" id="current-time">14:30</div>
+        <div class="status-time" id="current-time">--:--</div>
         <div class="status-icons">
-            <span class="cellular-icon"></span>
-            <span class="wifi-icon"></span>
-            <span class="battery-icon"></span>
+            <span class="cellular-icon">📶</span>
+            <span class="wifi-icon">WiFi</span>
+            <span class="battery-icon">🔋</span>
         </div>
     </div>
 
@@ -27,13 +27,13 @@
             <header class="app-header">
                 <h1 class="app-title">Budget</h1>
                 <div class="header-actions">
-                    <button class="icon-btn settings-btn">⚙️</button>
+                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
                 </div>
             </header>
 
             <!-- Карта баланса -->
             <section class="balance-card">
-                <div class="balance-amount">₽0</div>
+                <div class="balance-amount" id="balance-amount">₽0</div>
                 <div class="balance-label">Общий баланс</div>
             </section>
 
@@ -41,9 +41,9 @@
             <section class="circles-section">
                 <h2 class="section-title">Доходы</h2>
                 <div class="circles-container" id="income-circles">
-                    <!-- Кружки доходов будут здесь -->
+                    <div class="empty-state">Нажми + чтобы добавить</div>
                 </div>
-                <button class="add-circle-btn" id="add-income-circle">
+                <button class="add-circle-btn" onclick="addNewCircle('income')">
                     <span class="plus-icon">+</span>
                 </button>
             </section>
@@ -52,9 +52,9 @@
             <section class="circles-section">
                 <h2 class="section-title">Долги</h2>
                 <div class="circles-container" id="debt-circles">
-                    <!-- Кружки долгов будут здесь -->
+                    <div class="empty-state">Нажми + чтобы добавить</div>
                 </div>
-                <button class="add-circle-btn" id="add-debt-circle">
+                <button class="add-circle-btn" onclick="addNewCircle('debt')">
                     <span class="plus-icon">+</span>
                 </button>
             </section>
@@ -63,15 +63,15 @@
             <section class="circles-section">
                 <h2 class="section-title">Расходы</h2>
                 <div class="circles-container" id="expense-circles">
-                    <!-- Кружки расходов будут здесь -->
+                    <div class="empty-state">Нажми + чтобы добавить</div>
                 </div>
-                <button class="add-circle-btn" id="add-expense-circle">
+                <button class="add-circle-btn" onclick="addNewCircle('expense')">
                     <span class="plus-icon">+</span>
                 </button>
             </section>
 
             <!-- Кнопка расчета -->
-            <button class="calculate-btn" id="calculate-btn">Рассчитать бюджет</button>
+            <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
 
             <!-- Результаты -->
             <div class="results-card" id="results-card" style="display: none">
@@ -95,11 +95,11 @@
 
     <!-- Нижняя навигация -->
     <nav class="bottom-nav">
-        <div class="nav-item active" data-screen="overview">
+        <div class="nav-item active" onclick="switchScreen('overview')">
             <div class="nav-icon">💰</div>
             <div class="nav-label">Бюджет</div>
         </div>
-        <div class="nav-item" data-screen="operations">
+        <div class="nav-item" onclick="switchScreen('operations')">
             <div class="nav-icon">📝</div>
             <div class="nav-label">Операции</div>
         </div>
