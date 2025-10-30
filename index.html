@@ -616,16 +616,18 @@
             }
         }
 
-        // Добавление нового кружка
+        // Добавление нового кружка - С ПРАВИЛЬНОЙ ПОСЛЕДОВАТЕЛЬНОСТЬЮ
         function addNewCircle(type) {
             console.log("Adding circle:", type);
             
+            // 1. Сначала запрашиваем сумму
             const amount = prompt(`Введите сумму ${getTypeName(type)}:`);
             if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
                 alert("Пожалуйста, введите корректную сумму");
                 return;
             }
             
+            // 2. Потом запрашиваем описание
             const description = prompt('Введите описание:') || getDefaultDescription(type);
             
             const newItem = {
@@ -760,6 +762,7 @@
             const items = getItemsByType(type);
             const item = items.find(i => i.id === id);
             if (item) {
+                // При редактировании тоже сначала сумму, потом описание
                 const newAmount = prompt('Изменить сумму:', item.amount);
                 if (newAmount && !isNaN(newAmount) && parseFloat(newAmount) > 0) {
                     item.amount = parseFloat(newAmount);
