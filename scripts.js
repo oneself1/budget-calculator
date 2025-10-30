@@ -404,21 +404,41 @@ function startClock() {
     setInterval(updateTime, 60000);
 }
 
-// Настройки
+// Настройки - теперь показывает отладочную информацию
 function showSettingsModal() {
-    const action = confirm("Настройки:\n\nОК - Очистить все данные\nОтмена - Отмена");
-    if (action) {
+    // Собираем информацию для отладки
+    const totalIncome = appData.incomes.reduce((sum, item) => sum + item.amount, 0);
+    const totalDebts = appData.debts.reduce((sum, item) => sum + item.amount, 0);
+    const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + category.amount, 0);
+    const balance = totalIncome - totalDebts - totalExpenses;
+    
+    const debugInfo = `
+=== ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
+
+Доходы: ${appData.incomes.length} записей
+Долги: ${appData.debts.length} записей  
+Категории расходов: ${appData.expenseCategories.length}
+
+ОБЩАЯ СТАТИСТИКА:
+- Доходы: ${appData.settings.currency}${totalIncome}
+- Долги: ${appData.settings.currency}${totalDebts}
+- Расходы: ${appData.settings.currency}${totalExpenses}
+- Баланс: ${appData.settings.currency}${balance}
+
+ДЕТАЛИ ДОХОДОВ:
+${appData.incomes.map(income => `  • ${income.description}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов'}
+
+ДЕТАЛИ ДОЛГОВ:
+${appData.debts.map(debt => `  • ${debt.description}: ${appData.settings.currency}${debt.amount}`).join('\n') || '  Нет долгов'}
+
+КАТЕГОРИИ РАСХОДОВ:
+${appData.expenseCategories.map(cat => `  • ${cat.name}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий'}
+    `.trim();
+    
+    // Показываем информацию и предлагаем очистить данные
+    const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
+    
+    if (userChoice) {
         clearAllData();
     }
-}
-
-// Функция для отладки
-function debugData() {
-    console.log("=== DEBUG DATA ===");
-    console.log("Incomes:", appData.incomes);
-    console.log("Debts:", appData.debts);
-    console.log("Expense Categories:", appData.expenseCategories);
-    console.log("===================");
-    
-    alert(`Доходы: ${appData.incomes.length}, Долги: ${appData.debts.length}, Расходы: ${appData.expenseCategories.length}`);
 }
