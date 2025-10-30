@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <style>
+        
+        /* Базовые стили */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input, button {
+            padding: 8px;
+            margin: 5px;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        /* Для мобильных устройств */
+        @media (max-width: 600px) {
+            body {
+            padding: 10px;
+            margin: 10px;
+        }
+    
+        input, button {
+            width: 100%;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }   
+    
+        .expense-item {
+            display: flex;
+            flex-direction: column;
+        }
+        }
+    </style>
+    <title>budgetCalculator</title>
+</head>
+<body>
+
+    <h1>💰 Калькулятор бюджета</h1>
+
+    <div class="input-group">
+        <label>Месячный доход:</label>
+        <input type="number" id="income" placeholder="Введите доход">
+    </div>
+
+    <div id="expenses-container">
+        <div class="expense-item">
+            <input type="text" class="category" placeholder="Категория">
+            <input type="number" class="amount" placeholder="Cумма">
+        </div>
+    </div>
+
+    <button id="add-expense">Добавить категорию</button>
+    <button id="calculate">Рассчитать</button>
+
+    <div id="results" class="results" style="display:none">
+        <h2>Финансовый отчет</h2>
+        <div id="report"></div>
+    </div>
+
+    <script src="scripts.js"></script>
+
+</body>
+</html>
