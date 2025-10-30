@@ -74,3 +74,5 @@ document.getElementById('calculate').addEventListener('click', function() {
     // 8. Выводим отчет
     document.getElementById('report').innerHTML = reportHTML;
 });
+
+console.log("Мое первое изменение!");
