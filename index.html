@@ -2,162 +2,212 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Трекер расходов с подкатегориями</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Budget</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>💰 Трекер расходов</h1>
-            <div class="total-expenses" id="totalExpenses">0 ₽</div>
-            <p>Общая сумма расходов</p>
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+        <div class="status-time" id="current-time">--:--</div>
+        <div class="status-date" id="current-date">--.--.----</div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        
+        <!-- ЭКРАН 1: ОБЗОР (Главная) -->
+        <div class="screen active" id="overview-screen">
+            <header class="app-header">
+                <h1 class="app-title">Budget</h1>
+                <div class="header-actions">
+                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
+                </div>
+            </header>
+
+            <!-- Карта баланса -->
+            <section class="balance-card">
+                <div class="balance-amount" id="balance-amount">₽0</div>
+                <div class="balance-label">Общий баланс</div>
+            </section>
+
+            <!-- Доходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Доходы</h2>
+                <div class="circles-container" id="income-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewIncomeCategory()">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Долги с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Долги</h2>
+                <div class="circles-container" id="debt-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewCircle('debt')">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Расходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Расходы</h2>
+                <div class="circles-container" id="expense-circles">
+                    <!-- Категории появятся здесь -->
+                </div>
+                <button class="add-circle-btn" onclick="addNewExpenseCategory()">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Кнопка добавления расхода -->
+            <button class="add-expense-btn" onclick="showCategorySelection()">Добавить расход</button>
         </div>
 
-        <div class="main-content">
-            <div class="categories-section">
-                <h2 class="section-title">📊 Категории расходов</h2>
-                <div id="categoriesList"></div>
-            </div>
+        <!-- ЭКРАН 2: ОПЕРАЦИИ -->
+        <div class="screen" id="operations-screen">
+            <header class="app-header">
+                <h1 class="app-title">Операции</h1>
+            </header>
 
-            <div class="expenses-section">
-                <h2 class="section-title">📝 Последние расходы</h2>
-                <div id="expensesList"></div>
+            <div class="operations-list" id="operations-list">
+                <div class="empty-state">Нет операций</div>
             </div>
         </div>
 
-        <div class="controls">
-            <button class="btn-primary" onclick="openAddExpenseModal()">➕ Добавить расход</button>
-            <button class="btn-success" onclick="openAddCategoryModal()">📁 Добавить категорию</button>
-            <button class="btn-secondary" onclick="openStatistics()">📈 Статистика</button>
+        <!-- ЭКРАН 3: ОТЧЕТ -->
+        <div class="screen" id="report-screen">
+            <header class="app-header">
+                <h1 class="app-title">Отчет</h1>
+            </header>
+
+            <div class="report-section">
+                <h2 class="section-title">Финансовый отчет</h2>
+                <div class="report-summary">
+                    <div class="report-item">
+                        <div class="report-value income" id="report-income">₽0</div>
+                        <div class="report-label">Доходы</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value expense" id="report-expense">₽0</div>
+                        <div class="report-label">Расходы</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value debt" id="report-debt">₽0</div>
+                        <div class="report-label">Оплаченные долги</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value balance" id="report-balance">₽0</div>
+                        <div class="report-label">Баланс</div>
+                    </div>
+                </div>
+
+                <div class="results-card">
+                    <h3>Детализация</h3>
+                    <div id="report-details"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Модальное окно выбора категории -->
+    <div class="category-modal" id="category-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Выберите категорию</h2>
+            <div class="category-list" id="category-list">
+                <!-- Категории будут добавлены здесь -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideCategorySelection()">Отмена</button>
+            </div>
         </div>
     </div>
 
-    <!-- Модальное окно добавления расхода -->
-    <div id="addExpenseModal" class="modal">
-        <div class="modal-content">
-            <h2>💸 Добавить расход</h2>
-            
-            <!-- Шаг 1: Выбор категории -->
-            <div id="expenseStep1">
-                <div class="form-group">
-                    <label>Выберите категорию:</label>
-                    <div id="categoryOptions"></div>
-                </div>
+    <!-- Модальное окно выбора подкатегории -->
+    <div class="category-modal" id="subcategory-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title" id="subcategory-modal-title">Выберите подкатегорию</h2>
+            <div class="category-list" id="subcategory-list">
+                <!-- Подкатегории будут добавлены здесь -->
             </div>
-
-            <!-- Шаг 2: Выбор подкатегории (если есть) -->
-            <div id="expenseStep2" style="display: none;">
-                <button class="back-button" onclick="backToCategorySelection()">← Назад к категориям</button>
-                <div class="form-group">
-                    <label id="subcategoryLabel">Выберите подкатегорию:</label>
-                    <div id="subcategoryOptions"></div>
-                </div>
-            </div>
-
-            <!-- Шаг 3: Ввод суммы и описания -->
-            <div id="expenseStep3" style="display: none;">
-                <button class="back-button" onclick="backToSubcategorySelection()">← Назад к подкатегориям</button>
-                
-                <div class="expense-details">
-                    <strong>Категория:</strong>
-                    <span id="selectedCategoryDisplay"></span>
-                </div>
-
-                <div class="form-group">
-                    <label for="expenseAmount">Сумма расхода (₽):</label>
-                    <input type="number" id="expenseAmount" placeholder="Введите сумму" min="1">
-                </div>
-
-                <div class="form-group">
-                    <label for="expenseDescription">Описание (необязательно):</label>
-                    <input type="text" id="expenseDescription" placeholder="Краткое описание расхода">
-                </div>
-
-                <div class="modal-buttons">
-                    <button class="btn-secondary" onclick="closeAddExpenseModal()">Отмена</button>
-                    <button class="btn-success" onclick="addExpense()">Добавить</button>
-                </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideSubcategorySelection()">Назад</button>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно добавления/редактирования категории -->
-    <div id="categoryModal" class="modal">
-        <div class="modal-content">
-            <h2 id="categoryModalTitle">📁 Добавить категорию</h2>
+    <!-- Модальное окно редактирования категории -->
+    <div class="category-modal" id="edit-category-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title" id="edit-category-title">Редактировать категорию</h2>
             
             <div class="form-group">
-                <label for="categoryName">Название категории:</label>
-                <input type="text" id="categoryName" placeholder="Например: Еда">
+                <label for="edit-category-name">Название категории:</label>
+                <input type="text" id="edit-category-name" class="modal-input">
             </div>
-
+            
             <div class="form-group">
-                <label for="categoryEmoji">Смайлик:</label>
-                <input type="text" id="categoryEmoji" placeholder="🍕" maxlength="2">
+                <label for="edit-category-icon">Иконка:</label>
+                <input type="text" id="edit-category-icon" class="modal-input" maxlength="2">
             </div>
 
             <div class="form-group">
                 <label>Подкатегории:</label>
-                <div class="subcategories-list" id="subcategoriesList">
-                    <!-- Список подкатегорий будет здесь -->
+                <div class="subcategories-list" id="subcategories-list">
+                    <!-- Список подкатегорий -->
                 </div>
-                <button class="btn-primary" onclick="openAddSubcategoryModal()" style="width: auto; min-width: auto;">+ Добавить подкатегорию</button>
+                <button class="modal-btn" onclick="addNewSubcategory()" style="margin-top: 10px;">+ Добавить подкатегорию</button>
             </div>
 
-            <div class="modal-buttons">
-                <button class="btn-secondary" onclick="closeCategoryModal()">Отмена</button>
-                <button class="btn-success" onclick="saveCategory()">Сохранить</button>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideEditCategoryModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="saveCategoryChanges()">Сохранить</button>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно добавления/редактирования подкатегории -->
-    <div id="subcategoryModal" class="modal">
-        <div class="modal-content">
-            <h2 id="subcategoryModalTitle">📝 Добавить подкатегорию</h2>
+    <!-- Модальное окно редактирования подкатегории -->
+    <div class="category-modal" id="edit-subcategory-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title" id="edit-subcategory-title">Редактировать подкатегорию</h2>
             
             <div class="form-group">
-                <label for="subcategoryName">Название подкатегории:</label>
-                <input type="text" id="subcategoryName" placeholder="Например: Супермаркет">
+                <label for="edit-subcategory-name">Название подкатегории:</label>
+                <input type="text" id="edit-subcategory-name" class="modal-input">
             </div>
-
-            <div class="form-group">
-                <label for="subcategoryEmoji">Смайлик:</label>
-                <input type="text" id="subcategoryEmoji" placeholder="🛒" maxlength="2">
-            </div>
-
-            <div class="modal-buttons">
-                <button class="btn-secondary" onclick="closeSubcategoryModal()">Отмена</button>
-                <button class="btn-success" onclick="saveSubcategory()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно статистики -->
-    <div id="statisticsModal" class="modal">
-        <div class="modal-content">
-            <h2>📈 Статистика расходов</h2>
             
             <div class="form-group">
-                <label for="statPeriod">Период:</label>
-                <select id="statPeriod" onchange="updateStatistics()">
-                    <option value="week">Неделя</option>
-                    <option value="month" selected>Месяц</option>
-                    <option value="year">Год</option>
-                    <option value="all">Все время</option>
-                </select>
+                <label for="edit-subcategory-icon">Иконка:</label>
+                <input type="text" id="edit-subcategory-icon" class="modal-input" maxlength="2">
             </div>
 
-            <div class="statistics-content">
-                <div id="statisticsData"></div>
-            </div>
-
-            <div class="modal-buttons">
-                <button class="btn-secondary" onclick="closeStatistics()">Закрыть</button>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideEditSubcategoryModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="saveSubcategoryChanges()">Сохранить</button>
             </div>
         </div>
     </div>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchScreen('overview')">
+            <div class="nav-icon">💰</div>
+            <div class="nav-label">Бюджет</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('operations')">
+            <div class="nav-icon">📝</div>
+            <div class="nav-label">Операции</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('report')">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">Отчет</div>
+        </div>
+    </nav>
 
     <script src="script.js"></script>
 </body>
