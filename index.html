@@ -5,35 +5,619 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Budget</title>
     <style>
-        /* Все предыдущие стили остаются без изменений */
-        /* ... (полный CSS код из предыдущего ответа) ... */
+        /* iOS-specific styles */
+        :root {
+            --ios-blue: #007AFF;
+            --ios-gray: #8E8E93;
+            --ios-light-gray: #C6C6C8;
+            --ios-background: #F2F2F7;
+            --ios-card: #FFFFFF;
+            --ios-red: #FF3B30;
+            --ios-green: #34C759;
+            --ios-orange: #FF9500;
+        }
 
-        /* Упрощенные стили для долгов с частичным погашением */
-        .debt-progress {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+            background: var(--ios-background);
+            color: #000;
+            height: 100vh;
+            max-height: -webkit-fill-available;
+            overflow-x: hidden;
+            padding: 0;
+            margin: 0;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: none;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 44px;
+            background: transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 15px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--ios-background);
+        }
+
+        /* Main Container */
+        .app-container {
+            max-width: 390px;
+            margin: 0 auto;
+            min-height: calc(100vh - 120px);
+            padding: 0 16px 80px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Header */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0 20px 0;
+        }
+
+        .app-title {
+            font-size: 34px;
+            font-weight: 700;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        /* Balance Card */
+        .balance-card {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .balance-amount {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .balance-label {
+            color: var(--ios-gray);
+            font-size: 16px;
+        }
+
+        /* Sections with Circles */
+        .circles-section {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #000;
+        }
+
+        /* Circles Container */
+        .circles-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 15px;
+            min-height: 60px;
+        }
+
+        /* Circle Items */
+        .circle-item {
+            width: 80px;
+            height: 80px;
+            border-radius: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .circle-item:active {
+            transform: scale(0.95);
+        }
+
+        .circle-income {
+            background: var(--ios-green);
+        }
+
+        .circle-debt {
+            background: var(--ios-orange);
+        }
+
+        .circle-debt.paid {
+            background: var(--ios-gray);
+            opacity: 0.7;
+        }
+
+        .circle-expense {
+            background: var(--ios-red);
+        }
+
+        .circle-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+
+        .circle-amount {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .circle-label {
+            font-size: 10px;
+            opacity: 0.9;
+            text-align: center;
+            padding: 0 4px;
+            line-height: 1.1;
+        }
+
+        /* Circle action buttons */
+        .circle-actions {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .circle-action-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            border: none;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .circle-action-btn:active {
+            transform: scale(0.9);
+        }
+
+        .circle-delete {
+            background: var(--ios-red);
+            color: white;
+        }
+
+        .circle-check {
+            background: var(--ios-green);
+            color: white;
+        }
+
+        /* Add Circle Button */
+        .add-circle-btn {
             width: 60px;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 2px;
-            margin: 2px 0;
+            height: 60px;
+            border-radius: 30px;
+            background: var(--ios-light-gray);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            color: var(--ios-gray);
+            transition: all 0.3s ease;
+        }
+
+        .add-circle-btn:active {
+            transform: scale(0.95);
+            background: var(--ios-gray);
+            color: white;
+        }
+
+        /* Calculate Button */
+        .calculate-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--ios-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: all 0.2s;
+        }
+
+        .calculate-btn:active {
+            background: #0056CC;
+            transform: scale(0.98);
+        }
+
+        /* Results Card */
+        .results-card {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .results-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        /* Results Styles */
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--ios-light-gray);
+        }
+
+        .result-item.total {
+            font-weight: bold;
+            border-top: 2px solid var(--ios-blue);
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+
+        .income { 
+            color: var(--ios-green);
+            font-weight: 600;
+        }
+
+        .expense { 
+            color: var(--ios-red);
+            font-weight: 600;
+        }
+
+        .debt { 
+            color: var(--ios-orange);
+            font-weight: 600;
+        }
+
+        .debt-paid { 
+            color: var(--ios-gray);
+            font-weight: 600;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--ios-card);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid var(--ios-light-gray);
+            max-width: 390px;
+            margin: 0 auto;
+            z-index: 100;
+        }
+
+        .nav-item {
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        .nav-item:active {
+            transform: scale(0.95);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .nav-label {
+            font-size: 10px;
+        }
+
+        /* Operations List */
+        .operations-list {
+            background: var(--ios-card);
+            border-radius: 16px;
             overflow: hidden;
         }
 
-        .debt-progress-bar {
-            height: 100%;
-            background: white;
-            transition: width 0.3s ease;
+        .operation-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--ios-light-gray);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
         }
 
-        .debt-remaining {
-            font-size: 9px;
-            opacity: 0.9;
-            margin-top: 2px;
+        .operation-item:active {
+            background-color: var(--ios-background);
+        }
+
+        .operation-item:last-child {
+            border-bottom: none;
+        }
+
+        .operation-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .operation-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .operation-details {
+            flex: 1;
+        }
+
+        .operation-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .operation-meta {
+            font-size: 12px;
+            color: var(--ios-gray);
+            display: flex;
+            gap: 8px;
+        }
+
+        .operation-time {
+            font-size: 12px;
+            color: var(--ios-gray);
+        }
+
+        .operation-amount {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .operation-amount.income {
+            color: var(--ios-green);
+        }
+
+        .operation-amount.expense {
+            color: var(--ios-red);
+        }
+
+        .operation-amount.debt {
+            color: var(--ios-orange);
+        }
+
+        .operation-amount.debt-paid {
+            color: var(--ios-gray);
+            text-decoration: line-through;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--ios-gray);
+            font-size: 16px;
+        }
+
+        /* Safe areas для iPhone */
+        @supports (padding: max(0px)) {
+            .bottom-nav {
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+            
+            .status-bar {
+                padding-top: max(0px, env(safe-area-inset-top));
+            }
+        }
+
+        /* Адаптивность для маленьких экранов */
+        @media (max-width: 390px) {
+            .app-container {
+                max-width: 100%;
+                padding: 0 12px 80px;
+            }
+            
+            .circle-item {
+                width: 70px;
+                height: 70px;
+            }
+            
+            .circle-icon {
+                font-size: 20px;
+            }
+            
+            .circle-amount {
+                font-size: 14px;
+            }
+            
+            .circle-label {
+                font-size: 9px;
+            }
+            
+            .add-circle-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .balance-amount {
+                font-size: 42px;
+            }
+        }
+
+        /* Анимации */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .circle-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .operation-item {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        /* Screens */
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <!-- HTML структура остается без изменений -->
-    <!-- ... (полная HTML структура из предыдущего ответа) ... -->
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+        <div class="status-time" id="current-time">--:--</div>
+        <div class="status-date" id="current-date">--.--.----</div>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        
+        <!-- ЭКРАН 1: ОБЗОР (Главная) -->
+        <div class="screen active" id="overview-screen">
+            <header class="app-header">
+                <h1 class="app-title">Budget</h1>
+                <div class="header-actions">
+                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
+                </div>
+            </header>
+
+            <!-- Карта баланса -->
+            <section class="balance-card">
+                <div class="balance-amount" id="balance-amount">₽0</div>
+                <div class="balance-label">Общий баланс</div>
+            </section>
+
+            <!-- Доходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Доходы</h2>
+                <div class="circles-container" id="income-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewIncomeCategory()">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Долги с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Долги</h2>
+                <div class="circles-container" id="debt-circles">
+                    <div class="empty-state">Нажми + чтобы добавить</div>
+                </div>
+                <button class="add-circle-btn" onclick="addNewCircle('debt')">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Расходы с кружками -->
+            <section class="circles-section">
+                <h2 class="section-title">Расходы</h2>
+                <div class="circles-container" id="expense-circles">
+                    <!-- Предустановленные категории появятся здесь -->
+                </div>
+                <button class="add-circle-btn" onclick="addNewExpenseCategory()">
+                    <span class="plus-icon">+</span>
+                </button>
+            </section>
+
+            <!-- Кнопка расчета -->
+            <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
+
+            <!-- Результаты -->
+            <div class="results-card" id="results-card" style="display: none">
+                <h3>Результаты</h3>
+                <div id="results-content"></div>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 2: ОПЕРАЦИИ -->
+        <div class="screen" id="operations-screen">
+            <header class="app-header">
+                <h1 class="app-title">Операции</h1>
+            </header>
+
+            <div class="operations-list" id="operations-list">
+                <div class="empty-state">Нет операций</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Нижняя навигация -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchScreen('overview')">
+            <div class="nav-icon">💰</div>
+            <div class="nav-label">Бюджет</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('operations')">
+            <div class="nav-icon">📝</div>
+            <div class="nav-label">Операции</div>
+        </div>
+    </nav>
 
     <script>
         // Упрощенная и надежная версия приложения
@@ -47,7 +631,7 @@
             settings: { currency: "₽" }
         };
 
-        // ОБНОВЛЕННЫЙ СПИСОК КАТЕГОРИЙ РАСХОДОВ
+        // Предустановленные категории расходов
         const defaultExpenseCategories = [
             { id: 1, name: "Продукты", amount: 0, icon: "🛒" },
             { id: 2, name: "Транспорт", amount: 0, icon: "🚗" },
@@ -79,36 +663,15 @@
             }
         }
 
-        // Загрузка данных с автоматической миграцией - УЛУЧШЕННАЯ ВЕРСИЯ
+        // Загрузка данных
         function loadData() {
             try {
                 const saved = localStorage.getItem('budgetAppData');
                 if (saved) {
-                    const parsedData = JSON.parse(saved);
-                    
-                    // Сохраняем ВСЕ существующие данные пользователя
-                    appData = {
-                        ...appData, // базовая структура по умолчанию
-                        ...parsedData, // перезаписываем данными пользователя
-                        // Гарантируем, что массивы существуют
-                        incomes: parsedData.incomes || [],
-                        debts: parsedData.debts || [],
-                        expenseCategories: parsedData.expenseCategories || [],
-                        settings: parsedData.settings || { currency: "₽" }
-                    };
-                    
-                    console.log("Budget App: Data loaded", {
-                        incomes: appData.incomes.length,
-                        debts: appData.debts.length, 
-                        expenses: appData.expenseCategories.length
-                    });
-                    
-                    // АВТОМАТИЧЕСКАЯ МИГРАЦИЯ: добавляем новые категории к существующим данным
-                    migrateExpenseCategories();
-                    // Миграция для долгов - добавляем paidAmount если его нет
-                    migrateDebts();
+                    appData = JSON.parse(saved);
+                    console.log("Budget App: Data loaded");
                 } else {
-                    // Первый запуск - устанавливаем предустановленные категории расходов
+                    // Первый запуск - устанавливаем предустановленные категории
                     appData.expenseCategories = JSON.parse(JSON.stringify(defaultExpenseCategories));
                     saveData();
                     console.log("Budget App: First run, default categories set");
@@ -116,53 +679,6 @@
             } catch (e) {
                 console.error("Budget App: Error loading data, resetting", e);
                 resetToDefaults();
-            }
-        }
-
-        // Функция миграции категорий расходов
-        function migrateExpenseCategories() {
-            let migrated = false;
-            
-            // Проверяем и добавляем отсутствующие категории
-            defaultExpenseCategories.forEach(defaultCategory => {
-                const categoryExists = appData.expenseCategories.some(
-                    category => category.id === defaultCategory.id
-                );
-                
-                if (!categoryExists) {
-                    // Добавляем отсутствующую категорию
-                    appData.expenseCategories.push({
-                        ...defaultCategory
-                    });
-                    migrated = true;
-                    console.log(`Budget App: Added missing category: ${defaultCategory.name}`);
-                }
-            });
-
-            // Если были добавлены новые категории, сохраняем данные
-            if (migrated) {
-                saveData();
-                console.log("Budget App: Data migrated successfully");
-            }
-        }
-
-        // Миграция для долгов - добавляем paidAmount если его нет
-        function migrateDebts() {
-            let migrated = false;
-            appData.debts.forEach(debt => {
-                if (debt.paidAmount === undefined) {
-                    debt.paidAmount = 0;
-                    migrated = true;
-                }
-                if (debt.paymentHistory === undefined) {
-                    debt.paymentHistory = [];
-                    migrated = true;
-                }
-            });
-            
-            if (migrated) {
-                saveData();
-                console.log("Budget App: Debts migrated successfully");
             }
         }
 
@@ -196,7 +712,7 @@
         // Обновление баланса
         function updateBalance() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
+            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
             const balance = totalIncome - totalDebts - totalExpenses;
             
@@ -240,7 +756,7 @@
             }).join('');
         }
 
-        // Обновление секции с кружками (для долгов) - УПРОЩЕННАЯ ВЕРСИЯ
+        // Обновление секции с кружками (для долгов)
         function updateCircleSection(type, items) {
             const container = document.getElementById(`${type}-circles`);
             if (!container) return;
@@ -252,205 +768,475 @@
             
             if (type === 'debt') {
                 container.innerHTML = items.map(item => {
-                    const remainingAmount = item.amount - (item.paidAmount || 0);
-                    const showAmount = remainingAmount > 0;
-                    const isFullyPaid = remainingAmount <= 0;
-                    const icon = item.icon || '💳';
-                    const progressPercent = Math.min(100, ((item.paidAmount || 0) / item.amount) * 100);
+                    const showAmount = item.amount > 0;
+                    const0;
+                    const icon = item.icon || ' icon = item.icon || '💳';
                     
                     return `
-                        <div class="circle-item circle-${type} ${isFullyPaid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
+                        <div class="circle-item circle-${type💳';
+                    
+                    return `
+                        <div class="circle-item circle} ${item.paid ? 'paid' : ''}"-${type} ${item.paid ? 'paid' : ''}" onclick="editCircle('${ onclick="editCircle('${type}', ${item.id})">
+                            <div class="type}', ${item.id})">
                             <div class="circle-actions">
-                                <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
-                                ${!isFullyPaid ? `<button class="circle-action-btn circle-check" onclick="event.stopPropagation(); makeDebtPayment(${item.id})">✓</button>` : ''}
+circle-actions">
+                                                               <button class="circle-action-btn circle-de <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${typelete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
+                               }', ${item.id})">×</button>
+                                <button class <button class="circle-action-btn="circle-action-btn circle-check circle-check" onclick="event" onclick="event.stopProp.stopPropagation(); markDebtAsPaid(${agation(); markDebtAsPaid(${item.iditem.id})">✓</})">✓</button>
                             </div>
-                            <div class="circle-icon">${icon}</div>
-                            ${showAmount ? `<div class="circle-amount">${appData.settings.currency}${remainingAmount.toFixed(2)}</div>` : ''}
-                            ${!isFullyPaid ? `
-                                <div class="debt-progress">
-                                    <div class="debt-progress-bar" style="width: ${progressPercent}%"></div>
-                                </div>
-                            ` : ''}
-                            <div class="circle-label">${item.description}</div>
-                            ${!isFullyPaid && item.paidAmount > 0 ? `
-                                <div class="debt-remaining">Оплачено: ${appData.settings.currency}${item.paidAmount.toFixed(2)}</div>
-                            ` : ''}
+                           button>
+                            </div>
+                            <div class="circle-icon">${icon}</div <div class="circle-icon">${icon}</div>
+                           >
+                            ${showAmount ? ${showAmount ? `<div class `<div class="="circle-amount">${appcircle-amount">${appData.settingsData.settings.currency}${item.amount}</div>` :.currency}${item.amount}</div>` : ''}
+                            ''}
+                            <div class <div class="circle-label">${item.description}</div>
+="circle-label">${item                        </div>
+.description}</div>
                         </div>
                     `;
+                }).join                    `;
                 }).join('');
             }
         }
 
         // Обновление категорий расходов
+        function updateExpense('');
+            }
+        }
+
+        // Обновление категорий расходов
         function updateExpenseCategories() {
-            const container = document.getElementById('expense-circles');
+            const container = document.getElementById('Categories() {
+            const container = document.getElementById('expenseexpense-circles');
+-circles');
             if (!container) return;
             
+            if (!appData.expenseCategories || appData.expenseCategories.length === 0            if (!container) return;
+            
             if (!appData.expenseCategories || appData.expenseCategories.length === 0) {
-                container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
+                container.innerHTML = '<div class=") {
+                container.innerHTML = '<div class="empty-stateempty-state">На">Нажми +жми + чтобы добавить</div>';
+                return;
+            }
+ чтобы добавить</div>';
                 return;
             }
             
-            container.innerHTML = appData.expenseCategories.map(category => {
+            container.innerHTML = appData.exp            
+            container.innerHTML = appData.expenseCategories.map(censeCategories.map(category =>ategory => {
+                const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === category.id);
+ {
                 const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === category.id);
                 const showAmount = category.amount > 0;
                 const icon = category.icon || '🛒';
                 
                 let deleteButton = '';
                 if (!isDefaultCategory) {
-                    deleteButton = `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>`;
+                    deleteButton =                const showAmount = category.amount > 0;
+                const icon = category.icon || '🛒';
+                
+                let deleteButton = '';
+                if (!isDefaultCategory) {
+                    deleteButton = `<button class="circle-action `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button.id})">×</button>`;
                 }
                 
                 return `
                     <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
-                        <div class="circle-actions">${deleteButton}</div>
+                        <div class="circle->`;
+                }
+                
+                return `
+                    <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
+                        <div class="actions">${deleteButton}</div>
+                        <div class="circle-icon">${iconcircle-actions">${deleteButton}</div>
                         <div class="circle-icon">${icon}</div>
-                        ${showAmount ? `<div class="circle-amount">${appData.settings.currency}${category.amount}</div>` : ''}
-                        <div class="circle-label">${category.name}</div>
+                        ${showAmount ? `<div}</div>
+                        ${ class="circle-amount">showAmount ? `<div class="circle-amount">${appData.settings.currency}${appData.settings.currency}${category.amount}</${category.amount}</divdiv>` : ''}
+                       >` : ''}
+                        <div class="circle-label"> <div class="circle-label">${category.name}</div${category.name}</div>
+                    </div>
+                `>
                     </div>
                 `;
             }).join('');
         }
 
+;
+            }).join('');
+               // Переключение экранов
+        function switch }
+
         // Переключение экранов
-        function switchScreen(screenName) {
-            document.querySelectorAll('.nav-item').forEach(item => {
+        function switchScreen(screenNameScreen(screenName) {
+           ) {
+            document.querySelectorAll('. document.querySelectorAll('.nav-itemnav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+').forEach(item => {
                 item.classList.remove('active');
             });
             
-            const navItems = document.querySelectorAll('.nav-item');
+            
+            const nav            const navItemsItems = document.querySelectorAll = document.querySelectorAll('.nav-item');
+            if (screenName ===('.nav-item');
             if (screenName === 'overview') {
-                if (navItems[0]) navItems[0].classList.add('active');
-            } else if (screenName === 'operations') {
-                if (navItems[1]) navItems[1].classList.add('active');
+                if (navItems[0]) navItems[0].class 'overview') {
+                if (navItems[0]) navItems[0].classList.add('activeList.add('active');
+           ');
+            } else if ( } else if (screenNamescreenName === 'operations') {
+                if (navItems === 'operations') {
+                if (navItems[1[1]) navItems]) navItems[1].classList.add('active');
+[1].classList.add('active');
             }
             
-            document.querySelectorAll('.screen').forEach(screen => {
+                       }
+            
+            document.querySelector document.querySelectorAll('.screen').forEach(screen => {
+               All('.screen').forEach(s screen.classList.remove('active');
+creen => {
                 screen.classList.remove('active');
             });
+            });
             
-            const targetScreen = document.getElementById(`${screenName}-screen`);
-            if (targetScreen) {
+            const target            
+            const targetScreen = document.getElementById(`${screenName}-Screen = document.getElementById(`${screenName}-screen`);
+            ifscreen`);
+            if (target (targetScreen) {
+                targetScreen.classList.addScreen) {
                 targetScreen.classList.add('active');
+            }
+('active');
             }
             
             if (screenName === 'operations') {
+                update            
+            if (screenName === 'operations') {
                 updateOperationsList();
-            }
+OperationsList();
+                       }
+        }
+
+        // Добавление новой категории }
         }
 
         // Добавление новой категории доходов
+ доходов
         function addNewIncomeCategory() {
-            const categoryName = prompt('Введите название категории доходов:');
-            if (!categoryName) return;
+            const        function addNewIncomeCategory() {
+            const categoryName categoryName = prompt('Введите название категории = prompt('Введите название категории доходов:');
+ доходов:');
+            if (!category            if (!categoryName) return;
             
-            const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-            if (amountStr === null) return;
+            const amountName) return;
             
-            const amount = parseFloat(amountStr) || 0;
+            const amountStr = prompt(`Str = prompt(`ВведитеВведите сумму для категории "${categoryName}":`, "0");
+            сумму для категории "${categoryName}":`, "0");
+            if (amountStr if (amountStr === null) return === null) return;
+            
+;
+            
+            const amount = parseFloat(amountStr)            const amount = parseFloat(amountStr) || 0;
+            if || 0;
             if (amount < 0) {
-                alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+                (amount < 0) {
+                alert("Пожалуйста alert("Пожалуйста, введите корректную сумму (, введите корректную сумму (неотрицательное число)");
+                return;
+неотрицательное число)");
                 return;
             }
             
-            const icon = prompt('Введите смайлик (иконку) для категории (например: 💰, 💵, 💳):', '💰') || '💰';
+            const icon = prompt('Введите с            }
+            
+            const icon = prompt('Введите смайлик (иконку)майлик (икон для категории (например: 💰, 💵,ку) для категории (например: 💰, 💵, 💳):', 💳):', ' '💰') || '💰';
+            
+            const💰') || '💰';
             
             const newCategory = {
                 id: Date.now(),
-                name: categoryName,
-                amount: amount,
+                newCategory = {
+                id: Date.now(),
+ name: categoryName,
+                               name: categoryName,
+ amount: amount,
                 icon: icon,
-                date: new Date().toISOString()
+                date:                amount: amount,
+                icon: icon,
+                date: new Date().toISO new Date().toISOString()
             };
             
-            appData.incomes.push(newCategory);
+            appString()
+            };
+            
+            appData.incomes.push(newData.incomes.push(newCategory);
             saveData();
         }
 
-        // Добавление нового кружка для долгов
+        // Добавление новогоCategory);
+            saveData();
+        }
+
+        // Добавление нового кру кружка для долгов
         function addNewCircle(type) {
-            const amountStr = prompt(`Введите сумму ${getTypeName(type)}:`, "0");
+            const amountStrжка для долгов
+        function addNewCircle(type) {
+ = prompt(`Введите сумму ${getTypeName(type)}            const amountStr = prompt(`Введите сумму ${getTypeName(type)}:`, "0");
+            if:`, "0");
             if (amountStr === null) return;
             
-            const amount = parseFloat(amountStr) || 0;
-            if (amount < 0) {
-                alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+            const amount = parseFloat(amount (amountStr === null) return;
+            
+            const amount = parseFloat(amountStr)Str) || 0;
+            if (amount <  || 0;
+            if (amount < 0)0) {
+                alert(" {
+                alert("Пожалуйста, введите корреПожалуйста, введите корректную сумму (неотрицательное число)ктную сумму (неотрицательное число)");
+               ");
                 return;
             }
             
-            const description = prompt('Введите описание:') || getDefaultDescription(type);
+            const description = prompt return;
+            }
+            
+           ('Введите описание:') || getDefault const description = prompt('Введите описание:') || getDefaultDescription(type);
+            
+            let defaultDescription(type);
             
             let defaultIcon = '💰';
+            if (type === 'debt') defaultIcon = '💰';
             if (type === 'debt') defaultIcon = '💳';
             
-            const icon = prompt('Введите смайлик (иконку):', defaultIcon) || defaultIcon;
+           Icon = '💳';
+ const icon = prompt('В            
+            const icon =ведите смайлик (иконку):', defaultIcon) || defaultIcon;
+ prompt('Введите смайлик (иконку):', defaultIcon) || default            
+            const newItem =Icon;
             
             const newItem = {
+                id: {
                 id: Date.now(),
                 amount: amount,
                 description: description,
                 icon: icon,
-                date: new Date().toISOString(),
-                paid: false,
-                paidAmount: 0,
-                paymentHistory: []
+ Date.now(),
+                amount: amount,
+                description: description,
+                icon: icon,
+                date: new                date: new Date(). Date().toISOString(),
+                paid: false
+           toISOString(),
+                paid: false
             };
             
+ };
+            
             if (type === 'debt') {
+                app            if (type === 'debt') {
                 appData.debts.push(newItem);
             }
+Data.debts.push(newItem);
+            }
             
+            saveData();
+                   
             saveData();
         }
 
         // Добавление новой категории расходов
-        function addNewExpenseCategory() {
+ }
+
+        // Добавление новой категории расходов
+        function addNewExpense        function addNewExpenseCategory() {
+            const categoryCategory() {
             const categoryName = prompt('Введите название категории расходов:');
             if (!categoryName) return;
             
-            const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-            if (amountStr === null) return;
+            const amountStr = prompt(`ВName = prompt('Введите название категории расходов:');
+            if (!categoryName) return;
             
-            const amount = parseFloat(amountStr) || 0;
+            const amountStr = prompt(`Введите сумму для категории "${ведите сумму для категории "${categoryName}":`, "categoryName}":`, "0");
+            if (amount0");
+            if (amountStr === null) return;
+Str === null) return;
+            
+            const amount = parse            
+            const amount = parseFloat(amountStr) || Float(amountStr) || 0;
+            if (amount0;
             if (amount < 0) {
-                alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+                alert("Пожалуйста, < 0) {
+                alert("Пожалуйста, введите корректную сумму введите корректную сумму (неотрицательное число (неотрицательное число)");
                 return;
             }
             
-            const icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, 🚗, 🎮):', '🛒') || '🛒';
+            const)");
+                return;
+            }
+            
+            const icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, 🚗, 🚗, 🎮):', '🛒') || '🛒';
             
             const newCategory = {
+ 🎮):', '🛒') || '🛒';
+            
+            const newCategory                id: Date.now(),
+                name: categoryName,
+                amount: amount,
+                = {
                 id: Date.now(),
                 name: categoryName,
                 amount: amount,
                 icon: icon,
-                date: new Date().toISOString()
+                icon: icon,
+                date date: new Date().toISOString()
+            };
+: new Date().toISOString()
             };
             
+            appData.expenseCategories.push            
             appData.expenseCategories.push(newCategory);
-            saveData();
+(newCategory);
+            save            saveData();
+        }
+
+        // Редактирование категории доходов
+        function editData();
         }
 
         // Редактирование категории доходов
         function editIncomeCategory(categoryId) {
+            const category = appData.incomes.find(c => c.id ===IncomeCategory(categoryId) {
             const category = appData.incomes.find(c => c.id === categoryId);
+ categoryId);
+            if (            if (category) {
+               category) {
+                const new const newName = prompt('Изменить название категоName = prompt('Изменить название категории:', category.nameрии:', category.name);
+                if);
+                if (newName (newName) {
+                    category.name = newName;
+                }
+                
+                const) {
+                    category.name = newName;
+                }
+                
+                newAmountStr = prompt('Изменить сумму:', const newAmountStr = prompt('Изменить сумму category.amount);
+                if (newAmountStr !== null:', category.amount);
+                if (newAmountStr !== null) {
+                    const newAmount) {
+                    const newAmount = parseFloat(newAmountStr = parseFloat(newAmountStr) || 0;
+                   ) || 0;
+                    if (newAmount >=  if (newAmount >= 0) {
+                        category.amount = newAmount;
+                   0) {
+                        category.amount = newAmount;
+                    } else {
+                        alert("П } else {
+                        alert("Пожалуйста, вожалуйста, введите корректную сумму (неотведите корректную сумму (рицательное число)");
+                   неотрицательное число)");
+                    }
+                }
+                
+ }
+                }
+                
+                const                const newIcon = prompt('Изменить и newIcon = prompt('Изменить иконку (смайлик):', categoryконку (смайлик):', category.icon);
+                if (new.icon);
+                if (newIcon) {
+                    category.icon = newIcon;
+                }
+Icon) {
+                    category.icon = newIcon;
+                }
+                
+                
+                saveData();
+            }
+                       saveData();
+            }
+        }
+
+        // Редактирование кру }
+
+        // Редактирование кружка долгов
+        function editCircle(type, id)жка долгов
+        function editCircle(type, id) {
+            {
+            let items let items;
+            if (type === 'debt');
+            if (type === 'debt') {
+                items = appData.debts;
+            } else {
+ {
+                items = appData.debts;
+            } else {
+                return;
+            }
+            
+            const item =                return;
+            }
+            
+            const item = items.find(i => i.id === id);
+            items.find(i => i.id === id);
+            if (item if (item) {
+                const newAmountStr = prompt) {
+                const newAmountStr = prompt('Измени('Изменить сумму:', item.amount);
+               ть сумму:', item.amount);
+                if (newAmount if (newAmountStr && !isNaN(newAmountStr)Str && !isNaN(new && parseFloat(newAmountStrAmountStr) && parseFloat(newAmountStr) > 0) {
+                    item.) > 0) {
+                   amount = parseFloat(newAmount item.amount = parseFloat(newAmountStr);
+                }
+                
+               Str);
+                }
+                
+                const newDescription = prompt('Изменить описание const newDescription = prompt('Изменить описание:', item.description) ||:', item.description) || item item.description;
+                item.description = newDescription;
+                
+                const.description;
+                item.description = newDescription;
+                
+                const newIcon = prompt('Изменить иконку ( newIcon = prompt('Изменить иконкусмайлик):', item.icon) || item.icon;
+                item.icon = new (смайлик):', item.icon) || item.icon;
+                item.icon = newIconIcon;
+                
+                saveData();
+;
+                
+                saveData();
+            }
+        }
+
+        // Редактирование категории            }
+        }
+
+        // Редактирование категории расходов
+        function editExpenseCategory(categoryId) {
+            const category = расходов
+        function editExpenseCategory(categoryId) {
+            const category = appData.expenseCategories.find appData.expenseCategories.find(c => c.id === category(c => c.id === categoryId);
             if (category) {
-                const newName = prompt('Изменить название категории:', category.name);
+                const newNameId);
+            if (category) {
+                const newName = prompt('Измени = prompt('Изменить название категории:', category.name);
+                if (newName) {
+                    category.name = newNameть название категории:', category.name);
                 if (newName) {
                     category.name = newName;
                 }
                 
-                const newAmountStr = prompt('Изменить сумму:', category.amount);
-                if (newAmountStr !== null) {
-                    const newAmount = parseFloat(newAmountStr) || 0;
-                    if (newAmount >= 0) {
-                        category.amount = newAmount;
-                    } else {
-                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                    }
+                const newAmountStr =;
                 }
                 
-                const newIcon = prompt('Изменить иконку (смайлик):', category.icon);
+                const newAmountStr = prompt('И prompt('Изменить сумму:', category.amount);
+               зменить сумму:', category.amount);
+                if (newAmountStr if (newAmountStr && !is && !isNaN(newAmountStrNaN(newAmountStr) &&) && parseFloat(new parseFloat(newAmountStr) >= 0) {
+                    category.amount = parseFloat(newAmountStr);
+                }
+                
+                const newIcon = prompt('ИзменитьAmountStr) >= 0) {
+                    category.amount = parseFloat(newAmountStr);
+                }
+                
+                const newIcon = prompt('Изменить иконку (смайлик):', иконку (смайлик):', category.icon category.icon);
                 if (newIcon) {
                     category.icon = newIcon;
                 }
@@ -459,63 +1245,9 @@
             }
         }
 
-        // Редактирование кружка долгов
-        function editCircle(type, id) {
-            let items;
-            if (type === 'debt') {
-                items = appData.debts;
-            } else {
-                return;
-            }
-            
-            const item = items.find(i => i.id === id);
-            if (item) {
-                const newAmountStr = prompt('Изменить сумму долга:', item.amount);
-                if (newAmountStr !== null) {
-                    const newAmount = parseFloat(newAmountStr) || 0;
-                    if (newAmount >= 0) {
-                        // Если новая сумма меньше уже оплаченной, корректируем оплаченную сумму
-                        if (newAmount < (item.paidAmount || 0)) {
-                            item.paidAmount = newAmount;
-                            item.paid = true;
-                        }
-                        item.amount = newAmount;
-                    } else {
-                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                        return;
-                    }
-                }
-                
-                const newDescription = prompt('Изменить описание:', item.description) || item.description;
-                item.description = newDescription;
-                
-                const newIcon = prompt('Изменить иконку (смайлик):', item.icon) || item.icon;
-                item.icon = newIcon;
-                
-                saveData();
-            }
-        }
-
-        // Редактирование категории расходов
-        function editExpenseCategory(categoryId) {
-            const category = appData.expenseCategories.find(c => c.id === categoryId);
-            if (category) {
-                const newName = prompt('Изменить название категории:', category.name);
-                if (newName) {
-                    category.name = newName;
-                }
-                
-                const newAmountStr = prompt('Изменить сумму:', category.amount);
-                if (newAmountStr !== null) {
-                    const newAmount = parseFloat(newAmountStr) || 0;
-                    if (newAmount >= 0) {
-                        category.amount = newAmount;
-                    } else {
-                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                    }
-                }
-                
-                const newIcon = prompt('Изменить иконку (смайлик):', category.icon);
+        // Удаление категории доходов
+        function deleteIncomeCategory(categoryId) {
+            if (confirm('У);
                 if (newIcon) {
                     category.icon = newIcon;
                 }
@@ -527,7 +1259,9 @@
         // Удаление категории доходов
         function deleteIncomeCategory(categoryId) {
             if (confirm('Удалить эту категорию доходов?')) {
+                const index = appData.incomes.findIndex(c => c.id === categoryIdдалить эту категорию доходов?')) {
                 const index = appData.incomes.findIndex(c => c.id === categoryId);
+                if (index !==);
                 if (index !== -1) {
                     appData.incomes.splice(index, 1);
                     saveData();
@@ -536,12 +1270,31 @@
         }
 
         // Удаление кружка долгов
+        function deleteCircle(type, id) -1) {
+                    appData.incomes.splice(index, 1);
+                    saveData();
+                }
+            }
+        }
+
+        // Удаление кружка долгов
         function deleteCircle(type, id) {
-            if (confirm('Удалить эту запись?')) {
+            if (confirm(' {
+            if (confirm('Удалить эту записьУдалить эту запись?')) {
+                let items?')) {
                 let items;
+                if (type ===;
                 if (type === 'debt') {
+                    items = appData.deb 'debt') {
                     items = appData.debts;
+                }ts;
                 } else {
+                    return;
+                }
+                
+                const index = items.findIndex(i => i.id === id);
+                if (index !== -1) {
+                    else {
                     return;
                 }
                 
@@ -554,15 +1307,30 @@
         }
 
         // Удаление категории расходов
+        function items.splice(index, 1);
+                    saveData();
+                }
+            }
+        }
+
+        // Удаление категории расходов
         function deleteExpenseCategory(categoryId) {
             const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === categoryId);
             if (isDefaultCategory) {
-                alert("Предустановленные категории нельзя удалить. Вы можете изменить сумму на 0.");
+                alert("Пред deleteExpenseCategory(categoryId) {
+            const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === categoryId);
+            if (isDefaultCategory) {
+                alert("Предустановленные категории нельзя удалить. Вы можете изменить суммуустановленные категории нельзя удалить. Вы можете изменить сумму на 0.");
                 return;
             }
             
-            if (confirm('Удалить эту категорию?')) {
-                const index = appData.expenseCategories.findIndex(c => c.id === categoryId);
+ на 0.");
+                return;
+            }
+            
+            if (confirm('У            if (confirm('Удалитьдалить эту категорию?')) {
+                const index эту категорию?')) = app {
+                const index = appData.expenseData.expenseCategories.findIndex(c => c.id === categoryId);
                 if (index !== -1) {
                     appData.expenseCategories.splice(index, 1);
                     saveData();
@@ -570,59 +1338,40 @@
             }
         }
 
-        // Частичное погашение долга
-        function makeDebtPayment(debtId) {
-            const debt = appData.debts.find(d => d.id === debtId);
-            if (!debt) return;
-            
-            const remainingAmount = debt.amount - (debt.paidAmount || 0);
-            
-            if (remainingAmount <= 0) {
-                alert("Долг уже полностью погашен!");
-                return;
+        // Отметка долга как оплаченного
+        function markDebtAsPaCategories.findIndex(c => c.id === categoryId);
+                if (index !== -1) {
+                    appData.expenseCategories.splice(index, 1);
+                    saveData();
+                }
             }
-            
-            const paymentAmountStr = prompt(`Введите сумму платежа (осталось: ${appData.settings.currency}${remainingAmount.toFixed(2)}):`, remainingAmount.toString());
-            if (!paymentAmountStr) return;
-            
-            const paymentAmount = parseFloat(paymentAmountStr);
-            if (isNaN(paymentAmount) || paymentAmount <= 0) {
-                alert("Пожалуйста, введите корректную сумму");
-                return;
-            }
-            
-            if (paymentAmount > remainingAmount) {
-                alert(`Сумма платежа не может превышать оставшуюся сумму (${appData.settings.currency}${remainingAmount.toFixed(2)})`);
-                return;
-            }
-            
-            // Обновляем данные о долге
-            debt.paidAmount = (debt.paidAmount || 0) + paymentAmount;
-            
-            // Добавляем запись в историю платежей
-            if (!debt.paymentHistory) {
-                debt.paymentHistory = [];
-            }
-            debt.paymentHistory.push({
-                amount: paymentAmount,
-                date: new Date().toISOString()
-            });
-            
-            // Проверяем, полностью ли погашен долг
-            if (debt.paidAmount >= debt.amount) {
-                debt.paid = true;
-                debt.paidAmount = debt.amount; // На случай если paidAmount больше amount
-            }
-            
-            saveData();
-            
-            // Показываем уведомление о успешном платеже
-            alert(`Платеж на ${appData.settings.currency}${paymentAmount.toFixed(2)} успешно внесен!`);
         }
 
-        // Получение названия типа
+        // Отметка долга как оплаченного
+        function markDebtAsPaid(debtId) {
+           id(debtId) {
+            const debt const debt = app = appData.debts.find(d => d.id === debtId);
+            ifData.debts.find(d => d.id === debtId);
+ (debt) {
+                debt.paid = !debt            if (debt) {
+                debt.paid = !debt.paid;
+               .paid;
+                saveData();
+            }
+        }
+
+        saveData();
+            }
+        }
+
+        // Получение // Получение названия типа
+        function getTypeName(type) {
+            const названия типа
         function getTypeName(type) {
             const names = {
+                income: 'дохода',
+                debt: 'долга', 
+                expense: 'рас names = {
                 income: 'дохода',
                 debt: 'долга', 
                 expense: 'расхода'
@@ -632,124 +1381,214 @@
 
         // Описание по умолчанию
         function getDefaultDescription(type) {
+хода'
+            };
+            return names[type] || 'операции';
+        }
+
+        // Описание по умолчанию
+        function getDefaultDescription(type) {
             const defaults = {
+                           const defaults = {
                 income: 'Доход',
+ income: 'Доход',
                 debt: 'Долг', 
                 expense: 'Расход'
             };
-            return defaults[type] || 'Операция';
+                           debt: 'Долг', 
+                expense: 'Расход'
+            };
+            return defaults[type] || return defaults[type] || 'Операция';
+        }
+
+        // Расчет бюдж 'Операция';
         }
 
         // Расчет бюджета
+        function calculateBudget()ета
         function calculateBudget() {
-            const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
-            const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
-            const balance = totalIncome - totalDebts - totalExpenses;
+            const totalIncome = appData.incomes.reduce(( {
+            const totalIncome = appData.incomes.reduce((sum, item) => sumsum, item) => sum + (item.amount || 0), 0);
+ + (item.amount || 0), 0);
+            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
+            const), 0);
+            const totalExpenses = appData totalExpenses = appData.expenseCategories.reduce((sum, category) => sum +.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
+            (category.amount || 0), 0);
+            const balance = totalIncome - totalDebts - totalExp const balance = totalIncome - totalDebts - totalExpensesenses;
             
             const resultsHTML = `
-                <div class="result-item">
+                <div;
+            
+            const resultsHTML = `
+                <div class=" class="result-item">
+                    <span>Обresult-item">
                     <span>Общий доход:</span>
                     <span class="income">${appData.settings.currency}${totalIncome.toFixed(2)}</span>
                 </div>
-                <div class="result-item">
-                    <span>Оплаченные долги:</span>
-                    <span class="debt-paid">${appData.settings.currency}${totalDebts.toFixed(2)}</span>
+                <div class="resultщий доход:</span>
+                    <span class="income">${appData.settings.currency}${totalIncome.toFixed(2)}</span>
                 </div>
                 <div class="result-item">
+                    <span>О-item">
+                    <span>плаченные долги:</span>
+                    <span classОплаченные долги:</span>
+                    <span class="debt-paid">${="debt-paid">${appData.settings.currencyappData.settings.currency}${totalDebts.toFixed(2)}</span>
+                </div>
+}${totalDebts.toFixed(2)}</span                <div class="result-item">
+                    <span>Об>
+                </div>
+                <div class="result-itemщие расходы:</span>
+">
                     <span>Общие расходы:</span>
-                    <span class="expense">${appData.settings.currency}${totalExpenses.toFixed(2)}</span>
+                    <span class="exp                    <span class="expense">${appData.sense">${appData.settings.currency}${totalExpenses.toFixed(2ettings.currency}${totalExpenses.toFixed(2)}</span>
+                </div>
+                <div)}</span>
                 </div>
                 <div class="result-item total">
+                    class="result-item total">
                     <span>Итоговый баланс:</span>
-                    <span class="${balance >= 0 ? 'income' : 'expense'}">${appData.settings.currency}${Math.abs(balance).toFixed(2)}</span>
-                </div>
+ <span>Итоговый баланс:</span>
+                    <span class="${balance >=                     <span class="${balance >= 0 ? 'income' : 'expense'}">${0 ? 'income' : 'expense'}">${appData.settingsappData.settings.currency}${Math.abs(balance.currency}${Math.abs(balance).toFixed(2)}</span>
+               ).toFixed(2)}</span>
+                </div </div>
             `;
             
-            const resultsContent = document.getElementById('results-content');
-            const resultsCard = document.getElementById('results-card');
+            const resultsContent = document.getElementById>
+            `;
             
-            if (resultsContent && resultsCard) {
-                resultsContent.innerHTML = resultsHTML;
-                resultsCard.style.display = 'block';
+            const resultsContent = document.getElementById('('results-content');
+           results-content');
+            const resultsCard = document.getElementById('results const resultsCard = document.getElementById('results-card');
+            
+            if-card');
+            
+            if (results (resultsContent && resultsCard) {
+                resultsContent.innerHTMLContent && resultsCard) {
+                resultsContent.innerHTML = results = resultsHTML;
+                resultsHTML;
+                resultsCard.styleCard.style.display = 'block';
             }
         }
 
-        // Очистка всех данных
+        //.display = 'block';
+            }
+ Очистка всех данных
         function clearAllData() {
+            if (        }
+
+        // Очистка всех данных
+        function clearAllData()confirm('Вы уверены? Все данные {
             if (confirm('Вы уверены? Все данные будут удалены.')) {
+ будут удалены.')) {
                 resetToDefaults();
                 
                 const resultsContent = document.getElementById('results-content');
+                               resetToDefaults();
+                
+                const resultsContent = document.getElementById('results-content');
                 const resultsCard = document.getElementById('results-card');
-                if (resultsContent) resultsContent.innerHTML = '';
-                if (resultsCard) resultsCard.style.display = 'none';
+                if const resultsCard = document.getElementById('results-card');
+                if (resultsContent) resultsContent (resultsContent) resultsContent.innerHTML = '';
+                if (.innerHTML = '';
+                if (resultsCard) resultsCard.styleresultsCard) resultsCard.style.display = 'none';
+                
+                alert('Все данные очищены! Суммы в.display = 'none';
                 
                 alert('Все данные очищены! Суммы в категориях обнулены.');
+ категориях обнулены.');
             }
         }
 
         // Обновление списка операций
+        function updateOperations            }
+        }
+
+        // Обновление списка операций
         function updateOperationsList() {
-            const container = document.getElementById('operations-list');
+            const containerList() {
+            const container = document.getElementById('operations-list = document.getElementById('operations-list');
+            if (!container)');
             if (!container) return;
             
             const operations = [];
             
-            // Добавляем доходы
-            if (appData.incomes) {
+            if ( return;
+            
+            const operations = [];
+            
+            if (appData.incomesappData.incomes) {
+                appData.incomes.forEach(income => {
+                    if (income.amount > 0)) {
                 appData.incomes.forEach(income => {
                     if (income.amount > 0) {
                         operations.push({
-                            id: income.id,
+                            id: {
+                        operations.push({
+                            income.id,
+                            amount: income.amount,
+                            description id: income.id,
                             amount: income.amount,
                             description: income.name,
+: income.name,
                             date: income.date,
+                            type                            date: income.date,
                             type: 'income',
+: 'income',
+                            icon: income.icon
+                        });
                             icon: income.icon
                         });
                     }
                 });
             }
             
-            // Добавляем долги и платежи по долгам
-            if (appData.debts) {
-                appData.debts.forEach(debt => {
-                    // Добавляем сам долг
-                    operations.push({
-                        id: debt.id,
-                        amount: -debt.amount,
-                        description: debt.description,
-                        date: debt.date,
-                        type: 'debt',
-                        icon: debt.icon
-                    });
-                    
-                    // Добавляем платежи по долгу
-                    if (debt.paymentHistory && debt.paymentHistory.length > 0) {
-                        debt.paymentHistory.forEach(payment => {
-                            operations.push({
-                                id: debt.id + '_' + payment.date,
-                                amount: payment.amount,
-                                description: `Погашение: ${debt.description}`,
-                                date: payment.date,
-                                type: 'debt-payment',
-                                icon: '✅'
-                            });
-                        });
-                    }
+            if (                    }
                 });
             }
             
-            // Добавляем расходы
-            if (appData.expenseCategories) {
+            if (appDataappData.debts) {
+                appData.deb.debts) {
+                appData.debts.forEach(debt => {
+                    operations.push({
+ts.forEach(debt => {
+                        id: debt.id,
+                        amount: -debt                    operations.push({
+                        id: debt.id,
+                        amount.amount,
+                        description: debt.description,
+                        date:: -debt.amount,
+                        description: debt.description,
+                        date: debt.date,
+                        type: debt.p debt.date,
+                        type: debt.paid ? 'deaid ? 'debt-paid' : 'debt',
+bt-paid' : 'debt',
+                        icon: debt                        icon: debt.icon
+                    });
+                });
+            }
+.icon
+                    });
+                });
+            }
+            
+            if (appData.expense            
+            if (Categories) {
                 appData.expenseCategories.forEach(category => {
-                    if (category.amount > 0) {
+appData.expenseCategories) {
+                appData.expenseCategories.forEach(category => {
+                    if                    if (category.amount > (category.amount > 0 0) {
+                        operations) {
                         operations.push({
                             id: category.id,
                             amount: -category.amount,
                             description: category.name,
+                            date: category.date.push({
+                            id: category.id,
+                            amount: -category.amount,
+                            description: category.name,
                             date: category.date,
+                            type: 'expense',
+,
                             type: 'expense',
                             icon: category.icon
                         });
@@ -757,44 +1596,82 @@
                 });
             }
             
-            // Сортируем по дате (новые сверху)
-            operations.sort((a, b) => new Date(b.date) - new Date(a.date));
+                            icon: category.icon
+                        });
+                    }
+                });
+            }
+            
+            operations.sort            operations.sort((a, b) => new((a, b) => Date(b.date) - new Date(a.date new Date(b.date) -));
             
             if (operations.length === 0) {
-                container.innerHTML = '<div class="empty-state">Нет операций</div>';
+                container.innerHTML = '<div new Date(a.date));
+            
+            if (operations.length === 0) {
+                container.innerHTML = '<div class="empty-state">Нет опера class="empty-state">Нет операций</div>';
+ций</div>';
                 return;
+            }
+            
+            container.innerHTML = operations.map(operation                return;
             }
             
             container.innerHTML = operations.map(operation => {
                 let typeClass = operation.type;
+                let typeIcon, type => {
+                let typeClass = operation.type;
                 let typeIcon, typeColor;
                 let amountSign = '';
-                let displayAmount = Math.abs(operation.amount);
+Color;
+                let amountSign = '';
+                let displayAmount                let displayAmount = Math.abs(operation.amount);
+ = Math.abs(operation.amount);
+                
                 
                 switch(operation.type) {
+                    case 'income                switch(operation.type) {
                     case 'income':
                         typeIcon = operation.icon || '💰';
-                        typeColor = '#34C759';
+':
+                        typeIcon = operation.icon || '💰';
+                                               typeColor = '#34C759';
                         amountSign = '+';
                         break;
-                    case 'expense':
+ typeColor = '#34C759';
+                        amountSign = '+';
+                        break;
+                    case 'expense                    case 'expense':
+                        typeIcon = operation.icon ||':
                         typeIcon = operation.icon || '🛒';
+                        typeColor = '# '🛒';
                         typeColor = '#FF3B30';
                         amountSign = '-';
                         break;
-                    case 'debt':
-                        typeIcon = operation.icon || '💳';
-                        typeColor = '#FF9500';
+FF3B30';
                         amountSign = '-';
                         break;
-                    case 'debt-payment':
-                        typeIcon = operation.icon || '✅';
-                        typeColor = '#34C759';
-                        amountSign = '+';
+                    case 'debt':
+                        typeIcon                    case 'debt':
+                        typeIcon = operation.icon = operation.icon || '💳';
+                        typeColor = '# || '💳';
+                        typeColor = '#FF950FF9500';
+                        amountSign = '-';
+                        break;
+                    case 'debt0';
+                        amountSign = '-';
                         break;
                     case 'debt-paid':
-                        typeIcon = operation.icon || '✅';
+-paid':
+                        typeIcon =                        typeIcon = operation.icon || '✅';
+                        type operation.icon || '✅';
                         typeColor = '#8E8E93';
+                        amountSign = '-';
+                        break;
+                    default:
+                        typeIcon = operation.icon || '🛒';
+                        typeColor = '#8E8E93';
+                        amountSign = '';
+               Color = '#8E8E93';
                         amountSign = '-';
                         break;
                     default:
@@ -803,22 +1680,43 @@
                         amountSign = '';
                 }
                 
+                return }
+                
                 return `
+                    <div class="operation-item `
                     <div class="operation-item">
-                        <div class="operation-info">
+                        <">
+                        <div class="div class="operation-info">
+                            <div class="operation-icon" style="background: ${typeColoroperation-info">
                             <div class="operation-icon" style="background: ${typeColor}">
+}">
                                 ${typeIcon}
                             </div>
+                                                           ${typeIcon}
+                            </div>
                             <div class="operation-details">
+ <div class="operation-d                                <div class="operation-title">${operation.description}</div>
+                                <div classetails">
                                 <div class="operation-title">${operation.description}</div>
                                 <div class="operation-meta">
-                                    <span>${formatDate(operation.date)}</span>
+                                    <span>${="operation-meta">
+                                    <span>${formatDate(operation.date)}formatDate(operation.date)}</</span>
                                     <span class="operation-time">${formatTime(operation.date)}</span>
                                 </div>
                             </div>
-                        </div>
-                        <div class="operation-amount ${typeClass}">
+                        </span>
+                                    <span class="operation-time">${formatTime(operation.date)}</span>
+                                </div>
+                            </div>
+                        </divdiv>
+                        <div>
+                        <div class=" class="operation-amount ${typeClassoperation-amount ${typeClass}">
+                            ${amountSign}${appData.settings.}">
                             ${amountSign}${appData.settings.currency}${displayAmount.toFixed(2)}
+                        </div>
+                    </div>
+                `;
+            }).currency}${displayAmount.toFixed(2)}
                         </div>
                     </div>
                 `;
@@ -826,47 +1724,96 @@
         }
 
         // Форматирование даты
+        functionjoin('');
+        }
+
+        // Форматирование даты
         function formatDate(dateString) {
             try {
+                formatDate(dateString) {
+ const date = new Date(dateString);
+                return date.to            try {
                 const date = new Date(dateString);
-                return date.toLocaleDateString('ru-RU');
+LocaleDateString('ru-RU');
             } catch (e) {
-                return '--.--.----';
+                return '                return date.toLocaleDateString('ru-RU');
+            } catch (e) {
+                return '----.--.----';
             }
         }
 
-        // Форматирование времени
+.--.----';
+            }
+        }
+
+        // Форматирование        // Форматирование времени
         function formatTime(dateString) {
             try {
                 const date = new Date(dateString);
-                return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+ времени
+        function formatTime(dateString) {
+            try {
+                const date = new Date(dateString);
+                return date.to                return date.toLocaleTimeString('ru-RU', {LocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+ hour: '2-digit', minute: '2-digit' });
             } catch (e) {
+                           } catch (e) {
                 return '--:--';
+            }
+ return '--:--';
             }
         }
 
+        // Ча        }
+
         // Часы и дата
+        function startClock() {
+            functionсы и дата
         function startClock() {
             function updateTime() {
                 try {
+                    const now = new updateTime() {
+                try {
                     const now = new Date();
+                    const timeElement = document.getElementById('current-time Date();
                     const timeElement = document.getElementById('current-time');
+                    const dateElement');
                     const dateElement = document.getElementById('current-date');
                     
+                    if (timeElement = document.getElementById('current-date');
+                    
                     if (timeElement) {
+                        timeElement.textContent =) {
                         timeElement.textContent = 
+                            now.getHours().toString().padStart 
                             now.getHours().toString().padStart(2, '0') + ':' + 
+                            now.getMinutes().toString().padStart(2, '0') + ':' + 
                             now.getMinutes().toString().padStart(2, '0');
                     }
                     
+                    if(2, '0');
+ (dateElement) {
+                        dateElement.textContent =                    }
+                    
                     if (dateElement) {
-                        dateElement.textContent = 
+                        date 
+                            now.getDate().toString().padStart(2, 'Element.textContent = 
                             now.getDate().toString().padStart(2, '0') + '.' + 
-                            (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+                            (0') + '.' + 
+now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+                            now                            (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
                             now.getFullYear();
                     }
+                } catch (e.getFullYear();
+                    }
                 } catch (e) {
+                    console.error("Error) {
                     console.error("Error updating time:", e);
+                }
+            }
+            
+            updateTime();
+            setInterval( updating time:", e);
                 }
             }
             
@@ -875,56 +1822,115 @@
         }
 
         // Настройки - показывает отладочную информацию
+        function showupdateTime, 60000);
+        }
+
+        // Настройки - показывает отладочную информацию
         function showSettingsModal() {
-            const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
-            const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
+           SettingsModal() {
+            const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
+            const totalDebts = appData.deb 0), 0);
+            const totalDebts =ts.reduce((sum, item) => sum + ( appData.debts.reduce((sum, item) => sum + (item.paid ? (item.paid ? (item.item.amount || 0) : 0), 0);
+            const totalExpenses = appData.expenseamount || 0) : 0), 0);
+            const totalExpenses = appData.expenseCategoriesCategories.reduce((sum, category) => sum + (category.amount || 0),.reduce((sum, category) => sum + (category. 0);
+            const balance = totalIncome - totalDebts - totalExpamount || 0), 0);
             const balance = totalIncome - totalDebts - totalExpenses;
             
             const debugInfo = `
-=== ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
+===enses;
+            
+            const debugInfo = `
+=== ИНФОРМА ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
 
-Доходы: ${appData.incomes ? appData.incomes.length : 0} категорий
-Долги: ${appData.debts ? appData.debts.length : 0} записей (${appData.debts ? appData.debts.filter(d => d.paid).length : 0} оплачено)
-Категории расходов: ${appData.expenseCategories ? appData.expenseCategories.length : 0}
+ЦИЯ О ПРИЛОЖЕНИИ ===
+
+Доходы: ${appDataДоходы: ${appData.incomes ? appData.incomes.length : 0} категорий
+Долги: ${appData.incomes ? appData.incomes.length : 0} категорий
+Долги: ${appData.debts ? appData.deb.debts ? appDatats.length : 0} записей (${appData.debts ? app.debts.length : 0} записей (${appData.debtsData.debts.filter(d => d.paid).length : 0} оплачено)
+Категории расходов ? appData.debts.filter(d => d.paid).length : 0} оплачено)
+Категории расходов: ${appData.expense: ${appData.expenseCategories ? appData.expenseCategories.length : 0}
+
+ОБЩАЯ СТАТCategories ? appData.expenseCategories.length : 0}
 
 ОБЩАЯ СТАТИСТИКА:
-- Доходы: ${appData.settings.currency}${totalIncome.toFixed(2)}
-- Оплаченные долги: ${appData.settings.currency}${totalDebts.toFixed(2)}
-- Расходы: ${appData.settings.currency}${totalExpenses.toFixed(2)}
-- Баланс: ${appData.settings.currency}${balance.toFixed(2)}
+-ИСТИКА:
+- Доходы: ${app Доходы: ${Data.settings.currency}${totalIncome.toFixed(2)}
+- ОплаченappData.settings.currency}${totalIncome.toFixed(2)}
+- Оплаченные долги: ${appные долги: ${appData.settings.currency}${totalDebts.toFixed(2)}
+- РасходData.settings.currency}${totalDebts.toFixed(2)}
+- Расходы: ${appData.settings.currency}${totalExpenses.toFixed(2ы: ${appData.settings.currency}${totalExpenses.toFixed(2)}
+- Баланс: ${)}
+- Баланс: ${appData.settings.appData.settings.currency}currency}${balance.toFixed(2)}
 
 ДЕТАЛИ ДОХОДОВ:
-${appData.incomes ? appData.incomes.map(income => `  • ${income.name} ${income.icon || ''}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' : '  Нет доходов'}
+${balance.toFixed(2)}
+
+ДЕТАЛИ ДОХОДОВ:
+${appData.incomes ? app${appData.incomes ? appData.incomes.map(income => ` Data.incomes.map(income => `  • • ${income.name} ${income.icon || ''}: ${income.name} ${income.icon || ''}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' : '  Н : '  Нет доходов'}
+
+ДЕТАЛИ ДОЛГОВет доходов'}
 
 ДЕТАЛИ ДОЛГОВ:
-${appData.debts ? appData.debts.map(debt => `  • ${debt.description} ${debt.icon || ''}: ${appData.settings.currency}${debt.amount} (оплачено: ${appData.settings.currency}${debt.paidAmount || 0}) ${debt.paid ? '(ПОЛНОСТЬЮ ОПЛАЧЕНО)' : '(НЕ ОПЛАЧЕНО)'}`).join('\n') || '  Нет долгов' : '  Нет долгов'}
+${appData.debts ? appData:
+${appData.debts ? appData.debts.map(debt.debts.map(debt => `  • ${debt.description => `  • ${debt.description} ${debt.icon || ''}: ${appData.settings.currency}${de} ${debt.icon || ''}: ${appData.settings.currency}${debt.amount} ${debt.paid ? '(Оbt.amount} ${debt.paid ? '(ОПЛАЧЕПЛАЧЕНО)' : '(НЕ ОПЛАЧЕНО)'}`).НО)' : '(НЕ ОПЛАЧЕНО)'}`).join('\n') ||join('\n') || '  Нет долгов' : '  Нет долгов'}
 
-КАТЕГОРИИ РАСХОДОВ:
-${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий' : '  Нет категорий'}
+КАТЕГО '  Нет долгов' : '  Нет долгов'}
+
+КАТЕГОРИИ РАСРИИ РАСХОДОВ:
+${appDataХОДОВ:
+${appData.expenseCategories ? appData.expenseCategories.map(cat.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat => `  • ${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.amount}`).join('\.amount}`).join('\n') || '  Нет категорий' : 'n') || '  Нет категорий' : '  Нет категорий'}
             `.trim();
             
-            const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
+            const userChoice = confirm(debug  Нет категорий'}
+            `.trim();
+            
+            const userChoice = confirm(debugInfo + "\n\nНажмите OK дляInfo + "\n\nНажмите OK для очист очистки всех данных или Отмена для закрытия");
+ки всех данных или Отмена для закрытия");
             
             if (userChoice) {
+            
+            if (userChoice)                clearAllData();
+            }
+        }
+
+        // За {
                 clearAllData();
             }
         }
 
         // Запуск приложения при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMпуск приложения при загрузке страницы
+        document.addEventListener('DOMContentLoaded',ContentLoaded', function() {
+            console.log("Budget App: DOM loaded, starting app... function() {
             console.log("Budget App: DOM loaded, starting app...");
+            initApp();
+       ");
             initApp();
         });
 
+        // Резервная });
+
         // Резервная инициализация на случай проблем
+        window.addEventListener(' инициализация на случай проблем
         window.addEventListener('load', function() {
+            console.log("Budget App:load', function() {
             console.log("Budget App: Window loaded");
+            // Дополнительная проверка, что приложение запустилось Window loaded");
             // Дополнительная проверка, что приложение запустилось
+           
             setTimeout(function() {
-                if (document.getElementById('balance-amount').textContent === '₽0') {
+                if (document.getElementById('balance- setTimeout(function() {
+                if (document.getElementById('balance-amount').textContent === '₽0')amount').textContent === '₽0') {
+                    console.log("Budget App: {
                     console.log("Budget App: Backup initialization");
+                    Backup initialization");
                     initApp();
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</ initApp();
                 }
             }, 100);
         });
