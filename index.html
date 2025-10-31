@@ -290,7 +290,7 @@
             margin-bottom: 15px;
         }
 
-        /* Results Styles */
+        /* Results Styles - ОБНОВЛЕННЫЕ ЦВЕТА */
         .result-item {
             display: flex;
             justify-content: space-between;
@@ -322,6 +322,16 @@
 
         .debt-paid { 
             color: var(--ios-gray);
+            font-weight: 600;
+        }
+
+        .balance-positive {
+            color: var(--ios-blue);
+            font-weight: 600;
+        }
+
+        .balance-negative {
+            color: var(--ios-red);
             font-weight: 600;
         }
 
@@ -1138,7 +1148,7 @@
             document.getElementById('report-debt').textContent = appData.settings.currency + totalPaidDebts.toFixed(2);
             document.getElementById('report-balance').textContent = appData.settings.currency + balance.toFixed(2);
             
-            // Обновляем детализацию
+            // Обновляем детализацию - ОБНОВЛЕННЫЕ ЦВЕТА
             const reportDetails = document.getElementById('report-details');
             if (reportDetails) {
                 reportDetails.innerHTML = `
@@ -1148,7 +1158,7 @@
                     </div>
                     <div class="result-item">
                         <span>Оплаченные долги:</span>
-                        <span class="debt-paid">${appData.settings.currency}${totalPaidDebts.toFixed(2)}</span>
+                        <span class="debt">${appData.settings.currency}${totalPaidDebts.toFixed(2)}</span>
                     </div>
                     <div class="result-item">
                         <span>Общие расходы:</span>
@@ -1156,7 +1166,7 @@
                     </div>
                     <div class="result-item total">
                         <span>Итоговый баланс:</span>
-                        <span class="${balance >= 0 ? 'income' : 'expense'}">${appData.settings.currency}${Math.abs(balance).toFixed(2)}</span>
+                        <span class="${balance >= 0 ? 'balance-positive' : 'balance-negative'}">${appData.settings.currency}${Math.abs(balance).toFixed(2)}</span>
                     </div>
                 `;
             }
