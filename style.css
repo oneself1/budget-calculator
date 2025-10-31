@@ -1,583 +1,858 @@
-// Структуры данных
-let categories = JSON.parse(localStorage.getItem('categories')) || [
-    {
-        id: '1',
-        name: 'Еда',
-        emoji: '🍕',
-        subcategories: [
-            { id: '1-1', name: 'Супермаркет', emoji: '🛒' },
-            { id: '1-2', name: 'Рестораны', emoji: '🍽️' }
-        ]
-    },
-    {
-        id: '2',
-        name: 'Транспорт',
-        emoji: '🚗',
-        subcategories: [
-            { id: '2-1', name: 'Бензин', emoji: '⛽' },
-            { id: '2-2', name: 'Такси', emoji: '🚕' }
-        ]
-    },
-    {
-        id: '3',
-        name: 'Развлечения',
-        emoji: '🎬',
-        subcategories: []
+/* iOS-specific styles */
+:root {
+    --ios-blue: #007AFF;
+    --ios-gray: #8E8E93;
+    --ios-light-gray: #C6C6C8;
+    --ios-background: #F2F2F7;
+    --ios-card: #FFFFFF;
+    --ios-red: #FF3B30;
+    --ios-green: #34C759;
+    --ios-orange: #FF9500;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    background: var(--ios-background);
+    color: #000;
+    height: 100vh;
+    max-height: -webkit-fill-available;
+    overflow-x: hidden;
+    padding: 0;
+    margin: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+    touch-action: pan-y;
+    -webkit-user-drag: none;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Status Bar */
+.status-bar {
+    height: 44px;
+    background: transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--ios-background);
+}
+
+/* Main Container */
+.app-container {
+    max-width: 390px;
+    margin: 0 auto;
+    min-height: calc(100vh - 120px);
+    padding: 0 16px 80px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0 20px 0;
+}
+
+.app-title {
+    font-size: 34px;
+    font-weight: 700;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    padding: 8px;
+    cursor: pointer;
+}
+
+/* Balance Card */
+.balance-card {
+    background: var(--ios-card);
+    border-radius: 16px;
+    padding: 30px 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.balance-amount {
+    font-size: 48px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.balance-label {
+    color: var(--ios-gray);
+    font-size: 16px;
+}
+
+/* Sections with Circles */
+.circles-section {
+    background: var(--ios-card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #000;
+}
+
+/* Circles Container */
+.circles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 15px;
+    min-height: 60px;
+}
+
+/* Circle Items */
+.circle-item {
+    width: 80px;
+    height: 80px;
+    border-radius: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.circle-item:active {
+    transform: scale(0.95);
+}
+
+.circle-income {
+    background: var(--ios-green);
+}
+
+.circle-debt {
+    background: var(--ios-orange);
+}
+
+.circle-debt.paid {
+    background: var(--ios-gray);
+    opacity: 0.7;
+}
+
+.circle-expense {
+    background: var(--ios-red);
+}
+
+.circle-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    line-height: 1;
+}
+
+.circle-amount {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.circle-label {
+    font-size: 10px;
+    opacity: 0.9;
+    text-align: center;
+    padding: 0 4px;
+    line-height: 1.1;
+}
+
+/* Circle action buttons */
+.circle-actions {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.circle-action-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.circle-action-btn:active {
+    transform: scale(0.9);
+}
+
+.circle-delete {
+    background: var(--ios-red);
+    color: white;
+}
+
+.circle-check {
+    background: var(--ios-green);
+    color: white;
+}
+
+/* Add Circle Button */
+.add-circle-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 30px;
+    background: var(--ios-light-gray);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--ios-gray);
+    transition: all 0.3s ease;
+}
+
+.add-circle-btn:active {
+    transform: scale(0.95);
+    background: var(--ios-gray);
+    color: white;
+}
+
+/* Add Expense Button */
+.add-expense-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--ios-blue);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 20px 0;
+    transition: all 0.2s;
+}
+
+.add-expense-btn:active {
+    background: #0056CC;
+    transform: scale(0.98);
+}
+
+/* Results Card */
+.results-card {
+    background: var(--ios-card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.results-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Results Styles */
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ios-light-gray);
+}
+
+.result-item.total {
+    font-weight: bold;
+    border-top: 2px solid var(--ios-blue);
+    margin-top: 8px;
+    padding-top: 12px;
+}
+
+.income { 
+    color: var(--ios-green);
+    font-weight: 600;
+}
+
+.expense { 
+    color: var(--ios-red);
+    font-weight: 600;
+}
+
+.debt { 
+    color: var(--ios-orange);
+    font-weight: 600;
+}
+
+.debt-paid { 
+    color: var(--ios-gray);
+    font-weight: 600;
+}
+
+.balance-positive {
+    color: var(--ios-blue);
+    font-weight: 600;
+}
+
+.balance-negative {
+    color: var(--ios-red);
+    font-weight: 600;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--ios-card);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0;
+    border-top: 1px solid var(--ios-light-gray);
+    max-width: 390px;
+    margin: 0 auto;
+    z-index: 100;
+}
+
+.nav-item {
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    flex: 1;
+    transition: all 0.2s;
+}
+
+.nav-item.active {
+    background: var(--ios-blue);
+    color: white;
+}
+
+.nav-item:active {
+    transform: scale(0.95);
+}
+
+.nav-icon {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.nav-label {
+    font-size: 10px;
+}
+
+/* Operations List */
+.operations-list {
+    background: var(--ios-card);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.operations-group {
+    margin-bottom: 20px;
+}
+
+.operations-group-title {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 16px 16px 8px;
+    color: var(--ios-gray);
+    border-bottom: 1px solid var(--ios-light-gray);
+    background: var(--ios-background);
+}
+
+.operation-item {
+    padding: 16px;
+    border-bottom: 1px solid var(--ios-light-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s;
+    position: relative;
+}
+
+.operation-item:active {
+    background-color: var(--ios-background);
+}
+
+.operation-item:last-child {
+    border-bottom: none;
+}
+
+.operation-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.operation-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+}
+
+.operation-details {
+    flex: 1;
+}
+
+.operation-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.operation-meta {
+    font-size: 12px;
+    color: var(--ios-gray);
+    display: flex;
+    gap: 8px;
+}
+
+.operation-time {
+    font-size: 12px;
+    color: var(--ios-gray);
+}
+
+.operation-amount {
+    font-size: 16px;
+    font-weight: 600;
+    margin-right: 30px;
+}
+
+.operation-amount.income {
+    color: var(--ios-green);
+}
+
+.operation-amount.expense {
+    color: var(--ios-red);
+}
+
+.operation-amount.debt {
+    color: var(--ios-orange);
+}
+
+.operation-amount.debt-paid {
+    color: var(--ios-gray);
+    text-decoration: line-through;
+}
+
+.operation-amount.debt-payment {
+    color: var(--ios-green);
+}
+
+/* Operation action buttons */
+.operation-actions {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 5px;
+}
+
+.operation-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.operation-action-btn:active {
+    transform: scale(0.9);
+}
+
+.operation-edit {
+    background: var(--ios-blue);
+    color: white;
+}
+
+.operation-delete {
+    background: var(--ios-red);
+    color: white;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--ios-gray);
+    font-size: 16px;
+}
+
+/* Progress bar for debts */
+.debt-progress {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.debt-progress-bar {
+    height: 100%;
+    background: var(--ios-green);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Category Selection Modal */
+.category-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.category-modal.active {
+    display: flex;
+}
+
+.category-modal-content {
+    background: var(--ios-card);
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 320px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.category-modal-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.category-option {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--ios-background);
+    border: none;
+    font-size: 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.category-option:active {
+    background: var(--ios-light-gray);
+    transform: scale(0.98);
+}
+
+.category-option-icon {
+    font-size: 20px;
+    width: 30px;
+    text-align: center;
+}
+
+.category-option-name {
+    flex: 1;
+}
+
+.category-option-amount {
+    color: var(--ios-gray);
+    font-size: 14px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.modal-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-btn:active {
+    transform: scale(0.95);
+}
+
+.modal-btn.cancel {
+    background: var(--ios-light-gray);
+    color: var(--ios-gray);
+}
+
+.modal-btn.confirm {
+    background: var(--ios-blue);
+    color: white;
+}
+
+/* Form elements in modals */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: var(--ios-gray);
+}
+
+.modal-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--ios-light-gray);
+    border-radius: 8px;
+    font-size: 16px;
+    background: var(--ios-background);
+}
+
+/* Subcategories list */
+.subcategories-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--ios-light-gray);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.subcategory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid var(--ios-light-gray);
+}
+
+.subcategory-item:last-child {
+    border-bottom: none;
+}
+
+.subcategory-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.subcategory-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.subcategory-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.subcategory-edit {
+    background: var(--ios-blue);
+    color: white;
+}
+
+.subcategory-delete {
+    background: var(--ios-red);
+    color: white;
+}
+
+/* Report Screen */
+.report-section {
+    background: var(--ios-card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.report-summary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.report-item {
+    background: var(--ios-background);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+}
+
+.report-value {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.report-label {
+    font-size: 12px;
+    color: var(--ios-gray);
+}
+
+.report-value.income { color: var(--ios-green); }
+.report-value.expense { color: var(--ios-red); }
+.report-value.debt { color: var(--ios-orange); }
+.report-value.balance { color: var(--ios-blue); }
+
+/* Safe areas для iPhone */
+@supports (padding: max(0px)) {
+    .bottom-nav {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
     }
-];
-
-let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
-
-// Текущее состояние
-let currentState = {
-    editingCategoryId: null,
-    selectedCategoryId: null,
-    selectedSubcategoryId: null,
-    editingSubcategory: null
-};
-
-// Инициализация приложения
-function init() {
-    updateCategoriesList();
-    updateExpensesList();
-    updateTotalExpenses();
-}
-
-// Обновление списка категорий
-function updateCategoriesList() {
-    const categoriesList = document.getElementById('categoriesList');
-    categoriesList.innerHTML = '';
-
-    categories.forEach(category => {
-        const total = calculateCategoryTotal(category.id);
-        
-        const categoryElement = document.createElement('div');
-        categoryElement.className = 'category-item';
-        categoryElement.onclick = () => openEditCategoryModal(category.id);
-        
-        categoryElement.innerHTML = `
-            <div class="category-left">
-                <div class="category-emoji">${category.emoji}</div>
-                <div class="category-info">
-                    <h3>${category.name}</h3>
-                    ${category.subcategories.length > 0 ? 
-                        `<div class="subcategories-count">${category.subcategories.length} подкатегорий</div>` : 
-                        ''
-                    }
-                </div>
-            </div>
-            <div class="category-amount">${total} ₽</div>
-        `;
-        
-        categoriesList.appendChild(categoryElement);
-    });
-}
-
-// Обновление списка расходов
-function updateExpensesList() {
-    const expensesList = document.getElementById('expensesList');
-    expensesList.innerHTML = '';
-
-    // Показываем последние 10 расходов
-    const recentExpenses = expenses
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .slice(0, 10);
-
-    if (recentExpenses.length === 0) {
-        expensesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">Нет расходов</div>';
-        return;
-    }
-
-    recentExpenses.forEach(expense => {
-        const category = categories.find(cat => cat.id === expense.categoryId);
-        let subcategory = null;
-        if (expense.subcategoryId) {
-            subcategory = category.subcategories.find(sub => sub.id === expense.subcategoryId);
-        }
-
-        const expenseElement = document.createElement('div');
-        expenseElement.className = 'expense-item';
-        
-        expenseElement.innerHTML = `
-            <div class="expense-info">
-                <div class="expense-emoji">${subcategory ? subcategory.emoji : category.emoji}</div>
-                <div class="expense-details">
-                    <h4>${subcategory ? subcategory.name : category.name}</h4>
-                    ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
-                    <div class="expense-date">${formatDate(expense.date)}</div>
-                </div>
-            </div>
-            <div class="expense-amount">-${expense.amount} ₽</div>
-        `;
-        
-        expensesList.appendChild(expenseElement);
-    });
-}
-
-// Форматирование даты
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-// Подсчет общей суммы по категории
-function calculateCategoryTotal(categoryId) {
-    let total = 0;
     
-    // Сумма расходов без подкатегорий
-    total += expenses
-        .filter(expense => expense.categoryId === categoryId && !expense.subcategoryId)
-        .reduce((sum, expense) => sum + expense.amount, 0);
-    
-    // Сумма расходов по подкатегориям
-    const category = categories.find(cat => cat.id === categoryId);
-    if (category && category.subcategories) {
-        category.subcategories.forEach(subcategory => {
-            total += expenses
-                .filter(expense => expense.subcategoryId === subcategory.id)
-                .reduce((sum, expense) => sum + expense.amount, 0);
-        });
-    }
-    
-    return total;
-}
-
-// Обновление общей суммы расходов
-function updateTotalExpenses() {
-    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-    document.getElementById('totalExpenses').textContent = total + ' ₽';
-}
-
-// Модальные окна - расходы
-function openAddExpenseModal() {
-    currentState.selectedCategoryId = null;
-    currentState.selectedSubcategoryId = null;
-    
-    document.getElementById('expenseStep1').style.display = 'block';
-    document.getElementById('expenseStep2').style.display = 'none';
-    document.getElementById('expenseStep3').style.display = 'none';
-    
-    // Заполняем варианты категорий
-    const categoryOptions = document.getElementById('categoryOptions');
-    categoryOptions.innerHTML = '';
-    
-    categories.forEach(category => {
-        const option = document.createElement('div');
-        option.className = 'subcategory-option';
-        option.onclick = () => selectCategoryForExpense(category.id);
-        option.innerHTML = `
-            <span class="category-emoji">${category.emoji}</span>
-            <span>${category.name}</span>
-            ${category.subcategories.length > 0 ? 
-                `<span style="margin-left: auto; color: #7f8c8d; font-size: 0.9em;">${category.subcategories.length} подкат.</span>` : 
-                ''
-            }
-        `;
-        categoryOptions.appendChild(option);
-    });
-    
-    document.getElementById('addExpenseModal').style.display = 'block';
-}
-
-function selectCategoryForExpense(categoryId) {
-    const category = categories.find(cat => cat.id === categoryId);
-    currentState.selectedCategoryId = categoryId;
-    
-    if (category.subcategories && category.subcategories.length > 0) {
-        // Показываем выбор подкатегории
-        document.getElementById('expenseStep1').style.display = 'none';
-        document.getElementById('expenseStep2').style.display = 'block';
-        
-        const subcategoryOptions = document.getElementById('subcategoryOptions');
-        subcategoryOptions.innerHTML = '';
-        
-        document.getElementById('subcategoryLabel').textContent = `Выберите подкатегорию для ${category.emoji} ${category.name}:`;
-        
-        // Добавляем вариант "Без подкатегории"
-        const noSubcategoryOption = document.createElement('div');
-        noSubcategoryOption.className = 'subcategory-option';
-        noSubcategoryOption.onclick = () => selectSubcategoryForExpense(null);
-        noSubcategoryOption.innerHTML = `
-            <span>📁 Без подкатегории</span>
-        `;
-        subcategoryOptions.appendChild(noSubcategoryOption);
-        
-        // Добавляем подкатегории
-        category.subcategories.forEach(subcategory => {
-            const option = document.createElement('div');
-            option.className = 'subcategory-option';
-            option.onclick = () => selectSubcategoryForExpense(subcategory.id);
-            option.innerHTML = `
-                <span class="category-emoji">${subcategory.emoji}</span>
-                <span>${subcategory.name}</span>
-            `;
-            subcategoryOptions.appendChild(option);
-        });
-    } else {
-        // Переходим сразу к вводу суммы
-        selectSubcategoryForExpense(null);
+    .status-bar {
+        padding-top: max(0px, env(safe-area-inset-top));
     }
 }
 
-function selectSubcategoryForExpense(subcategoryId) {
-    currentState.selectedSubcategoryId = subcategoryId;
-    
-    const category = categories.find(cat => cat.id === currentState.selectedCategoryId);
-    let displayText = `${category.emoji} ${category.name}`;
-    
-    if (subcategoryId) {
-        const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
-        displayText += ` → ${subcategory.emoji} ${subcategory.name}`;
+/* Адаптивность для маленьких экранов */
+@media (max-width: 390px) {
+    .app-container {
+        max-width: 100%;
+        padding: 0 12px 80px;
     }
     
-    document.getElementById('selectedCategoryDisplay').textContent = displayText;
-    
-    document.getElementById('expenseStep2').style.display = 'none';
-    document.getElementById('expenseStep3').style.display = 'block';
-    
-    // Очищаем поля
-    document.getElementById('expenseAmount').value = '';
-    document.getElementById('expenseDescription').value = '';
-    document.getElementById('expenseAmount').focus();
-}
-
-function backToCategorySelection() {
-    document.getElementById('expenseStep2').style.display = 'none';
-    document.getElementById('expenseStep1').style.display = 'block';
-}
-
-function backToSubcategorySelection() {
-    document.getElementById('expenseStep3').style.display = 'none';
-    document.getElementById('expenseStep2').style.display = 'block';
-}
-
-function addExpense() {
-    const amount = parseFloat(document.getElementById('expenseAmount').value);
-    const description = document.getElementById('expenseDescription').value.trim();
-    
-    if (!amount || amount <= 0) {
-        alert('Введите корректную сумму');
-        return;
+    .circle-item {
+        width: 70px;
+        height: 70px;
     }
     
-    if (!currentState.selectedCategoryId) {
-        alert('Выберите категорию');
-        return;
+    .circle-icon {
+        font-size: 20px;
     }
     
-    const newExpense = {
-        id: Date.now().toString(),
-        amount: amount,
-        categoryId: currentState.selectedCategoryId,
-        subcategoryId: currentState.selectedSubcategoryId,
-        date: new Date().toISOString(),
-        description: description || undefined
-    };
+    .circle-amount {
+        font-size: 14px;
+    }
     
-    expenses.push(newExpense);
-    saveData();
-    updateCategoriesList();
-    updateExpensesList();
-    updateTotalExpenses();
-    closeAddExpenseModal();
+    .circle-label {
+        font-size: 9px;
+    }
     
-    alert('Расход успешно добавлен!');
-}
-
-function closeAddExpenseModal() {
-    document.getElementById('addExpenseModal').style.display = 'none';
-}
-
-// Модальные окна - категории
-function openAddCategoryModal() {
-    currentState.editingCategoryId = null;
-    document.getElementById('categoryModalTitle').textContent = '📁 Добавить категорию';
-    document.getElementById('categoryName').value = '';
-    document.getElementById('categoryEmoji').value = '';
-    document.getElementById('subcategoriesList').innerHTML = '';
+    .add-circle-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
     
-    document.getElementById('categoryModal').style.display = 'block';
-}
-
-function openEditCategoryModal(categoryId) {
-    const category = categories.find(cat => cat.id === categoryId);
-    if (!category) return;
+    .balance-amount {
+        font-size: 42px;
+    }
     
-    currentState.editingCategoryId = categoryId;
-    document.getElementById('categoryModalTitle').textContent = '✏️ Редактировать категорию';
-    document.getElementById('categoryName').value = category.name;
-    document.getElementById('categoryEmoji').value = category.emoji;
+    .operation-actions {
+        position: static;
+        transform: none;
+        flex-direction: column;
+        gap: 5px;
+    }
     
-    // Обновляем список подкатегорий
-    updateSubcategoriesList();
-    
-    document.getElementById('categoryModal').style.display = 'block';
-}
-
-function updateSubcategoriesList() {
-    const subcategoriesList = document.getElementById('subcategoriesList');
-    subcategoriesList.innerHTML = '';
-    
-    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
-    if (!category) return;
-    
-    category.subcategories.forEach(subcategory => {
-        const item = document.createElement('div');
-        item.className = 'subcategory-item';
-        item.innerHTML = `
-            <div class="subcategory-info">
-                <span class="category-emoji">${subcategory.emoji}</span>
-                <span>${subcategory.name}</span>
-            </div>
-            <div>
-                <button class="btn-danger" onclick="editSubcategory('${subcategory.id}')">✏️</button>
-                <button class="btn-danger" onclick="deleteSubcategory('${subcategory.id}')">🗑️</button>
-            </div>
-        `;
-        subcategoriesList.appendChild(item);
-    });
-    
-    if (category.subcategories.length === 0) {
-        subcategoriesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">Нет подкатегорий</div>';
+    .operation-amount {
+        margin-right: 0;
     }
 }
 
-function saveCategory() {
-    const name = document.getElementById('categoryName').value.trim();
-    const emoji = document.getElementById('categoryEmoji').value.trim();
-    
-    if (!name || !emoji) {
-        alert('Заполните название и смайлик');
-        return;
+/* Анимации */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
     }
-    
-    if (currentState.editingCategoryId) {
-        // Редактирование существующей категории
-        const categoryIndex = categories.findIndex(cat => cat.id === currentState.editingCategoryId);
-        if (categoryIndex !== -1) {
-            categories[categoryIndex].name = name;
-            categories[categoryIndex].emoji = emoji;
-        }
-    } else {
-        // Добавление новой категории
-        const newCategory = {
-            id: Date.now().toString(),
-            name: name,
-            emoji: emoji,
-            subcategories: []
-        };
-        categories.push(newCategory);
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
-    
-    saveData();
-    updateCategoriesList();
-    closeCategoryModal();
 }
 
-function closeCategoryModal() {
-    document.getElementById('categoryModal').style.display = 'none';
+.circle-item {
+    animation: fadeIn 0.3s ease-out;
 }
 
-// Модальные окна - подкатегории
-function openAddSubcategoryModal() {
-    currentState.editingSubcategory = null;
-    document.getElementById('subcategoryModalTitle').textContent = '📝 Добавить подкатегорию';
-    document.getElementById('subcategoryName').value = '';
-    document.getElementById('subcategoryEmoji').value = '';
-    
-    document.getElementById('subcategoryModal').style.display = 'block';
+.operation-item {
+    animation: fadeIn 0.2s ease-out;
 }
 
-function editSubcategory(subcategoryId) {
-    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
-    if (!category) return;
-    
-    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
-    if (!subcategory) return;
-    
-    currentState.editingSubcategory = subcategoryId;
-    document.getElementById('subcategoryModalTitle').textContent = '✏️ Редактировать подкатегорию';
-    document.getElementById('subcategoryName').value = subcategory.name;
-    document.getElementById('subcategoryEmoji').value = subcategory.emoji;
-    
-    document.getElementById('subcategoryModal').style.display = 'block';
+/* Screens */
+.screen {
+    display: none;
 }
 
-function saveSubcategory() {
-    const name = document.getElementById('subcategoryName').value.trim();
-    const emoji = document.getElementById('subcategoryEmoji').value.trim();
-    
-    if (!name || !emoji) {
-        alert('Заполните название и смайлик');
-        return;
-    }
-    
-    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
-    if (!category) return;
-    
-    if (currentState.editingSubcategory) {
-        // Редактирование существующей подкатегории
-        const subcategoryIndex = category.subcategories.findIndex(sub => sub.id === currentState.editingSubcategory);
-        if (subcategoryIndex !== -1) {
-            category.subcategories[subcategoryIndex].name = name;
-            category.subcategories[subcategoryIndex].emoji = emoji;
-        }
-    } else {
-        // Добавление новой подкатегории
-        const newSubcategory = {
-            id: `${currentState.editingCategoryId}-${Date.now()}`,
-            name: name,
-            emoji: emoji
-        };
-        category.subcategories.push(newSubcategory);
-    }
-    
-    updateSubcategoriesList();
-    closeSubcategoryModal();
+.screen.active {
+    display: block;
 }
 
-function deleteSubcategory(subcategoryId) {
-    if (!confirm('Вы уверены, что хотите удалить эту подкатегорию?')) {
-        return;
-    }
-    
-    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
-    if (!category) return;
-    
-    category.subcategories = category.subcategories.filter(sub => sub.id !== subcategoryId);
-    updateSubcategoriesList();
-}
-
-function closeSubcategoryModal() {
-    document.getElementById('subcategoryModal').style.display = 'none';
-}
-
-// Статистика
-function openStatistics() {
-    document.getElementById('statisticsModal').style.display = 'block';
-    updateStatistics();
-}
-
-function closeStatistics() {
-    document.getElementById('statisticsModal').style.display = 'none';
-}
-
-function updateStatistics() {
-    const period = document.getElementById('statPeriod').value;
-    const statisticsData = document.getElementById('statisticsData');
-    
-    let filteredExpenses = expenses;
-    const now = new Date();
-    
-    if (period === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= weekAgo);
-    } else if (period === 'month') {
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= monthAgo);
-    } else if (period === 'year') {
-        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= yearAgo);
-    }
-    
-    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    
-    let statisticsHTML = `
-        <div style="text-align: center; margin-bottom: 20px;">
-            <h3>Общая сумма: ${total} ₽</h3>
-        </div>
-    `;
-    
-    // Группируем расходы по категориям и подкатегориям
-    const categoryStats = {};
-    
-    categories.forEach(category => {
-        const categoryExpenses = filteredExpenses.filter(expense => 
-            expense.categoryId === category.id && !expense.subcategoryId
-        );
-        const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-        
-        const subcategoryStats = {};
-        category.subcategories.forEach(subcategory => {
-            const subcategoryExpenses = filteredExpenses.filter(expense => 
-                expense.subcategoryId === subcategory.id
-            );
-            const subcategoryTotal = subcategoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-            if (subcategoryTotal > 0) {
-                subcategoryStats[subcategory.id] = {
-                    name: subcategory.name,
-                    emoji: subcategory.emoji,
-                    total: subcategoryTotal,
-                    percentage: total > 0 ? (subcategoryTotal / total) * 100 : 0
-                };
-            }
-        });
-        
-        if (categoryTotal > 0 || Object.keys(subcategoryStats).length > 0) {
-            categoryStats[category.id] = {
-                name: category.name,
-                emoji: category.emoji,
-                total: categoryTotal + Object.values(subcategoryStats).reduce((sum, sub) => sum + sub.total, 0),
-                subcategories: subcategoryStats
-            };
-        }
-    });
-    
-    // Сортируем категории по убыванию суммы
-    const sortedCategories = Object.values(categoryStats).sort((a, b) => b.total - a.total);
-    
-    sortedCategories.forEach(category => {
-        const percentage = total > 0 ? (category.total / total) * 100 : 0;
-        
-        statisticsHTML += `
-            <div class="stat-item">
-                <div class="stat-category">
-                    <span class="category-emoji">${category.emoji}</span>
-                    <span>${category.name}</span>
-                </div>
-                <div class="stat-amount">${category.total} ₽ (${percentage.toFixed(1)}%)</div>
-            </div>
-            <div class="stat-bar" style="width: ${percentage}%"></div>
-        `;
-        
-        // Добавляем подкатегории
-        Object.values(category.subcategories).forEach(subcategory => {
-            statisticsHTML += `
-                <div class="stat-item" style="margin-left: 20px; font-size: 0.9em;">
-                    <div class="stat-category">
-                        <span class="category-emoji">${subcategory.emoji}</span>
-                        <span>${subcategory.name}</span>
-                    </div>
-                    <div class="stat-amount">${subcategory.total} ₽ (${subcategory.percentage.toFixed(1)}%)</div>
-                </div>
-            `;
-        });
-    });
-    
-    statisticsData.innerHTML = statisticsHTML;
-}
-
-// Сохранение данных
-function saveData() {
-    localStorage.setItem('categories', JSON.stringify(categories));
-    localStorage.setItem('expenses', JSON.stringify(expenses));
-}
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', init);
-
-// Закрытие модальных окон при клике вне их
-window.onclick = function(event) {
-    const modals = document.getElementsByClassName('modal');
-    for (let modal of modals) {
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
-    }
+/* Запрет масштабирования */
+input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
 }
