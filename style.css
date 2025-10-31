@@ -1,402 +1,583 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+// Структуры данных
+let categories = JSON.parse(localStorage.getItem('categories')) || [
+    {
+        id: '1',
+        name: 'Еда',
+        emoji: '🍕',
+        subcategories: [
+            { id: '1-1', name: 'Супермаркет', emoji: '🛒' },
+            { id: '1-2', name: 'Рестораны', emoji: '🍽️' }
+        ]
+    },
+    {
+        id: '2',
+        name: 'Транспорт',
+        emoji: '🚗',
+        subcategories: [
+            { id: '2-1', name: 'Бензин', emoji: '⛽' },
+            { id: '2-2', name: 'Такси', emoji: '🚕' }
+        ]
+    },
+    {
+        id: '3',
+        name: 'Развлечения',
+        emoji: '🎬',
+        subcategories: []
+    }
+];
+
+let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+
+// Текущее состояние
+let currentState = {
+    editingCategoryId: null,
+    selectedCategoryId: null,
+    selectedSubcategoryId: null,
+    editingSubcategory: null
+};
+
+// Инициализация приложения
+function init() {
+    updateCategoriesList();
+    updateExpensesList();
+    updateTotalExpenses();
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    padding: 20px;
+// Обновление списка категорий
+function updateCategoriesList() {
+    const categoriesList = document.getElementById('categoriesList');
+    categoriesList.innerHTML = '';
+
+    categories.forEach(category => {
+        const total = calculateCategoryTotal(category.id);
+        
+        const categoryElement = document.createElement('div');
+        categoryElement.className = 'category-item';
+        categoryElement.onclick = () => openEditCategoryModal(category.id);
+        
+        categoryElement.innerHTML = `
+            <div class="category-left">
+                <div class="category-emoji">${category.emoji}</div>
+                <div class="category-info">
+                    <h3>${category.name}</h3>
+                    ${category.subcategories.length > 0 ? 
+                        `<div class="subcategories-count">${category.subcategories.length} подкатегорий</div>` : 
+                        ''
+                    }
+                </div>
+            </div>
+            <div class="category-amount">${total} ₽</div>
+        `;
+        
+        categoriesList.appendChild(categoryElement);
+    });
 }
 
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    overflow: hidden;
+// Обновление списка расходов
+function updateExpensesList() {
+    const expensesList = document.getElementById('expensesList');
+    expensesList.innerHTML = '';
+
+    // Показываем последние 10 расходов
+    const recentExpenses = expenses
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 10);
+
+    if (recentExpenses.length === 0) {
+        expensesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">Нет расходов</div>';
+        return;
+    }
+
+    recentExpenses.forEach(expense => {
+        const category = categories.find(cat => cat.id === expense.categoryId);
+        let subcategory = null;
+        if (expense.subcategoryId) {
+            subcategory = category.subcategories.find(sub => sub.id === expense.subcategoryId);
+        }
+
+        const expenseElement = document.createElement('div');
+        expenseElement.className = 'expense-item';
+        
+        expenseElement.innerHTML = `
+            <div class="expense-info">
+                <div class="expense-emoji">${subcategory ? subcategory.emoji : category.emoji}</div>
+                <div class="expense-details">
+                    <h4>${subcategory ? subcategory.name : category.name}</h4>
+                    ${expense.description ? `<div class="expense-description">${expense.description}</div>` : ''}
+                    <div class="expense-date">${formatDate(expense.date)}</div>
+                </div>
+            </div>
+            <div class="expense-amount">-${expense.amount} ₽</div>
+        `;
+        
+        expensesList.appendChild(expenseElement);
+    });
 }
 
-.header {
-    background: #2c3e50;
-    color: white;
-    padding: 25px;
-    text-align: center;
+// Форматирование даты
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 }
 
-.header h1 {
-    font-size: 2.2em;
-    margin-bottom: 10px;
-}
-
-.total-expenses {
-    font-size: 2.5em;
-    font-weight: bold;
-    color: #e74c3c;
-    margin: 15px 0;
-}
-
-.main-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    padding: 20px;
-}
-
-.categories-section, .expenses-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-}
-
-.section-title {
-    font-size: 1.4em;
-    margin-bottom: 15px;
-    color: #2c3e50;
-    border-bottom: 2px solid #ecf0f1;
-    padding-bottom: 8px;
-}
-
-.category-item {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 10px;
-    padding: 15px;
-    margin: 10px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.category-item:hover {
-    background: #e9ecef;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.category-left {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.category-emoji {
-    font-size: 1.8em;
-    width: 40px;
-    text-align: center;
-}
-
-.category-info h3 {
-    color: #2c3e50;
-    margin-bottom: 4px;
-}
-
-.subcategories-count {
-    font-size: 0.85em;
-    color: #7f8c8d;
-}
-
-.category-amount {
-    font-size: 1.3em;
-    font-weight: bold;
-    color: #e74c3c;
-}
-
-.expense-item {
-    background: white;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 12px;
-    margin: 8px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.expense-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.expense-emoji {
-    font-size: 1.4em;
-}
-
-.expense-details h4 {
-    color: #2c3e50;
-    margin-bottom: 4px;
-}
-
-.expense-description {
-    font-size: 0.9em;
-    color: #7f8c8d;
-}
-
-.expense-amount {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #e74c3c;
-}
-
-.expense-date {
-    font-size: 0.8em;
-    color: #95a5a6;
-    margin-top: 4px;
-}
-
-.controls {
-    padding: 20px;
-    background: #ecf0f1;
-    border-top: 1px solid #bdc3c7;
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-button {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    flex: 1;
-    min-width: 200px;
-}
-
-.btn-primary {
-    background: #3498db;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #2980b9;
-    transform: translateY(-2px);
-}
-
-.btn-success {
-    background: #27ae60;
-    color: white;
-}
-
-.btn-success:hover {
-    background: #219a52;
-    transform: translateY(-2px);
-}
-
-.btn-secondary {
-    background: #95a5a6;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #7f8c8d;
-    transform: translateY(-2px);
-}
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-}
-
-.modal-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: white;
-    padding: 30px;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    width: 90%;
-    max-width: 500px;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.modal h2 {
-    margin-bottom: 20px;
-    color: #2c3e50;
-    text-align: center;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.form-group input, .form-group select {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #bdc3c7;
-    border-radius: 8px;
-    font-size: 1em;
-    transition: border-color 0.3s ease;
-}
-
-.form-group input:focus, .form-group select:focus {
-    outline: none;
-    border-color: #3498db;
-}
-
-.subcategories-list {
-    margin: 15px 0;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #ecf0f1;
-    border-radius: 8px;
-    padding: 10px;
-}
-
-.subcategory-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ecf0f1;
-}
-
-.subcategory-item:last-child {
-    border-bottom: none;
-}
-
-.subcategory-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.btn-danger {
-    background: #e74c3c;
-    color: white;
-    padding: 6px 12px;
-    font-size: 0.9em;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.btn-danger:hover {
-    background: #c0392b;
-}
-
-.modal-buttons {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.modal-buttons button {
-    flex: 1;
-}
-
-/* Subcategory selection */
-.subcategory-option {
-    padding: 15px;
-    border: 2px solid #ecf0f1;
-    border-radius: 10px;
-    margin: 8px 0;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.subcategory-option:hover {
-    border-color: #3498db;
-    background: #f8f9fa;
-}
-
-.back-button {
-    background: none;
-    border: none;
-    color: #3498db;
-    cursor: pointer;
-    font-size: 1em;
-    padding: 10px 0;
-    text-align: left;
-    margin-bottom: 15px;
-}
-
-.expense-details {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 10px;
-    margin: 15px 0;
-}
-
-/* Statistics */
-.statistics-content {
-    margin: 20px 0;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ecf0f1;
-}
-
-.stat-category {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.stat-bar {
-    height: 20px;
-    background: #3498db;
-    border-radius: 10px;
-    margin: 5px 0;
-    transition: width 0.3s ease;
-}
-
-.stat-amount {
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-@media (max-width: 768px) {
-    .main-content {
-        grid-template-columns: 1fr;
+// Подсчет общей суммы по категории
+function calculateCategoryTotal(categoryId) {
+    let total = 0;
+    
+    // Сумма расходов без подкатегорий
+    total += expenses
+        .filter(expense => expense.categoryId === categoryId && !expense.subcategoryId)
+        .reduce((sum, expense) => sum + expense.amount, 0);
+    
+    // Сумма расходов по подкатегориям
+    const category = categories.find(cat => cat.id === categoryId);
+    if (category && category.subcategories) {
+        category.subcategories.forEach(subcategory => {
+            total += expenses
+                .filter(expense => expense.subcategoryId === subcategory.id)
+                .reduce((sum, expense) => sum + expense.amount, 0);
+        });
     }
     
-    .container {
-        margin: 10px;
+    return total;
+}
+
+// Обновление общей суммы расходов
+function updateTotalExpenses() {
+    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    document.getElementById('totalExpenses').textContent = total + ' ₽';
+}
+
+// Модальные окна - расходы
+function openAddExpenseModal() {
+    currentState.selectedCategoryId = null;
+    currentState.selectedSubcategoryId = null;
+    
+    document.getElementById('expenseStep1').style.display = 'block';
+    document.getElementById('expenseStep2').style.display = 'none';
+    document.getElementById('expenseStep3').style.display = 'none';
+    
+    // Заполняем варианты категорий
+    const categoryOptions = document.getElementById('categoryOptions');
+    categoryOptions.innerHTML = '';
+    
+    categories.forEach(category => {
+        const option = document.createElement('div');
+        option.className = 'subcategory-option';
+        option.onclick = () => selectCategoryForExpense(category.id);
+        option.innerHTML = `
+            <span class="category-emoji">${category.emoji}</span>
+            <span>${category.name}</span>
+            ${category.subcategories.length > 0 ? 
+                `<span style="margin-left: auto; color: #7f8c8d; font-size: 0.9em;">${category.subcategories.length} подкат.</span>` : 
+                ''
+            }
+        `;
+        categoryOptions.appendChild(option);
+    });
+    
+    document.getElementById('addExpenseModal').style.display = 'block';
+}
+
+function selectCategoryForExpense(categoryId) {
+    const category = categories.find(cat => cat.id === categoryId);
+    currentState.selectedCategoryId = categoryId;
+    
+    if (category.subcategories && category.subcategories.length > 0) {
+        // Показываем выбор подкатегории
+        document.getElementById('expenseStep1').style.display = 'none';
+        document.getElementById('expenseStep2').style.display = 'block';
+        
+        const subcategoryOptions = document.getElementById('subcategoryOptions');
+        subcategoryOptions.innerHTML = '';
+        
+        document.getElementById('subcategoryLabel').textContent = `Выберите подкатегорию для ${category.emoji} ${category.name}:`;
+        
+        // Добавляем вариант "Без подкатегории"
+        const noSubcategoryOption = document.createElement('div');
+        noSubcategoryOption.className = 'subcategory-option';
+        noSubcategoryOption.onclick = () => selectSubcategoryForExpense(null);
+        noSubcategoryOption.innerHTML = `
+            <span>📁 Без подкатегории</span>
+        `;
+        subcategoryOptions.appendChild(noSubcategoryOption);
+        
+        // Добавляем подкатегории
+        category.subcategories.forEach(subcategory => {
+            const option = document.createElement('div');
+            option.className = 'subcategory-option';
+            option.onclick = () => selectSubcategoryForExpense(subcategory.id);
+            option.innerHTML = `
+                <span class="category-emoji">${subcategory.emoji}</span>
+                <span>${subcategory.name}</span>
+            `;
+            subcategoryOptions.appendChild(option);
+        });
+    } else {
+        // Переходим сразу к вводу суммы
+        selectSubcategoryForExpense(null);
+    }
+}
+
+function selectSubcategoryForExpense(subcategoryId) {
+    currentState.selectedSubcategoryId = subcategoryId;
+    
+    const category = categories.find(cat => cat.id === currentState.selectedCategoryId);
+    let displayText = `${category.emoji} ${category.name}`;
+    
+    if (subcategoryId) {
+        const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
+        displayText += ` → ${subcategory.emoji} ${subcategory.name}`;
     }
     
-    button {
-        min-width: 100%;
+    document.getElementById('selectedCategoryDisplay').textContent = displayText;
+    
+    document.getElementById('expenseStep2').style.display = 'none';
+    document.getElementById('expenseStep3').style.display = 'block';
+    
+    // Очищаем поля
+    document.getElementById('expenseAmount').value = '';
+    document.getElementById('expenseDescription').value = '';
+    document.getElementById('expenseAmount').focus();
+}
+
+function backToCategorySelection() {
+    document.getElementById('expenseStep2').style.display = 'none';
+    document.getElementById('expenseStep1').style.display = 'block';
+}
+
+function backToSubcategorySelection() {
+    document.getElementById('expenseStep3').style.display = 'none';
+    document.getElementById('expenseStep2').style.display = 'block';
+}
+
+function addExpense() {
+    const amount = parseFloat(document.getElementById('expenseAmount').value);
+    const description = document.getElementById('expenseDescription').value.trim();
+    
+    if (!amount || amount <= 0) {
+        alert('Введите корректную сумму');
+        return;
     }
     
-    .modal-content {
-        width: 95%;
-        padding: 20px;
+    if (!currentState.selectedCategoryId) {
+        alert('Выберите категорию');
+        return;
     }
     
-    .controls {
-        flex-direction: column;
+    const newExpense = {
+        id: Date.now().toString(),
+        amount: amount,
+        categoryId: currentState.selectedCategoryId,
+        subcategoryId: currentState.selectedSubcategoryId,
+        date: new Date().toISOString(),
+        description: description || undefined
+    };
+    
+    expenses.push(newExpense);
+    saveData();
+    updateCategoriesList();
+    updateExpensesList();
+    updateTotalExpenses();
+    closeAddExpenseModal();
+    
+    alert('Расход успешно добавлен!');
+}
+
+function closeAddExpenseModal() {
+    document.getElementById('addExpenseModal').style.display = 'none';
+}
+
+// Модальные окна - категории
+function openAddCategoryModal() {
+    currentState.editingCategoryId = null;
+    document.getElementById('categoryModalTitle').textContent = '📁 Добавить категорию';
+    document.getElementById('categoryName').value = '';
+    document.getElementById('categoryEmoji').value = '';
+    document.getElementById('subcategoriesList').innerHTML = '';
+    
+    document.getElementById('categoryModal').style.display = 'block';
+}
+
+function openEditCategoryModal(categoryId) {
+    const category = categories.find(cat => cat.id === categoryId);
+    if (!category) return;
+    
+    currentState.editingCategoryId = categoryId;
+    document.getElementById('categoryModalTitle').textContent = '✏️ Редактировать категорию';
+    document.getElementById('categoryName').value = category.name;
+    document.getElementById('categoryEmoji').value = category.emoji;
+    
+    // Обновляем список подкатегорий
+    updateSubcategoriesList();
+    
+    document.getElementById('categoryModal').style.display = 'block';
+}
+
+function updateSubcategoriesList() {
+    const subcategoriesList = document.getElementById('subcategoriesList');
+    subcategoriesList.innerHTML = '';
+    
+    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
+    if (!category) return;
+    
+    category.subcategories.forEach(subcategory => {
+        const item = document.createElement('div');
+        item.className = 'subcategory-item';
+        item.innerHTML = `
+            <div class="subcategory-info">
+                <span class="category-emoji">${subcategory.emoji}</span>
+                <span>${subcategory.name}</span>
+            </div>
+            <div>
+                <button class="btn-danger" onclick="editSubcategory('${subcategory.id}')">✏️</button>
+                <button class="btn-danger" onclick="deleteSubcategory('${subcategory.id}')">🗑️</button>
+            </div>
+        `;
+        subcategoriesList.appendChild(item);
+    });
+    
+    if (category.subcategories.length === 0) {
+        subcategoriesList.innerHTML = '<div style="text-align: center; color: #7f8c8d; padding: 20px;">Нет подкатегорий</div>';
+    }
+}
+
+function saveCategory() {
+    const name = document.getElementById('categoryName').value.trim();
+    const emoji = document.getElementById('categoryEmoji').value.trim();
+    
+    if (!name || !emoji) {
+        alert('Заполните название и смайлик');
+        return;
+    }
+    
+    if (currentState.editingCategoryId) {
+        // Редактирование существующей категории
+        const categoryIndex = categories.findIndex(cat => cat.id === currentState.editingCategoryId);
+        if (categoryIndex !== -1) {
+            categories[categoryIndex].name = name;
+            categories[categoryIndex].emoji = emoji;
+        }
+    } else {
+        // Добавление новой категории
+        const newCategory = {
+            id: Date.now().toString(),
+            name: name,
+            emoji: emoji,
+            subcategories: []
+        };
+        categories.push(newCategory);
+    }
+    
+    saveData();
+    updateCategoriesList();
+    closeCategoryModal();
+}
+
+function closeCategoryModal() {
+    document.getElementById('categoryModal').style.display = 'none';
+}
+
+// Модальные окна - подкатегории
+function openAddSubcategoryModal() {
+    currentState.editingSubcategory = null;
+    document.getElementById('subcategoryModalTitle').textContent = '📝 Добавить подкатегорию';
+    document.getElementById('subcategoryName').value = '';
+    document.getElementById('subcategoryEmoji').value = '';
+    
+    document.getElementById('subcategoryModal').style.display = 'block';
+}
+
+function editSubcategory(subcategoryId) {
+    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
+    if (!category) return;
+    
+    const subcategory = category.subcategories.find(sub => sub.id === subcategoryId);
+    if (!subcategory) return;
+    
+    currentState.editingSubcategory = subcategoryId;
+    document.getElementById('subcategoryModalTitle').textContent = '✏️ Редактировать подкатегорию';
+    document.getElementById('subcategoryName').value = subcategory.name;
+    document.getElementById('subcategoryEmoji').value = subcategory.emoji;
+    
+    document.getElementById('subcategoryModal').style.display = 'block';
+}
+
+function saveSubcategory() {
+    const name = document.getElementById('subcategoryName').value.trim();
+    const emoji = document.getElementById('subcategoryEmoji').value.trim();
+    
+    if (!name || !emoji) {
+        alert('Заполните название и смайлик');
+        return;
+    }
+    
+    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
+    if (!category) return;
+    
+    if (currentState.editingSubcategory) {
+        // Редактирование существующей подкатегории
+        const subcategoryIndex = category.subcategories.findIndex(sub => sub.id === currentState.editingSubcategory);
+        if (subcategoryIndex !== -1) {
+            category.subcategories[subcategoryIndex].name = name;
+            category.subcategories[subcategoryIndex].emoji = emoji;
+        }
+    } else {
+        // Добавление новой подкатегории
+        const newSubcategory = {
+            id: `${currentState.editingCategoryId}-${Date.now()}`,
+            name: name,
+            emoji: emoji
+        };
+        category.subcategories.push(newSubcategory);
+    }
+    
+    updateSubcategoriesList();
+    closeSubcategoryModal();
+}
+
+function deleteSubcategory(subcategoryId) {
+    if (!confirm('Вы уверены, что хотите удалить эту подкатегорию?')) {
+        return;
+    }
+    
+    const category = categories.find(cat => cat.id === currentState.editingCategoryId);
+    if (!category) return;
+    
+    category.subcategories = category.subcategories.filter(sub => sub.id !== subcategoryId);
+    updateSubcategoriesList();
+}
+
+function closeSubcategoryModal() {
+    document.getElementById('subcategoryModal').style.display = 'none';
+}
+
+// Статистика
+function openStatistics() {
+    document.getElementById('statisticsModal').style.display = 'block';
+    updateStatistics();
+}
+
+function closeStatistics() {
+    document.getElementById('statisticsModal').style.display = 'none';
+}
+
+function updateStatistics() {
+    const period = document.getElementById('statPeriod').value;
+    const statisticsData = document.getElementById('statisticsData');
+    
+    let filteredExpenses = expenses;
+    const now = new Date();
+    
+    if (period === 'week') {
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= weekAgo);
+    } else if (period === 'month') {
+        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= monthAgo);
+    } else if (period === 'year') {
+        const yearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        filteredExpenses = expenses.filter(expense => new Date(expense.date) >= yearAgo);
+    }
+    
+    const total = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    let statisticsHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3>Общая сумма: ${total} ₽</h3>
+        </div>
+    `;
+    
+    // Группируем расходы по категориям и подкатегориям
+    const categoryStats = {};
+    
+    categories.forEach(category => {
+        const categoryExpenses = filteredExpenses.filter(expense => 
+            expense.categoryId === category.id && !expense.subcategoryId
+        );
+        const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        
+        const subcategoryStats = {};
+        category.subcategories.forEach(subcategory => {
+            const subcategoryExpenses = filteredExpenses.filter(expense => 
+                expense.subcategoryId === subcategory.id
+            );
+            const subcategoryTotal = subcategoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+            if (subcategoryTotal > 0) {
+                subcategoryStats[subcategory.id] = {
+                    name: subcategory.name,
+                    emoji: subcategory.emoji,
+                    total: subcategoryTotal,
+                    percentage: total > 0 ? (subcategoryTotal / total) * 100 : 0
+                };
+            }
+        });
+        
+        if (categoryTotal > 0 || Object.keys(subcategoryStats).length > 0) {
+            categoryStats[category.id] = {
+                name: category.name,
+                emoji: category.emoji,
+                total: categoryTotal + Object.values(subcategoryStats).reduce((sum, sub) => sum + sub.total, 0),
+                subcategories: subcategoryStats
+            };
+        }
+    });
+    
+    // Сортируем категории по убыванию суммы
+    const sortedCategories = Object.values(categoryStats).sort((a, b) => b.total - a.total);
+    
+    sortedCategories.forEach(category => {
+        const percentage = total > 0 ? (category.total / total) * 100 : 0;
+        
+        statisticsHTML += `
+            <div class="stat-item">
+                <div class="stat-category">
+                    <span class="category-emoji">${category.emoji}</span>
+                    <span>${category.name}</span>
+                </div>
+                <div class="stat-amount">${category.total} ₽ (${percentage.toFixed(1)}%)</div>
+            </div>
+            <div class="stat-bar" style="width: ${percentage}%"></div>
+        `;
+        
+        // Добавляем подкатегории
+        Object.values(category.subcategories).forEach(subcategory => {
+            statisticsHTML += `
+                <div class="stat-item" style="margin-left: 20px; font-size: 0.9em;">
+                    <div class="stat-category">
+                        <span class="category-emoji">${subcategory.emoji}</span>
+                        <span>${subcategory.name}</span>
+                    </div>
+                    <div class="stat-amount">${subcategory.total} ₽ (${subcategory.percentage.toFixed(1)}%)</div>
+                </div>
+            `;
+        });
+    });
+    
+    statisticsData.innerHTML = statisticsHTML;
+}
+
+// Сохранение данных
+function saveData() {
+    localStorage.setItem('categories', JSON.stringify(categories));
+    localStorage.setItem('expenses', JSON.stringify(expenses));
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', init);
+
+// Закрытие модальных окон при клике вне их
+window.onclick = function(event) {
+    const modals = document.getElementsByClassName('modal');
+    for (let modal of modals) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
     }
 }
