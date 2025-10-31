@@ -663,13 +663,29 @@
             }
         }
 
-        // Загрузка данных с автоматической миграцией
+        // Загрузка данных с автоматической миграцией - УЛУЧШЕННАЯ ВЕРСИЯ
         function loadData() {
             try {
                 const saved = localStorage.getItem('budgetAppData');
                 if (saved) {
-                    appData = JSON.parse(saved);
-                    console.log("Budget App: Data loaded");
+                    const parsedData = JSON.parse(saved);
+                    
+                    // Сохраняем ВСЕ существующие данные пользователя
+                    appData = {
+                        ...appData, // базовая структура по умолчанию
+                        ...parsedData, // перезаписываем данными пользователя
+                        // Гарантируем, что массивы существуют
+                        incomes: parsedData.incomes || [],
+                        debts: parsedData.debts || [],
+                        expenseCategories: parsedData.expenseCategories || [],
+                        settings: parsedData.settings || { currency: "₽" }
+                    };
+                    
+                    console.log("Budget App: Data loaded", {
+                        incomes: appData.incomes.length,
+                        debts: appData.debts.length, 
+                        expenses: appData.expenseCategories.length
+                    });
                     
                     // АВТОМАТИЧЕСКАЯ МИГРАЦИЯ: добавляем новые категории к существующим данным
                     migrateExpenseCategories();
@@ -685,7 +701,7 @@
             }
         }
 
-        // Функция миграции категорий расходов
+        // Функция миграции категорий расходов - ИСПРАВЛЕННАЯ ВЕРСИЯ
         function migrateExpenseCategories() {
             let migrated = false;
             
