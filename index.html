@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Budget</title>
     <style>
         /* iOS-specific styles */
@@ -22,6 +22,11 @@
             padding: 0;
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         body {
@@ -35,6 +40,12 @@
             margin: 0;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: none;
+            touch-action: pan-y;
+            -webkit-user-drag: none;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
         }
 
         /* Status Bar */
@@ -364,6 +375,19 @@
             overflow: hidden;
         }
 
+        .operations-group {
+            margin-bottom: 20px;
+        }
+
+        .operations-group-title {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 16px 16px 8px;
+            color: var(--ios-gray);
+            border-bottom: 1px solid var(--ios-light-gray);
+            background: var(--ios-background);
+        }
+
         .operation-item {
             padding: 16px;
             border-bottom: 1px solid var(--ios-light-gray);
@@ -454,7 +478,7 @@
             font-size: 16px;
         }
 
-        /* Progress bar for debts */
+        /* Progress bar for debts - ЗЕЛЕНЫЙ цвет */
         .debt-progress {
             width: 100%;
             height: 4px;
@@ -466,7 +490,7 @@
 
         .debt-progress-bar {
             height: 100%;
-            background: white;
+            background: var(--ios-green); /* Изменено на зеленый */
             border-radius: 2px;
             transition: width 0.3s ease;
         }
@@ -544,6 +568,14 @@
 
         .screen.active {
             display: block;
+        }
+
+        /* Запрет масштабирования */
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
     </style>
 </head>
@@ -1296,18 +1328,21 @@
             }
         }
 
-        // Обновление списка операций
+        // Обновление списка операций с группировкой
         function updateOperationsList() {
             const container = document.getElementById('operations-list');
             if (!container) return;
             
-            const operations = [];
+            // Создаем группы операций
+            const incomeOperations = [];
+            const expenseOperations = [];
+            const debtOperations = [];
             
             // Доходы
             if (appData.incomes) {
                 appData.incomes.forEach(income => {
                     if (income.amount > 0) {
-                        operations.push({
+                        incomeOperations.push({
                             id: income.id,
                             amount: income.amount,
                             description: income.name,
@@ -1323,7 +1358,7 @@
             if (appData.debts) {
                 appData.debts.forEach(debt => {
                     // Сам долг (отрицательная сумма)
-                    operations.push({
+                    debtOperations.push({
                         id: debt.id,
                         amount: -debt.amount,
                         description: debt.description,
@@ -1335,7 +1370,7 @@
                     // Платежи по долгу (положительные суммы)
                     if (debt.paymentHistory && debt.paymentHistory.length > 0) {
                         debt.paymentHistory.forEach(payment => {
-                            operations.push({
+                            debtOperations.push({
                                 id: debt.id + '_' + payment.date,
                                 amount: payment.amount,
                                 description: `Погашение: ${debt.description}`,
@@ -1352,7 +1387,7 @@
             if (appData.expenseCategories) {
                 appData.expenseCategories.forEach(category => {
                     if (category.amount > 0) {
-                        operations.push({
+                        expenseOperations.push({
                             id: category.id,
                             amount: -category.amount,
                             description: category.name,
@@ -1364,67 +1399,106 @@
                 });
             }
             
-            // Сортируем по дате (новые сверху)
-            operations.sort((a, b) => new Date(b.date) - new Date(a.date));
+            // Сортируем каждую группу по дате (новые сверху)
+            incomeOperations.sort((a, b) => new Date(b.date) - new Date(a.date));
+            expenseOperations.sort((a, b) => new Date(b.date) - new Date(a.date));
+            debtOperations.sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            if (operations.length === 0) {
+            // Создаем HTML для всех групп
+            let operationsHTML = '';
+            
+            // Доходы
+            if (incomeOperations.length > 0) {
+                operationsHTML += `
+                    <div class="operations-group">
+                        <div class="operations-group-title">Доходы</div>
+                        ${incomeOperations.map(operation => createOperationHTML(operation)).join('')}
+                    </div>
+                `;
+            }
+            
+            // Расходы
+            if (expenseOperations.length > 0) {
+                operationsHTML += `
+                    <div class="operations-group">
+                        <div class="operations-group-title">Расходы</div>
+                        ${expenseOperations.map(operation => createOperationHTML(operation)).join('')}
+                    </div>
+                `;
+            }
+            
+            // Долги
+            if (debtOperations.length > 0) {
+                operationsHTML += `
+                    <div class="operations-group">
+                        <div class="operations-group-title">Долги</div>
+                        ${debtOperations.map(operation => createOperationHTML(operation)).join('')}
+                    </div>
+                `;
+            }
+            
+            // Если нет операций вообще
+            if (operationsHTML === '') {
                 container.innerHTML = '<div class="empty-state">Нет операций</div>';
                 return;
             }
             
-            container.innerHTML = operations.map(operation => {
-                let typeClass = operation.type;
-                let typeIcon, typeColor;
-                let amountSign = '';
-                let displayAmount = Math.abs(operation.amount);
-                
-                switch(operation.type) {
-                    case 'income':
-                        typeIcon = operation.icon || '💰';
-                        typeColor = '#34C759';
-                        amountSign = '+';
-                        break;
-                    case 'expense':
-                        typeIcon = operation.icon || '🛒';
-                        typeColor = '#FF3B30';
-                        amountSign = '-';
-                        break;
-                    case 'debt':
-                        typeIcon = operation.icon || '💳';
-                        typeColor = '#FF9500';
-                        amountSign = '-';
-                        break;
-                    case 'debt-payment':
-                        typeIcon = operation.icon || '✅';
-                        typeColor = '#34C759';
-                        amountSign = '+';
-                        break;
-                    default:
-                        typeIcon = operation.icon || '🛒';
-                        typeColor = '#8E8E93';
-                        amountSign = '';
-                }
-                
-                return `
-                    <div class="operation-item">
-                        <div class="operation-info">
-                            <div class="operation-icon" style="background: ${typeColor}">
-                                ${typeIcon}
-                            </div>
-                            <div class="operation-details">
-                                <div class="operation-title">${operation.description}</div>
-                                <div class="operation-meta">
-                                    <span>${formatDate(operation.date)}</span>
-                                    <span class="operation-time">${formatTime(operation.date)}</span>
-                                </div>
-                            </div>
+            container.innerHTML = operationsHTML;
+        }
+
+        // Создание HTML для одной операции
+        function createOperationHTML(operation) {
+            let typeClass = operation.type;
+            let typeIcon, typeColor;
+            let amountSign = '';
+            let displayAmount = Math.abs(operation.amount);
+            
+            switch(operation.type) {
+                case 'income':
+                    typeIcon = operation.icon || '💰';
+                    typeColor = '#34C759';
+                    amountSign = '+';
+                    break;
+                case 'expense':
+                    typeIcon = operation.icon || '🛒';
+                    typeColor = '#FF3B30';
+                    amountSign = '-';
+                    break;
+                case 'debt':
+                    typeIcon = operation.icon || '💳';
+                    typeColor = '#FF9500';
+                    amountSign = '-';
+                    break;
+                case 'debt-payment':
+                    typeIcon = operation.icon || '✅';
+                    typeColor = '#34C759';
+                    amountSign = '+';
+                    break;
+                default:
+                    typeIcon = operation.icon || '🛒';
+                    typeColor = '#8E8E93';
+                    amountSign = '';
+            }
+            
+            return `
+                <div class="operation-item">
+                    <div class="operation-info">
+                        <div class="operation-icon" style="background: ${typeColor}">
+                            ${typeIcon}
                         </div>
-                        <div class="operation-amount ${typeClass}">
-                            ${amountSign}${appData.settings.currency}${displayAmount.toFixed(2)}
+                        <div class="operation-details">
+                            <div class="operation-title">${operation.description}</div>
+                            <div class="operation-meta">
+                                <span>${formatDate(operation.date)}</span>
+                                <span class="operation-time">${formatTime(operation.date)}</span>
+                            </div>
                         </div>
                     </div>
-                `;
-            }).join('');
+                    <div class="operation-amount ${typeClass}">
+                        ${amountSign}${appData.settings.currency}${displayAmount.toFixed(2)}
+                    </div>
+                </div>
+            `;
         }
 
         // Форматирование даты
@@ -1533,6 +1607,23 @@ ${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.
                 }
             }, 100);
         });
+
+        // Запрет масштабирования на iOS
+        document.addEventListener('touchmove', function(e) {
+            if (e.scale !== 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Запрет двойного тапа для масштабирования
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>
