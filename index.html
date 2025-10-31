@@ -1,6 +1,3 @@
-Вот полный исправленный HTML файл с сохранением пользовательских данных:
-
-```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -445,12 +442,33 @@
             text-decoration: line-through;
         }
 
+        .operation-amount.debt-payment {
+            color: var(--ios-green);
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: var(--ios-gray);
             font-size: 16px;
+        }
+
+        /* Progress bar for debts */
+        .debt-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .debt-progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            transition: width 0.3s ease;
         }
 
         /* Safe areas для iPhone */
@@ -692,6 +710,9 @@
                     
                     // АВТОМАТИЧЕСКАЯ МИГРАЦИЯ: добавляем новые категории к существующим данным
                     migrateExpenseCategories();
+                    
+                    // МИГРАЦИЯ ДОЛГОВ: преобразуем старую структуру в новую
+                    migrateDebtsToNewStructure();
                 } else {
                     // Первый запуск - устанавливаем предустановленные категории расходов
                     appData.expenseCategories = JSON.parse(JSON.stringify(defaultExpenseCategories));
@@ -731,6 +752,34 @@
             }
         }
 
+        // МИГРАЦИЯ ДОЛГОВ В НОВУЮ СТРУКТУРУ
+        function migrateDebtsToNewStructure() {
+            let migrated = false;
+            
+            appData.debts.forEach(debt => {
+                // Если у долга нет новой структуры (paidAmount, paymentHistory)
+                if (debt.paidAmount === undefined) {
+                    // Преобразуем старую структуру в новую
+                    debt.paidAmount = debt.paid ? debt.amount : 0;
+                    debt.paymentHistory = debt.paid ? [{
+                        date: debt.date || new Date().toISOString(),
+                        amount: debt.amount
+                    }] : [];
+                    
+                    // Удаляем старое поле paid
+                    delete debt.paid;
+                    
+                    migrated = true;
+                    console.log(`Budget App: Migrated debt: ${debt.description}`);
+                }
+            });
+            
+            if (migrated) {
+                saveData();
+                console.log("Budget App: Debts migrated to new structure");
+            }
+        }
+
         // Сохранение данных
         function saveData() {
             try {
@@ -761,9 +810,9 @@
         // Обновление баланса
         function updateBalance() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
+            const totalPaidDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
-            const balance = totalIncome - totalDebts - totalExpenses;
+            const balance = totalIncome - totalPaidDebts - totalExpenses;
             
             const balanceElement = document.getElementById('balance-amount');
             if (balanceElement) {
@@ -778,7 +827,7 @@
             updateExpenseCategories();
         }
 
-        // Обновление категорий доходов (теперь как категории расходов)
+        // Обновление категорий доходов
         function updateIncomeCategories() {
             const container = document.getElementById('income-circles');
             if (!container) return;
@@ -817,18 +866,23 @@
             
             if (type === 'debt') {
                 container.innerHTML = items.map(item => {
-                    const showAmount = item.amount > 0;
+                    const remainingAmount = (item.amount || 0) - (item.paidAmount || 0);
+                    const isPaid = remainingAmount <= 0;
+                    const progressPercent = item.amount > 0 ? ((item.paidAmount || 0) / item.amount * 100) : 0;
                     const icon = item.icon || '💳';
                     
                     return `
-                        <div class="circle-item circle-${type} ${item.paid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
+                        <div class="circle-item circle-${type} ${isPaid ? 'paid' : ''}" onclick="editCircle('${type}', ${item.id})">
                             <div class="circle-actions">
                                 <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('${type}', ${item.id})">×</button>
-                                <button class="circle-action-btn circle-check" onclick="event.stopPropagation(); markDebtAsPaid(${item.id})">✓</button>
+                                ${!isPaid ? `<button class="circle-action-btn circle-check" onclick="event.stopPropagation(); makeDebtPayment(${item.id})">✓</button>` : ''}
                             </div>
                             <div class="circle-icon">${icon}</div>
-                            ${showAmount ? `<div class="circle-amount">${appData.settings.currency}${item.amount}</div>` : ''}
+                            <div class="circle-amount">${appData.settings.currency}${remainingAmount.toFixed(2)}</div>
                             <div class="circle-label">${item.description}</div>
+                            ${!isPaid ? `<div class="debt-progress">
+                                <div class="debt-progress-bar" style="width: ${progressPercent}%"></div>
+                            </div>` : ''}
                         </div>
                     `;
                 }).join('');
@@ -893,13 +947,13 @@
             }
         }
 
-        // Добавление новой категории доходов (теперь как категории расходов)
+        // Добавление новой категории доходов
         function addNewIncomeCategory() {
             const categoryName = prompt('Введите название категории доходов:');
             if (!categoryName) return;
             
             const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-            if (amountStr === null) return; // пользователь нажал отмену
+            if (amountStr === null) return;
             
             const amount = parseFloat(amountStr) || 0;
             if (amount < 0) {
@@ -921,10 +975,10 @@
             saveData();
         }
 
-        // Добавление нового кружка для долгов (старый функционал)
+        // Добавление нового кружка для долгов
         function addNewCircle(type) {
             const amountStr = prompt(`Введите сумму ${getTypeName(type)}:`, "0");
-            if (amountStr === null) return; // пользователь нажал отмену
+            if (amountStr === null) return;
             
             const amount = parseFloat(amountStr) || 0;
             if (amount < 0) {
@@ -945,7 +999,8 @@
                 description: description,
                 icon: icon,
                 date: new Date().toISOString(),
-                paid: false
+                paidAmount: 0,
+                paymentHistory: []
             };
             
             if (type === 'debt') {
@@ -961,7 +1016,7 @@
             if (!categoryName) return;
             
             const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-            if (amountStr === null) return; // пользователь нажал отмену
+            if (amountStr === null) return;
             
             const amount = parseFloat(amountStr) || 0;
             if (amount < 0) {
@@ -1022,10 +1077,14 @@
             
             const item = items.find(i => i.id === id);
             if (item) {
-                const newAmountStr = prompt('Изменить сумму:', item.amount);
+                const newAmountStr = prompt('Изменить общую сумму долга:', item.amount);
                 if (newAmountStr !== null) {
                     const newAmount = parseFloat(newAmountStr) || 0;
                     if (newAmount >= 0) {
+                        // Если новая сумма меньше уже оплаченной, корректируем оплаченную сумму
+                        if (newAmount < item.paidAmount) {
+                            item.paidAmount = newAmount;
+                        }
                         item.amount = newAmount;
                     } else {
                         alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
@@ -1117,12 +1176,54 @@
             }
         }
 
-        // Отметка долга как оплаченного
-        function markDebtAsPaid(debtId) {
+        // Внесение платежа по долгу
+        function makeDebtPayment(debtId) {
             const debt = appData.debts.find(d => d.id === debtId);
             if (debt) {
-                debt.paid = !debt.paid;
+                const remaining = debt.amount - (debt.paidAmount || 0);
+                
+                if (remaining <= 0) {
+                    alert("Долг уже полностью погашен!");
+                    return;
+                }
+                
+                const paymentStr = prompt(
+                    `Введите сумму платежа по долгу "${debt.description}"\nОсталось погасить: ${appData.settings.currency}${remaining.toFixed(2)}`,
+                    remaining.toString()
+                );
+                
+                if (paymentStr === null) return;
+                
+                const payment = parseFloat(paymentStr) || 0;
+                
+                if (payment <= 0) {
+                    alert("Сумма платежа должна быть больше 0");
+                    return;
+                }
+                
+                if (payment > remaining) {
+                    alert("Сумма платежа не может превышать оставшуюся сумму долга");
+                    return;
+                }
+                
+                // Вносим платеж
+                debt.paidAmount = (debt.paidAmount || 0) + payment;
+                
+                // Добавляем запись в историю платежей
+                if (!debt.paymentHistory) {
+                    debt.paymentHistory = [];
+                }
+                
+                debt.paymentHistory.push({
+                    date: new Date().toISOString(),
+                    amount: payment
+                });
+                
                 saveData();
+                
+                if (debt.paidAmount >= debt.amount) {
+                    alert("Долг полностью погашен!");
+                }
             }
         }
 
@@ -1149,9 +1250,9 @@
         // Расчет бюджета
         function calculateBudget() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
+            const totalPaidDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
-            const balance = totalIncome - totalDebts - totalExpenses;
+            const balance = totalIncome - totalPaidDebts - totalExpenses;
             
             const resultsHTML = `
                 <div class="result-item">
@@ -1160,7 +1261,7 @@
                 </div>
                 <div class="result-item">
                     <span>Оплаченные долги:</span>
-                    <span class="debt-paid">${appData.settings.currency}${totalDebts.toFixed(2)}</span>
+                    <span class="debt-paid">${appData.settings.currency}${totalPaidDebts.toFixed(2)}</span>
                 </div>
                 <div class="result-item">
                     <span>Общие расходы:</span>
@@ -1202,6 +1303,7 @@
             
             const operations = [];
             
+            // Доходы
             if (appData.incomes) {
                 appData.incomes.forEach(income => {
                     if (income.amount > 0) {
@@ -1217,19 +1319,36 @@
                 });
             }
             
+            // Долги и платежи по долгам
             if (appData.debts) {
                 appData.debts.forEach(debt => {
+                    // Сам долг (отрицательная сумма)
                     operations.push({
                         id: debt.id,
                         amount: -debt.amount,
                         description: debt.description,
                         date: debt.date,
-                        type: debt.paid ? 'debt-paid' : 'debt',
+                        type: 'debt',
                         icon: debt.icon
                     });
+                    
+                    // Платежи по долгу (положительные суммы)
+                    if (debt.paymentHistory && debt.paymentHistory.length > 0) {
+                        debt.paymentHistory.forEach(payment => {
+                            operations.push({
+                                id: debt.id + '_' + payment.date,
+                                amount: payment.amount,
+                                description: `Погашение: ${debt.description}`,
+                                date: payment.date,
+                                type: 'debt-payment',
+                                icon: '✅'
+                            });
+                        });
+                    }
                 });
             }
             
+            // Расходы
             if (appData.expenseCategories) {
                 appData.expenseCategories.forEach(category => {
                     if (category.amount > 0) {
@@ -1245,6 +1364,7 @@
                 });
             }
             
+            // Сортируем по дате (новые сверху)
             operations.sort((a, b) => new Date(b.date) - new Date(a.date));
             
             if (operations.length === 0) {
@@ -1274,10 +1394,10 @@
                         typeColor = '#FF9500';
                         amountSign = '-';
                         break;
-                    case 'debt-paid':
+                    case 'debt-payment':
                         typeIcon = operation.icon || '✅';
-                        typeColor = '#8E8E93';
-                        amountSign = '-';
+                        typeColor = '#34C759';
+                        amountSign = '+';
                         break;
                     default:
                         typeIcon = operation.icon || '🛒';
@@ -1359,20 +1479,20 @@
         // Настройки - показывает отладочную информацию
         function showSettingsModal() {
             const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalDebts = appData.debts.reduce((sum, item) => sum + (item.paid ? (item.amount || 0) : 0), 0);
+            const totalPaidDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
             const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
-            const balance = totalIncome - totalDebts - totalExpenses;
+            const balance = totalIncome - totalPaidDebts - totalExpenses;
             
             const debugInfo = `
 === ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
 
 Доходы: ${appData.incomes ? appData.incomes.length : 0} категорий
-Долги: ${appData.debts ? appData.debts.length : 0} записей (${appData.debts ? appData.debts.filter(d => d.paid).length : 0} оплачено)
+Долги: ${appData.debts ? appData.debts.length : 0} записей
 Категории расходов: ${appData.expenseCategories ? appData.expenseCategories.length : 0}
 
 ОБЩАЯ СТАТИСТИКА:
 - Доходы: ${appData.settings.currency}${totalIncome.toFixed(2)}
-- Оплаченные долги: ${appData.settings.currency}${totalDebts.toFixed(2)}
+- Оплаченные долги: ${appData.settings.currency}${totalPaidDebts.toFixed(2)}
 - Расходы: ${appData.settings.currency}${totalExpenses.toFixed(2)}
 - Баланс: ${appData.settings.currency}${balance.toFixed(2)}
 
@@ -1380,7 +1500,10 @@
 ${appData.incomes ? appData.incomes.map(income => `  • ${income.name} ${income.icon || ''}: ${appData.settings.currency}${income.amount}`).join('\n') || '  Нет доходов' : '  Нет доходов'}
 
 ДЕТАЛИ ДОЛГОВ:
-${appData.debts ? appData.debts.map(debt => `  • ${debt.description} ${debt.icon || ''}: ${appData.settings.currency}${debt.amount} ${debt.paid ? '(ОПЛАЧЕНО)' : '(НЕ ОПЛАЧЕНО)'}`).join('\n') || '  Нет долгов' : '  Нет долгов'}
+${appData.debts ? appData.debts.map(debt => {
+    const remaining = debt.amount - (debt.paidAmount || 0);
+    return `  • ${debt.description} ${debt.icon || ''}: ${appData.settings.currency}${debt.amount} (оплачено: ${appData.settings.currency}${debt.paidAmount || 0}, осталось: ${appData.settings.currency}${remaining})`;
+}).join('\n') || '  Нет долгов' : '  Нет долгов'}
 
 КАТЕГОРИИ РАСХОДОВ:
 ${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий' : '  Нет категорий'}
@@ -1413,13 +1536,3 @@ ${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.
     </script>
 </body>
 </html>
-```
-
-Это полный рабочий HTML файл со всеми исправлениями:
-
-✅ Сохранение пользовательских данных - ваши добавленные кружки в доходах и долгах не пропадут
-✅ Автоматическая миграция - новые категории расходов добавятся к существующим данным
-✅ Обновленные категории - "Жилье" вместо "Коммуналки" и новая категория "Инвестиции"
-✅ Все функции работают - добавление, редактирование, удаление, расчет бюджета
-
-Просто сохраните этот код как .html файл и откройте в браузере - все ваши данные сохранятся и появятся новые категории расходов.
