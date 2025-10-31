@@ -395,6 +395,7 @@
             justify-content: space-between;
             align-items: center;
             transition: background-color 0.2s;
+            position: relative;
         }
 
         .operation-item:active {
@@ -409,6 +410,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex: 1;
         }
 
         .operation-icon {
@@ -447,6 +449,7 @@
         .operation-amount {
             font-size: 16px;
             font-weight: 600;
+            margin-right: 30px;
         }
 
         .operation-amount.income {
@@ -468,6 +471,44 @@
 
         .operation-amount.debt-payment {
             color: var(--ios-green);
+        }
+
+        /* Operation action buttons */
+        .operation-actions {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 5px;
+        }
+
+        .operation-action-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 15px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .operation-action-btn:active {
+            transform: scale(0.9);
+        }
+
+        .operation-edit {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        .operation-delete {
+            background: var(--ios-red);
+            color: white;
         }
 
         /* Empty State */
@@ -687,6 +728,17 @@
             .balance-amount {
                 font-size: 42px;
             }
+            
+            .operation-actions {
+                position: static;
+                transform: none;
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .operation-amount {
+                margin-right: 0;
+            }
         }
 
         /* Анимации */
@@ -874,6 +926,7 @@
             incomes: [],
             debts: [], 
             expenseCategories: [],
+            expenseOperations: [], // НОВОЕ: отдельный массив для операций расходов
             settings: { currency: "₽" }
         };
 
@@ -924,13 +977,15 @@
                         incomes: parsedData.incomes || [],
                         debts: parsedData.debts || [],
                         expenseCategories: parsedData.expenseCategories || [],
+                        expenseOperations: parsedData.expenseOperations || [], // НОВОЕ: операции расходов
                         settings: parsedData.settings || { currency: "₽" }
                     };
                     
                     console.log("Budget App: Data loaded", {
                         incomes: appData.incomes.length,
                         debts: appData.debts.length, 
-                        expenses: appData.expenseCategories.length
+                        expenses: appData.expenseCategories.length,
+                        expenseOperations: appData.expenseOperations.length // НОВОЕ
                     });
                     
                     // АВТОМАТИЧЕСКАЯ МИГРАЦИЯ: добавляем новые категории к существующим данным
@@ -938,6 +993,9 @@
                     
                     // МИГРАЦИЯ ДОЛГОВ: преобразуем старую структуру в новую
                     migrateDebtsToNewStructure();
+                    
+                    // МИГРАЦИЯ ОПЕРАЦИЙ РАСХОДОВ: обновляем суммы категорий на основе операций
+                    updateExpenseCategoriesFromOperations();
                 } else {
                     // Первый запуск - устанавливаем предустановленные категории расходов
                     appData.expenseCategories = JSON.parse(JSON.stringify(defaultExpenseCategories));
@@ -1005,6 +1063,26 @@
             }
         }
 
+        // НОВАЯ ФУНКЦИЯ: Обновление сумм категорий расходов на основе операций
+        function updateExpenseCategoriesFromOperations() {
+            if (!appData.expenseOperations || appData.expenseOperations.length === 0) return;
+            
+            // Сбрасываем суммы всех категорий
+            appData.expenseCategories.forEach(category => {
+                category.amount = 0;
+            });
+            
+            // Пересчитываем суммы на основе операций
+            appData.expenseOperations.forEach(operation => {
+                const category = appData.expenseCategories.find(c => c.id === operation.categoryId);
+                if (category) {
+                    category.amount += operation.amount;
+                }
+            });
+            
+            saveData();
+        }
+
         // Сохранение данных
         function saveData() {
             try {
@@ -1021,6 +1099,7 @@
                 incomes: [],
                 debts: [], 
                 expenseCategories: JSON.parse(JSON.stringify(defaultExpenseCategories)),
+                expenseOperations: [], // НОВОЕ: очищаем операции
                 settings: { currency: "₽" }
             };
             saveData();
@@ -1256,16 +1335,81 @@
                     return;
                 }
                 
-                // Добавляем сумму к категории
-                category.amount = (category.amount || 0) + amount;
+                // НОВАЯ ЛОГИКА: Создаем операцию расхода
+                const expenseOperation = {
+                    id: Date.now(),
+                    categoryId: category.id,
+                    categoryName: category.name,
+                    categoryIcon: category.icon,
+                    amount: amount,
+                    description: `${category.name}`,
+                    date: new Date().toISOString()
+                };
                 
-                // Сохраняем дату операции
-                category.lastOperationDate = new Date().toISOString();
+                // Добавляем операцию в массив операций
+                if (!appData.expenseOperations) {
+                    appData.expenseOperations = [];
+                }
+                appData.expenseOperations.push(expenseOperation);
+                
+                // Обновляем сумму категории
+                category.amount = (category.amount || 0) + amount;
                 
                 saveData();
                 
                 // Показываем подтверждение
                 alert(`Расход ${appData.settings.currency}${amount.toFixed(2)} добавлен в категорию "${category.name}"`);
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Редактирование операции расхода
+        function editExpenseOperation(operationId) {
+            const operation = appData.expenseOperations.find(op => op.id === operationId);
+            if (operation) {
+                const newAmountStr = prompt(`Измените сумму расхода для "${operation.categoryName}":`, operation.amount.toString());
+                if (newAmountStr === null) return;
+                
+                const newAmount = parseFloat(newAmountStr) || 0;
+                if (newAmount <= 0) {
+                    alert("Пожалуйста, введите корректную сумму (больше 0)");
+                    return;
+                }
+                
+                // Находим категорию
+                const category = appData.expenseCategories.find(c => c.id === operation.categoryId);
+                if (category) {
+                    // Вычитаем старую сумму и добавляем новую
+                    category.amount = category.amount - operation.amount + newAmount;
+                    operation.amount = newAmount;
+                    operation.date = new Date().toISOString(); // Обновляем дату
+                    
+                    saveData();
+                    alert(`Расход обновлен: ${appData.settings.currency}${newAmount.toFixed(2)}`);
+                }
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Удаление операции расхода
+        function deleteExpenseOperation(operationId) {
+            const operation = appData.expenseOperations.find(op => op.id === operationId);
+            if (operation) {
+                if (confirm(`Удалить расход ${appData.settings.currency}${operation.amount} из категории "${operation.categoryName}"?`)) {
+                    // Находим категорию
+                    const category = appData.expenseCategories.find(c => c.id === operation.categoryId);
+                    if (category) {
+                        // Вычитаем сумму из категории
+                        category.amount -= operation.amount;
+                        
+                        // Удаляем операцию
+                        const operationIndex = appData.expenseOperations.findIndex(op => op.id === operationId);
+                        if (operationIndex !== -1) {
+                            appData.expenseOperations.splice(operationIndex, 1);
+                        }
+                        
+                        saveData();
+                        alert("Расход удален");
+                    }
+                }
             }
         }
 
@@ -1471,6 +1615,11 @@
             }
             
             if (confirm('Удалить эту категорию?')) {
+                // Удаляем все операции этой категории
+                if (appData.expenseOperations) {
+                    appData.expenseOperations = appData.expenseOperations.filter(op => op.categoryId !== categoryId);
+                }
+                
                 const index = appData.expenseCategories.findIndex(c => c.id === categoryId);
                 if (index !== -1) {
                     appData.expenseCategories.splice(index, 1);
@@ -1613,19 +1762,18 @@
                 });
             }
             
-            // Расходы
-            if (appData.expenseCategories) {
-                appData.expenseCategories.forEach(category => {
-                    if (category.amount > 0) {
-                        expenseOperations.push({
-                            id: category.id,
-                            amount: -category.amount,
-                            description: category.name,
-                            date: category.lastOperationDate || category.date,
-                            type: 'expense',
-                            icon: category.icon
-                        });
-                    }
+            // Расходы (теперь из массива операций)
+            if (appData.expenseOperations) {
+                appData.expenseOperations.forEach(operation => {
+                    expenseOperations.push({
+                        id: operation.id,
+                        amount: -operation.amount,
+                        description: operation.categoryName,
+                        date: operation.date,
+                        type: 'expense',
+                        icon: operation.categoryIcon,
+                        isOperation: true // Флаг, что это отдельная операция
+                    });
                 });
             }
             
@@ -1710,6 +1858,14 @@
                     amountSign = '';
             }
             
+            // Добавляем кнопки действий только для операций расходов
+            const actionButtons = operation.isOperation ? `
+                <div class="operation-actions">
+                    <button class="operation-action-btn operation-edit" onclick="editExpenseOperation(${operation.id})">✏️</button>
+                    <button class="operation-action-btn operation-delete" onclick="deleteExpenseOperation(${operation.id})">×</button>
+                </div>
+            ` : '';
+            
             return `
                 <div class="operation-item">
                     <div class="operation-info">
@@ -1727,6 +1883,7 @@
                     <div class="operation-amount ${typeClass}">
                         ${amountSign}${appData.settings.currency}${displayAmount.toFixed(2)}
                     </div>
+                    ${actionButtons}
                 </div>
             `;
         }
@@ -1793,6 +1950,7 @@
 Доходы: ${appData.incomes ? appData.incomes.length : 0} категорий
 Долги: ${appData.debts ? appData.debts.length : 0} записей
 Категории расходов: ${appData.expenseCategories ? appData.expenseCategories.length : 0}
+Операции расходов: ${appData.expenseOperations ? appData.expenseOperations.length : 0}
 
 ОБЩАЯ СТАТИСТИКА:
 - Доходы: ${appData.settings.currency}${totalIncome.toFixed(2)}
@@ -1811,6 +1969,9 @@ ${appData.debts ? appData.debts.map(debt => {
 
 КАТЕГОРИИ РАСХОДОВ:
 ${appData.expenseCategories ? appData.expenseCategories.map(cat => `  • ${cat.name} ${cat.icon || ''}: ${appData.settings.currency}${cat.amount}`).join('\n') || '  Нет категорий' : '  Нет категорий'}
+
+ОПЕРАЦИИ РАСХОДОВ:
+${appData.expenseOperations ? appData.expenseOperations.map(op => `  • ${op.categoryName}: ${appData.settings.currency}${op.amount} (${formatDate(op.date)})`).join('\n') || '  Нет операций' : '  Нет операций'}
             `.trim();
             
             const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
