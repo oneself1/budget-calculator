@@ -256,8 +256,8 @@
             color: white;
         }
 
-        /* Calculate Button */
-        .calculate-btn {
+        /* Add Expense Button */
+        .add-expense-btn {
             width: 100%;
             padding: 18px;
             background: var(--ios-blue);
@@ -271,7 +271,7 @@
             transition: all 0.2s;
         }
 
-        .calculate-btn:active {
+        .add-expense-btn:active {
             background: #0056CC;
             transform: scale(0.98);
         }
@@ -495,6 +495,154 @@
             transition: width 0.3s ease;
         }
 
+        /* Category Selection Modal */
+        .category-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .category-modal.active {
+            display: flex;
+        }
+
+        .category-modal-content {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 320px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .category-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .category-option {
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: var(--ios-background);
+            border: none;
+            font-size: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .category-option:active {
+            background: var(--ios-light-gray);
+            transform: scale(0.98);
+        }
+
+        .category-option-icon {
+            font-size: 20px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .category-option-name {
+            flex: 1;
+        }
+
+        .category-option-amount {
+            color: var(--ios-gray);
+            font-size: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn:active {
+            transform: scale(0.95);
+        }
+
+        .modal-btn.cancel {
+            background: var(--ios-light-gray);
+            color: var(--ios-gray);
+        }
+
+        .modal-btn.confirm {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        /* Report Screen */
+        .report-section {
+            background: var(--ios-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .report-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .report-item {
+            background: var(--ios-background);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .report-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .report-label {
+            font-size: 12px;
+            color: var(--ios-gray);
+        }
+
+        .report-value.income { color: var(--ios-green); }
+        .report-value.expense { color: var(--ios-red); }
+        .report-value.debt { color: var(--ios-orange); }
+        .report-value.balance { color: var(--ios-blue); }
+
         /* Safe areas для iPhone */
         @supports (padding: max(0px)) {
             .bottom-nav {
@@ -637,14 +785,8 @@
                 </button>
             </section>
 
-            <!-- Кнопка расчета -->
-            <button class="calculate-btn" onclick="calculateBudget()">Рассчитать бюджет</button>
-
-            <!-- Результаты -->
-            <div class="results-card" id="results-card" style="display: none">
-                <h3>Результаты</h3>
-                <div id="results-content"></div>
-            </div>
+            <!-- Кнопка добавления расхода -->
+            <button class="add-expense-btn" onclick="showCategorySelection()">Добавить расход</button>
         </div>
 
         <!-- ЭКРАН 2: ОПЕРАЦИИ -->
@@ -658,6 +800,53 @@
             </div>
         </div>
 
+        <!-- ЭКРАН 3: ОТЧЕТ -->
+        <div class="screen" id="report-screen">
+            <header class="app-header">
+                <h1 class="app-title">Отчет</h1>
+            </header>
+
+            <div class="report-section">
+                <h2 class="section-title">Финансовый отчет</h2>
+                <div class="report-summary">
+                    <div class="report-item">
+                        <div class="report-value income" id="report-income">₽0</div>
+                        <div class="report-label">Доходы</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value expense" id="report-expense">₽0</div>
+                        <div class="report-label">Расходы</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value debt" id="report-debt">₽0</div>
+                        <div class="report-label">Оплаченные долги</div>
+                    </div>
+                    <div class="report-item">
+                        <div class="report-value balance" id="report-balance">₽0</div>
+                        <div class="report-label">Баланс</div>
+                    </div>
+                </div>
+
+                <div class="results-card">
+                    <h3>Детализация</h3>
+                    <div id="report-details"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Модальное окно выбора категории -->
+    <div class="category-modal" id="category-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Выберите категорию</h2>
+            <div class="category-list" id="category-list">
+                <!-- Категории будут добавлены здесь -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideCategorySelection()">Отмена</button>
+            </div>
+        </div>
     </div>
 
     <!-- Нижняя навигация -->
@@ -669,6 +858,10 @@
         <div class="nav-item" onclick="switchScreen('operations')">
             <div class="nav-icon">📝</div>
             <div class="nav-label">Операции</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('report')">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">Отчет</div>
         </div>
     </nav>
 
@@ -837,6 +1030,7 @@
         function updateUI() {
             updateCircles();
             updateBalance();
+            updateReport();
         }
 
         // Обновление баланса
@@ -849,6 +1043,43 @@
             const balanceElement = document.getElementById('balance-amount');
             if (balanceElement) {
                 balanceElement.textContent = appData.settings.currency + balance.toFixed(2);
+            }
+        }
+
+        // Обновление отчета
+        function updateReport() {
+            const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
+            const totalPaidDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
+            const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
+            const balance = totalIncome - totalPaidDebts - totalExpenses;
+            
+            // Обновляем значения в отчете
+            document.getElementById('report-income').textContent = appData.settings.currency + totalIncome.toFixed(2);
+            document.getElementById('report-expense').textContent = appData.settings.currency + totalExpenses.toFixed(2);
+            document.getElementById('report-debt').textContent = appData.settings.currency + totalPaidDebts.toFixed(2);
+            document.getElementById('report-balance').textContent = appData.settings.currency + balance.toFixed(2);
+            
+            // Обновляем детализацию
+            const reportDetails = document.getElementById('report-details');
+            if (reportDetails) {
+                reportDetails.innerHTML = `
+                    <div class="result-item">
+                        <span>Общий доход:</span>
+                        <span class="income">${appData.settings.currency}${totalIncome.toFixed(2)}</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Оплаченные долги:</span>
+                        <span class="debt-paid">${appData.settings.currency}${totalPaidDebts.toFixed(2)}</span>
+                    </div>
+                    <div class="result-item">
+                        <span>Общие расходы:</span>
+                        <span class="expense">${appData.settings.currency}${totalExpenses.toFixed(2)}</span>
+                    </div>
+                    <div class="result-item total">
+                        <span>Итоговый баланс:</span>
+                        <span class="${balance >= 0 ? 'income' : 'expense'}">${appData.settings.currency}${Math.abs(balance).toFixed(2)}</span>
+                    </div>
+                `;
             }
         }
 
@@ -963,6 +1194,8 @@
                 if (navItems[0]) navItems[0].classList.add('active');
             } else if (screenName === 'operations') {
                 if (navItems[1]) navItems[1].classList.add('active');
+            } else if (screenName === 'report') {
+                if (navItems[2]) navItems[2].classList.add('active');
             }
             
             document.querySelectorAll('.screen').forEach(screen => {
@@ -976,6 +1209,63 @@
             
             if (screenName === 'operations') {
                 updateOperationsList();
+            } else if (screenName === 'report') {
+                updateReport();
+            }
+        }
+
+        // Показать выбор категории для добавления расхода
+        function showCategorySelection() {
+            const modal = document.getElementById('category-modal');
+            const categoryList = document.getElementById('category-list');
+            
+            if (!appData.expenseCategories || appData.expenseCategories.length === 0) {
+                alert('Сначала добавьте категории расходов!');
+                return;
+            }
+            
+            categoryList.innerHTML = appData.expenseCategories.map(category => `
+                <button class="category-option" onclick="selectExpenseCategory(${category.id})">
+                    <div class="category-option-icon">${category.icon}</div>
+                    <div class="category-option-name">${category.name}</div>
+                    <div class="category-option-amount">${appData.settings.currency}${category.amount}</div>
+                </button>
+            `).join('');
+            
+            modal.classList.add('active');
+        }
+
+        // Скрыть выбор категории
+        function hideCategorySelection() {
+            const modal = document.getElementById('category-modal');
+            modal.classList.remove('active');
+        }
+
+        // Выбрать категорию и добавить расход
+        function selectExpenseCategory(categoryId) {
+            const category = appData.expenseCategories.find(c => c.id === categoryId);
+            if (category) {
+                hideCategorySelection();
+                
+                const amountStr = prompt(`Введите сумму расхода для категории "${category.name}":`, "0");
+                if (amountStr === null) return;
+                
+                const amount = parseFloat(amountStr) || 0;
+                if (amount <= 0) {
+                    alert("Пожалуйста, введите корректную сумму (больше 0)");
+                    return;
+                }
+                
+                // Добавляем сумму к категории
+                category.amount = (category.amount || 0) + amount;
+                
+                // Сохраняем дату операции
+                category.lastOperationDate = new Date().toISOString();
+                
+                saveData();
+                
+                // Показываем подтверждение
+                alert(`Расход ${appData.settings.currency}${amount.toFixed(2)} добавлен в категорию "${category.name}"`);
             }
         }
 
@@ -1047,21 +1337,12 @@
             const categoryName = prompt('Введите название категории расходов:');
             if (!categoryName) return;
             
-            const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-            if (amountStr === null) return;
-            
-            const amount = parseFloat(amountStr) || 0;
-            if (amount < 0) {
-                alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                return;
-            }
-            
             const icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, 🚗, 🎮):', '🛒') || '🛒';
             
             const newCategory = {
                 id: Date.now(),
                 name: categoryName,
-                amount: amount,
+                amount: 0, // Начинаем с 0, так как суммы будут добавляться через кнопку "Добавить расход"
                 icon: icon,
                 date: new Date().toISOString()
             };
@@ -1141,16 +1422,6 @@
                 const newName = prompt('Изменить название категории:', category.name);
                 if (newName) {
                     category.name = newName;
-                }
-                
-                const newAmountStr = prompt('Изменить сумму:', category.amount);
-                if (newAmountStr !== null) {
-                    const newAmount = parseFloat(newAmountStr) || 0;
-                    if (newAmount >= 0) {
-                        category.amount = newAmount;
-                    } else {
-                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                    }
                 }
                 
                 const newIcon = prompt('Изменить иконку (смайлик):', category.icon);
@@ -1279,51 +1550,10 @@
             return defaults[type] || 'Операция';
         }
 
-        // Расчет бюджета
-        function calculateBudget() {
-            const totalIncome = appData.incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
-            const totalPaidDebts = appData.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
-            const totalExpenses = appData.expenseCategories.reduce((sum, category) => sum + (category.amount || 0), 0);
-            const balance = totalIncome - totalPaidDebts - totalExpenses;
-            
-            const resultsHTML = `
-                <div class="result-item">
-                    <span>Общий доход:</span>
-                    <span class="income">${appData.settings.currency}${totalIncome.toFixed(2)}</span>
-                </div>
-                <div class="result-item">
-                    <span>Оплаченные долги:</span>
-                    <span class="debt-paid">${appData.settings.currency}${totalPaidDebts.toFixed(2)}</span>
-                </div>
-                <div class="result-item">
-                    <span>Общие расходы:</span>
-                    <span class="expense">${appData.settings.currency}${totalExpenses.toFixed(2)}</span>
-                </div>
-                <div class="result-item total">
-                    <span>Итоговый баланс:</span>
-                    <span class="${balance >= 0 ? 'income' : 'expense'}">${appData.settings.currency}${Math.abs(balance).toFixed(2)}</span>
-                </div>
-            `;
-            
-            const resultsContent = document.getElementById('results-content');
-            const resultsCard = document.getElementById('results-card');
-            
-            if (resultsContent && resultsCard) {
-                resultsContent.innerHTML = resultsHTML;
-                resultsCard.style.display = 'block';
-            }
-        }
-
         // Очистка всех данных
         function clearAllData() {
             if (confirm('Вы уверены? Все данные будут удалены.')) {
                 resetToDefaults();
-                
-                const resultsContent = document.getElementById('results-content');
-                const resultsCard = document.getElementById('results-card');
-                if (resultsContent) resultsContent.innerHTML = '';
-                if (resultsCard) resultsCard.style.display = 'none';
-                
                 alert('Все данные очищены! Суммы в категориях обнулены.');
             }
         }
@@ -1391,7 +1621,7 @@
                             id: category.id,
                             amount: -category.amount,
                             description: category.name,
-                            date: category.date,
+                            date: category.lastOperationDate || category.date,
                             type: 'expense',
                             icon: category.icon
                         });
