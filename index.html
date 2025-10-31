@@ -936,7 +936,7 @@
             incomes: [],
             debts: [], 
             expenseCategories: [],
-            expenseOperations: [], // НОВОЕ: отдельный массив для операций расходов
+            expenseOperations: [], // отдельный массив для операций расходов
             settings: { currency: "₽" }
         };
 
@@ -987,7 +987,7 @@
                         incomes: parsedData.incomes || [],
                         debts: parsedData.debts || [],
                         expenseCategories: parsedData.expenseCategories || [],
-                        expenseOperations: parsedData.expenseOperations || [], // НОВОЕ: операции расходов
+                        expenseOperations: parsedData.expenseOperations || [], // операции расходов
                         settings: parsedData.settings || { currency: "₽" }
                     };
                     
@@ -995,7 +995,7 @@
                         incomes: appData.incomes.length,
                         debts: appData.debts.length, 
                         expenses: appData.expenseCategories.length,
-                        expenseOperations: appData.expenseOperations.length // НОВОЕ
+                        expenseOperations: appData.expenseOperations.length
                     });
                     
                     // АВТОМАТИЧЕСКАЯ МИГРАЦИЯ: добавляем новые категории к существующим данным
@@ -1109,7 +1109,7 @@
                 incomes: [],
                 debts: [], 
                 expenseCategories: JSON.parse(JSON.stringify(defaultExpenseCategories)),
-                expenseOperations: [], // НОВОЕ: очищаем операции
+                expenseOperations: [], // очищаем операции
                 settings: { currency: "₽" }
             };
             saveData();
@@ -1419,6 +1419,138 @@
                         saveData();
                         alert("Расход удален");
                     }
+                }
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Редактирование операции дохода
+        function editIncomeOperation(incomeId) {
+            const income = appData.incomes.find(i => i.id === incomeId);
+            if (income) {
+                const newName = prompt('Изменить название дохода:', income.name);
+                if (newName) {
+                    income.name = newName;
+                }
+                
+                const newAmountStr = prompt('Изменить сумму дохода:', income.amount);
+                if (newAmountStr !== null) {
+                    const newAmount = parseFloat(newAmountStr) || 0;
+                    if (newAmount >= 0) {
+                        income.amount = newAmount;
+                    } else {
+                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+                    }
+                }
+                
+                const newIcon = prompt('Изменить иконку (смайлик):', income.icon);
+                if (newIcon) {
+                    income.icon = newIcon;
+                }
+                
+                saveData();
+                alert("Доход обновлен");
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Удаление операции дохода
+        function deleteIncomeOperation(incomeId) {
+            if (confirm('Удалить этот доход?')) {
+                const index = appData.incomes.findIndex(i => i.id === incomeId);
+                if (index !== -1) {
+                    appData.incomes.splice(index, 1);
+                    saveData();
+                    alert("Доход удален");
+                }
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Редактирование операции долга
+        function editDebtOperation(debtId) {
+            const debt = appData.debts.find(d => d.id === debtId);
+            if (debt) {
+                const newAmountStr = prompt('Изменить общую сумму долга:', debt.amount);
+                if (newAmountStr !== null) {
+                    const newAmount = parseFloat(newAmountStr) || 0;
+                    if (newAmount >= 0) {
+                        // Если новая сумма меньше уже оплаченной, корректируем оплаченную сумму
+                        if (newAmount < debt.paidAmount) {
+                            debt.paidAmount = newAmount;
+                        }
+                        debt.amount = newAmount;
+                    } else {
+                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+                        return;
+                    }
+                }
+                
+                const newDescription = prompt('Изменить описание:', debt.description) || debt.description;
+                debt.description = newDescription;
+                
+                const newIcon = prompt('Изменить иконку (смайлик):', debt.icon) || debt.icon;
+                debt.icon = newIcon;
+                
+                saveData();
+                alert("Долг обновлен");
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Удаление операции долга
+        function deleteDebtOperation(debtId) {
+            if (confirm('Удалить этот долг?')) {
+                const index = appData.debts.findIndex(d => d.id === debtId);
+                if (index !== -1) {
+                    appData.debts.splice(index, 1);
+                    saveData();
+                    alert("Долг удален");
+                }
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Редактирование платежа по долгу
+        function editDebtPayment(debtId, paymentIndex) {
+            const debt = appData.debts.find(d => d.id === debtId);
+            if (debt && debt.paymentHistory && debt.paymentHistory[paymentIndex]) {
+                const payment = debt.paymentHistory[paymentIndex];
+                const newAmountStr = prompt('Изменить сумму платежа:', payment.amount.toString());
+                if (newAmountStr === null) return;
+                
+                const newAmount = parseFloat(newAmountStr) || 0;
+                if (newAmount <= 0) {
+                    alert("Сумма платежа должна быть больше 0");
+                    return;
+                }
+                
+                // Проверяем, чтобы новая сумма не превышала оставшуюся сумму долга
+                const remainingBeforePayment = debt.amount - (debt.paidAmount - payment.amount);
+                if (newAmount > remainingBeforePayment) {
+                    alert("Сумма платежа не может превышать оставшуюся сумму долга");
+                    return;
+                }
+                
+                // Обновляем paidAmount: вычитаем старую сумму и добавляем новую
+                debt.paidAmount = debt.paidAmount - payment.amount + newAmount;
+                payment.amount = newAmount;
+                payment.date = new Date().toISOString();
+                
+                saveData();
+                alert("Платеж по долгу обновлен");
+            }
+        }
+
+        // НОВАЯ ФУНКЦИЯ: Удаление платежа по долгу
+        function deleteDebtPayment(debtId, paymentIndex) {
+            const debt = appData.debts.find(d => d.id === debtId);
+            if (debt && debt.paymentHistory && debt.paymentHistory[paymentIndex]) {
+                const payment = debt.paymentHistory[paymentIndex];
+                if (confirm(`Удалить платеж ${appData.settings.currency}${payment.amount} по долгу "${debt.description}"?`)) {
+                    // Уменьшаем paidAmount на сумму платежа
+                    debt.paidAmount -= payment.amount;
+                    
+                    // Удаляем платеж из истории
+                    debt.paymentHistory.splice(paymentIndex, 1);
+                    
+                    saveData();
+                    alert("Платеж по долгу удален");
                 }
             }
         }
@@ -1737,7 +1869,8 @@
                             description: income.name,
                             date: income.date,
                             type: 'income',
-                            icon: income.icon
+                            icon: income.icon,
+                            isEditable: true
                         });
                     }
                 });
@@ -1753,19 +1886,23 @@
                         description: debt.description,
                         date: debt.date,
                         type: 'debt',
-                        icon: debt.icon
+                        icon: debt.icon,
+                        isEditable: true
                     });
                     
                     // Платежи по долгу (положительные суммы)
                     if (debt.paymentHistory && debt.paymentHistory.length > 0) {
-                        debt.paymentHistory.forEach(payment => {
+                        debt.paymentHistory.forEach((payment, index) => {
                             debtOperations.push({
-                                id: debt.id + '_' + payment.date,
+                                id: debt.id + '_payment_' + index,
                                 amount: payment.amount,
                                 description: `Погашение: ${debt.description}`,
                                 date: payment.date,
                                 type: 'debt-payment',
-                                icon: '✅'
+                                icon: '✅',
+                                isEditable: true,
+                                debtId: debt.id,
+                                paymentIndex: index
                             });
                         });
                     }
@@ -1782,7 +1919,7 @@
                         date: operation.date,
                         type: 'expense',
                         icon: operation.categoryIcon,
-                        isOperation: true // Флаг, что это отдельная операция
+                        isEditable: true
                     });
                 });
             }
@@ -1868,13 +2005,39 @@
                     amountSign = '';
             }
             
-            // Добавляем кнопки действий только для операций расходов
-            const actionButtons = operation.isOperation ? `
-                <div class="operation-actions">
-                    <button class="operation-action-btn operation-edit" onclick="editExpenseOperation(${operation.id})">✏️</button>
-                    <button class="operation-action-btn operation-delete" onclick="deleteExpenseOperation(${operation.id})">×</button>
-                </div>
-            ` : '';
+            // Добавляем кнопки действий для редактируемых операций
+            let actionButtons = '';
+            if (operation.isEditable) {
+                if (operation.type === 'expense') {
+                    actionButtons = `
+                        <div class="operation-actions">
+                            <button class="operation-action-btn operation-edit" onclick="editExpenseOperation(${operation.id})">✏️</button>
+                            <button class="operation-action-btn operation-delete" onclick="deleteExpenseOperation(${operation.id})">×</button>
+                        </div>
+                    `;
+                } else if (operation.type === 'income') {
+                    actionButtons = `
+                        <div class="operation-actions">
+                            <button class="operation-action-btn operation-edit" onclick="editIncomeOperation(${operation.id})">✏️</button>
+                            <button class="operation-action-btn operation-delete" onclick="deleteIncomeOperation(${operation.id})">×</button>
+                        </div>
+                    `;
+                } else if (operation.type === 'debt') {
+                    actionButtons = `
+                        <div class="operation-actions">
+                            <button class="operation-action-btn operation-edit" onclick="editDebtOperation(${operation.id})">✏️</button>
+                            <button class="operation-action-btn operation-delete" onclick="deleteDebtOperation(${operation.id})">×</button>
+                        </div>
+                    `;
+                } else if (operation.type === 'debt-payment') {
+                    actionButtons = `
+                        <div class="operation-actions">
+                            <button class="operation-action-btn operation-edit" onclick="editDebtPayment(${operation.debtId}, ${operation.paymentIndex})">✏️</button>
+                            <button class="operation-action-btn operation-delete" onclick="deleteDebtPayment(${operation.debtId}, ${operation.paymentIndex})">×</button>
+                        </div>
+                    `;
+                }
+            }
             
             return `
                 <div class="operation-item">
