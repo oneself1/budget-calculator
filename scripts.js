@@ -368,15 +368,12 @@ function updateExpenseCategories() {
     }
     
     container.innerHTML = appData.expenseCategories.map(category => {
-        const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === category.id);
         const showAmount = category.amount > 0;
         const icon = category.icon || '🛒';
         const hasSubcategories = category.subcategories && category.subcategories.length > 0;
         
-        let deleteButton = '';
-        if (!isDefaultCategory) {
-            deleteButton = `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>`;
-        }
+        // ИЗМЕНЕНИЕ: Убираем проверку на предустановленные категории - ВСЕГДА показываем кнопку удаления
+        const deleteButton = `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>`;
         
         return `
             <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
@@ -941,12 +938,7 @@ function deleteCircle(type, id) {
 
 // Удаление категории расходов
 function deleteExpenseCategory(categoryId) {
-    const isDefaultCategory = defaultExpenseCategories.some(cat => cat.id === categoryId);
-    if (isDefaultCategory) {
-        alert("Предустановленные категории нельзя удалить. Вы можете изменить сумму на 0.");
-        return;
-    }
-    
+    // ИЗМЕНЕНИЕ: Убираем проверку на предустановленные категории
     if (confirm('Удалить эту категорию?')) {
         if (appData.expenseOperations) {
             appData.expenseOperations = appData.expenseOperations.filter(op => op.categoryId !== categoryId);
