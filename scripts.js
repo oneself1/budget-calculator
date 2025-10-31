@@ -255,10 +255,15 @@ function updateReport() {
     
     const balance = totalIncome - totalPaidDebts - totalExpenses;
     
-    document.getElementById('report-income').textContent = appData.settings.currency + totalIncome.toFixed(2);
-    document.getElementById('report-expense').textContent = appData.settings.currency + totalExpenses.toFixed(2);
-    document.getElementById('report-debt').textContent = appData.settings.currency + totalPaidDebts.toFixed(2);
-    document.getElementById('report-balance').textContent = appData.settings.currency + balance.toFixed(2);
+    const reportIncome = document.getElementById('report-income');
+    const reportExpense = document.getElementById('report-expense');
+    const reportDebt = document.getElementById('report-debt');
+    const reportBalance = document.getElementById('report-balance');
+    
+    if (reportIncome) reportIncome.textContent = appData.settings.currency + totalIncome.toFixed(2);
+    if (reportExpense) reportExpense.textContent = appData.settings.currency + totalExpenses.toFixed(2);
+    if (reportDebt) reportDebt.textContent = appData.settings.currency + totalPaidDebts.toFixed(2);
+    if (reportBalance) reportBalance.textContent = appData.settings.currency + balance.toFixed(2);
     
     const reportDetails = document.getElementById('report-details');
     if (reportDetails) {
@@ -721,13 +726,15 @@ function deleteSubcategory(subcategoryId) {
     const subcategory = category.subcategories[subcategoryIndex];
     
     // Перемещаем расходы из подкатегории в основную категорию
-    appData.expenseOperations.forEach(operation => {
-        if (operation.subcategoryId === subcategoryId) {
-            operation.subcategoryId = null;
-            operation.description = category.name;
-            operation.icon = category.icon;
-        }
-    });
+    if (appData.expenseOperations) {
+        appData.expenseOperations.forEach(operation => {
+            if (operation.subcategoryId === subcategoryId) {
+                operation.subcategoryId = null;
+                operation.description = category.name;
+                operation.icon = category.icon;
+            }
+        });
+    }
     
     // Добавляем сумму подкатегории к основной категории
     category.amount = (category.amount || 0) + (subcategory.amount || 0);
@@ -751,13 +758,6 @@ function calculateCategoryTotal(category) {
     
     return total;
 }
-
-// Остальные функции остаются практически без изменений
-// (addNewIncomeCategory, addNewCircle, addNewExpenseCategory, editIncomeCategory, 
-// editCircle, editExpenseCategory, deleteIncomeCategory, deleteCircle, deleteExpenseCategory,
-// makeDebtPayment, updateOperationsList и другие)
-
-// Для краткости оставлю их реализацию без изменений, так как они не затрагивают подкатегории
 
 // Добавление новой категории доходов
 function addNewIncomeCategory() {
@@ -1324,8 +1324,58 @@ function showSettingsModal() {
     }
 }
 
-// Функции для операций (редактирование, удаление) остаются без изменений
-// Для краткости оставлю их реализацию как в исходном коде
+// Заглушки для отсутствующих функций
+function editExpenseOperation(id) {
+    alert('Редактирование операции расхода - в разработке');
+}
+
+function deleteExpenseOperation(id) {
+    if (confirm('Удалить эту операцию расхода?')) {
+        const operation = appData.expenseOperations.find(op => op.id === id);
+        if (operation) {
+            // Вычитаем сумму из категории/подкатегории
+            const category = appData.expenseCategories.find(c => c.id === operation.categoryId);
+            if (category) {
+                if (operation.subcategoryId) {
+                    const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
+                    if (subcategory) {
+                        subcategory.amount = Math.max(0, (subcategory.amount || 0) - operation.amount);
+                    }
+                } else {
+                    category.amount = Math.max(0, (category.amount || 0) - operation.amount);
+                }
+            }
+            
+            // Удаляем операцию
+            appData.expenseOperations = appData.expenseOperations.filter(op => op.id !== id);
+            saveData();
+        }
+    }
+}
+
+function editIncomeOperation(id) {
+    alert('Редактирование операции дохода - в разработке');
+}
+
+function deleteIncomeOperation(id) {
+    alert('Удаление операции дохода - в разработке');
+}
+
+function editDebtOperation(id) {
+    alert('Редактирование операции долга - в разработке');
+}
+
+function deleteDebtOperation(id) {
+    alert('Удаление операции долга - в разработке');
+}
+
+function editDebtPayment(debtId, paymentIndex) {
+    alert('Редактирование платежа по долгу - в разработке');
+}
+
+function deleteDebtPayment(debtId, paymentIndex) {
+    alert('Удаление платежа по долгу - в разработке');
+}
 
 // Запуск приложения при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
@@ -1337,7 +1387,8 @@ document.addEventListener('DOMContentLoaded', function() {
 window.addEventListener('load', function() {
     console.log("Budget App: Window loaded");
     setTimeout(function() {
-        if (document.getElementById('balance-amount').textContent === '₽0') {
+        const balanceElement = document.getElementById('balance-amount');
+        if (balanceElement && balanceElement.textContent === '₽0') {
             console.log("Budget App: Backup initialization");
             initApp();
         }
