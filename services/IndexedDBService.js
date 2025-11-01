@@ -1,7 +1,7 @@
 class IndexedDBService {
     constructor() {
         this.dbName = 'BudgetAppDB';
-        this.version = 2; // Увеличиваем версию для новых хранилищ
+        this.version = 2;
         this.db = null;
     }
 
