@@ -62,7 +62,7 @@ class BudgetApp {
         // Сохраняем базовые категории расходов перед сбросом
         const currentExpenseCategories = this.expenses.getCategories();
         const basicExpenseCategories = currentExpenseCategories.filter(cat => 
-            [1, 2, 3, 4, 5].includes(cat.id) // ID базовых категорий
+            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(cat.id) // ID базовых категорий от 1 до 12
         );
 
         this.incomes = new StructuredIncomesService(this.storage);
@@ -178,7 +178,7 @@ class BudgetApp {
             const icon = category.icon || '🛒';
             const hasSubcategories = category.subcategories && category.subcategories.length > 0;
             
-            const deleteButton = category.id > 5 ? // Не показывать кнопку удаления для базовых категорий
+            const deleteButton = category.id > 12 ? // Не показывать кнопку удаления для базовых категорий (1-12)
                 `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
                 '';
             
@@ -587,8 +587,8 @@ class BudgetApp {
     }
 
     deleteExpenseCategory(categoryId) {
-        // Запрещаем удаление базовых категорий (ID 1-5)
-        if (categoryId <= 5) {
+        // Запрещаем удаление базовых категорий (ID 1-12)
+        if (categoryId >= 1 && categoryId <= 12) {
             alert("Базовые категории расходов нельзя удалить!");
             return;
         }
