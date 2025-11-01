@@ -459,6 +459,7 @@ html {
     align-items: center;
     transition: background-color 0.2s;
     position: relative;
+    gap: 10px;
 }
 
 .operation-item:active {
@@ -469,11 +470,21 @@ html {
     border-bottom: none;
 }
 
+/* Новая структура для операций */
+.operation-main-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+    min-width: 0; /* Предотвращает переполнение */
+}
+
 .operation-info {
     display: flex;
     align-items: center;
     gap: 12px;
     flex: 1;
+    min-width: 0; /* Предотвращает переполнение */
 }
 
 .operation-icon {
@@ -485,16 +496,21 @@ html {
     justify-content: center;
     font-size: 18px;
     color: white;
+    flex-shrink: 0; /* Предотвращает сжатие иконки */
 }
 
 .operation-details {
     flex: 1;
+    min-width: 0; /* Предотвращает переполнение */
 }
 
 .operation-title {
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .operation-meta {
@@ -512,7 +528,9 @@ html {
 .operation-amount {
     font-size: 16px;
     font-weight: 600;
-    margin-right: 30px;
+    margin-left: 10px;
+    flex-shrink: 0; /* Предотвращает сжатие суммы */
+    white-space: nowrap;
 }
 
 .operation-amount.income {
@@ -538,12 +556,10 @@ html {
 
 /* Operation action buttons */
 .operation-actions {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
     display: flex;
     gap: 5px;
+    margin-left: 10px;
+    flex-shrink: 0; /* Предотвращает сжатие кнопок */
 }
 
 .operation-action-btn {
@@ -558,6 +574,7 @@ html {
     justify-content: center;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    flex-shrink: 0; /* Предотвращает сжатие кнопок */
 }
 
 .operation-action-btn:active {
@@ -879,15 +896,23 @@ html {
         font-size: 42px;
     }
     
-    .operation-actions {
-        position: static;
-        transform: none;
+    .operation-main-content {
         flex-direction: column;
-        gap: 5px;
+        align-items: flex-start;
+        gap: 8px;
     }
     
     .operation-amount {
-        margin-right: 0;
+        margin-left: 0;
+        align-self: flex-end;
+    }
+    
+    .operation-actions {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-left: 0;
     }
 }
 
