@@ -34,7 +34,7 @@ body {
     overflow-x: hidden;
     padding: 0;
     margin: 0;
-    padding-bottom: 80px; /* Отступ для фиксированной навигации */
+    padding-bottom: 80px;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
     touch-action: pan-y;
@@ -68,7 +68,7 @@ html {
     max-width: 390px;
     margin: 0 auto;
     min-height: calc(100vh - 120px);
-    padding: 0 16px 20px; /* Уменьшили нижний padding */
+    padding: 0 16px 20px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     height: calc(100vh - 120px - env(safe-area-inset-bottom));
@@ -758,18 +758,24 @@ html {
     font-size: 10px;
 }
 
+/* Virtual Scroll Container */
+.virtual-scroll-container {
+    height: calc(100vh - 180px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 /* Operations List */
 .operations-list {
     background: var(--ios-card);
     border-radius: 16px;
     overflow: hidden;
-    margin-bottom: 80px; /* Отступ для навигации */
+    margin-bottom: 16px;
     position: relative;
-    min-height: 200px;
 }
 
 .operations-group {
-    margin-bottom: 20px;
+    margin-bottom: 0;
 }
 
 .operations-group-title {
@@ -779,6 +785,9 @@ html {
     color: var(--ios-gray);
     border-bottom: 1px solid var(--ios-light-gray);
     background: var(--ios-background);
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .operation-item {
@@ -806,7 +815,7 @@ html {
     justify-content: space-between;
     align-items: center;
     flex: 1;
-    min-width: 0; /* Предотвращает переполнение */
+    min-width: 0;
 }
 
 .operation-info {
@@ -814,7 +823,7 @@ html {
     align-items: center;
     gap: 12px;
     flex: 1;
-    min-width: 0; /* Предотвращает переполнение */
+    min-width: 0;
 }
 
 .operation-icon {
@@ -826,12 +835,12 @@ html {
     justify-content: center;
     font-size: 18px;
     color: white;
-    flex-shrink: 0; /* Предотвращает сжатие иконки */
+    flex-shrink: 0;
 }
 
 .operation-details {
     flex: 1;
-    min-width: 0; /* Предотвращает переполнение */
+    min-width: 0;
 }
 
 .operation-title {
@@ -859,7 +868,7 @@ html {
     font-size: 16px;
     font-weight: 600;
     margin-left: 10px;
-    flex-shrink: 0; /* Предотвращает сжатие суммы */
+    flex-shrink: 0;
     white-space: nowrap;
 }
 
@@ -889,7 +898,7 @@ html {
     display: flex;
     gap: 5px;
     margin-left: 10px;
-    flex-shrink: 0; /* Предотвращает сжатие кнопок */
+    flex-shrink: 0;
 }
 
 .operation-action-btn {
@@ -904,7 +913,7 @@ html {
     justify-content: center;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    flex-shrink: 0; /* Предотвращает сжатие кнопок */
+    flex-shrink: 0;
 }
 
 .operation-action-btn:active {
@@ -1408,6 +1417,30 @@ html {
     padding: 16px;
 }
 
+/* Virtual Scroll Items */
+.virtual-item {
+    position: absolute;
+    width: 100%;
+    left: 0;
+    transition: top 0.2s ease;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--ios-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 /* Safe areas для iPhone */
 @supports (padding: max(0px)) {
     .bottom-nav {
@@ -1496,6 +1529,10 @@ html {
         top: 50%;
         transform: translateY(-50%);
         margin-left: 0;
+    }
+    
+    .virtual-scroll-container {
+        height: calc(100vh - 160px);
     }
 }
 
