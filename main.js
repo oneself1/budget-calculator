@@ -1,11 +1,11 @@
 // main.js - глобальные функции для HTML
 let app;
 
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
+// Асинхронная инициализация при загрузке
+document.addEventListener('DOMContentLoaded', async function() {
     console.log("Budget App: Starting...");
     app = new BudgetApp();
-    app.init();
+    await app.init();
     
     // Инициализация фиксированной навигации
     fixNavigationLayout();
@@ -104,8 +104,8 @@ function switchScreen(screenName) {
 }
 
 // Доходы
-function addNewIncomeCategory() {
-    if (app) app.addNewIncomeCategory();
+async function addNewIncomeCategory() {
+    if (app) await app.addNewIncomeCategory();
 }
 
 function addIncomeOperation() {
@@ -116,30 +116,30 @@ function editIncomeCategory(categoryId) {
     if (app) app.editIncomeCategory(categoryId);
 }
 
-function deleteIncomeCategory(categoryId) {
-    if (app) app.deleteIncomeCategory(categoryId);
+async function deleteIncomeCategory(categoryId) {
+    if (app) await app.deleteIncomeCategory(categoryId);
 }
 
 // Долги
-function addNewCircle(type) {
-    if (app) app.addNewCircle(type);
+async function addNewCircle(type) {
+    if (app) await app.addNewCircle(type);
 }
 
-function editCircle(type, id) {
-    if (app) app.editCircle(type, id);
+async function editCircle(type, id) {
+    if (app) await app.editCircle(type, id);
 }
 
-function deleteCircle(type, id) {
-    if (app) app.deleteCircle(type, id);
+async function deleteCircle(type, id) {
+    if (app) await app.deleteCircle(type, id);
 }
 
-function makeDebtPayment(debtId) {
-    if (app) app.makeDebtPayment(debtId);
+async function makeDebtPayment(debtId) {
+    if (app) await app.makeDebtPayment(debtId);
 }
 
 // Расходы
-function addNewExpenseCategory() {
-    if (app) app.addNewExpenseCategory();
+async function addNewExpenseCategory() {
+    if (app) await app.addNewExpenseCategory();
 }
 
 function showCategorySelection() {
@@ -166,8 +166,8 @@ function editExpenseCategory(categoryId) {
     if (app) app.editExpenseCategory(categoryId);
 }
 
-function deleteExpenseCategory(categoryId) {
-    if (app) app.deleteExpenseCategory(categoryId);
+async function deleteExpenseCategory(categoryId) {
+    if (app) await app.deleteExpenseCategory(categoryId);
 }
 
 // Модальные окна редактирования расходов
@@ -175,12 +175,12 @@ function hideEditCategoryModal() {
     if (app) app.hideEditCategoryModal();
 }
 
-function saveCategoryChanges() {
-    if (app) app.saveCategoryChanges();
+async function saveCategoryChanges() {
+    if (app) await app.saveCategoryChanges();
 }
 
-function addNewSubcategory() {
-    if (app) app.addNewSubcategory();
+async function addNewSubcategory() {
+    if (app) await app.addNewSubcategory();
 }
 
 function editSubcategory(subcategoryId) {
@@ -191,12 +191,12 @@ function hideEditSubcategoryModal() {
     if (app) app.hideEditSubcategoryModal();
 }
 
-function saveSubcategoryChanges() {
-    if (app) app.saveSubcategoryChanges();
+async function saveSubcategoryChanges() {
+    if (app) await app.saveSubcategoryChanges();
 }
 
-function deleteSubcategory(subcategoryId) {
-    if (app) app.deleteSubcategory(subcategoryId);
+async function deleteSubcategory(subcategoryId) {
+    if (app) await app.deleteSubcategory(subcategoryId);
 }
 
 // Модальные окна для доходов
@@ -224,12 +224,12 @@ function hideEditIncomeCategoryModal() {
     if (app) app.hideEditIncomeCategoryModal();
 }
 
-function saveIncomeCategoryChanges() {
-    if (app) app.saveIncomeCategoryChanges();
+async function saveIncomeCategoryChanges() {
+    if (app) await app.saveIncomeCategoryChanges();
 }
 
-function addNewIncomeSubcategory() {
-    if (app) app.addNewIncomeSubcategory();
+async function addNewIncomeSubcategory() {
+    if (app) await app.addNewIncomeSubcategory();
 }
 
 function editIncomeSubcategory(subcategoryId) {
@@ -240,59 +240,59 @@ function hideEditIncomeSubcategoryModal() {
     if (app) app.hideEditIncomeSubcategoryModal();
 }
 
-function saveIncomeSubcategoryChanges() {
-    if (app) app.saveIncomeSubcategoryChanges();
+async function saveIncomeSubcategoryChanges() {
+    if (app) await app.saveIncomeSubcategoryChanges();
 }
 
-function deleteIncomeSubcategory(subcategoryId) {
-    if (app) app.deleteIncomeSubcategory(subcategoryId);
+async function deleteIncomeSubcategory(subcategoryId) {
+    if (app) await app.deleteIncomeSubcategory(subcategoryId);
 }
 
 // Операции
-function editExpenseOperation(id) {
-    if (app) app.editExpenseOperation(id);
+async function editExpenseOperation(id) {
+    if (app) await app.editExpenseOperation(id);
 }
 
-function deleteExpenseOperation(id) {
-    if (app) app.deleteExpenseOperation(id);
+async function deleteExpenseOperation(id) {
+    if (app) await app.deleteExpenseOperation(id);
 }
 
-function editIncomeOperation(id) {
-    if (app) app.editIncomeOperation(id);
+async function editIncomeOperation(id) {
+    if (app) await app.editIncomeOperation(id);
 }
 
-function deleteIncomeOperation(id) {
-    if (app) app.deleteIncomeOperation(id);
+async function deleteIncomeOperation(id) {
+    if (app) await app.deleteIncomeOperation(id);
 }
 
-function editDebtOperation(id) {
-    if (app) app.editDebtOperation(id);
+async function editDebtOperation(id) {
+    if (app) await app.editDebtOperation(id);
 }
 
-function deleteDebtOperation(id) {
-    if (app) app.deleteDebtOperation(id);
+async function deleteDebtOperation(id) {
+    if (app) await app.deleteDebtOperation(id);
 }
 
-function editDebtPayment(debtId, paymentIndex) {
-    if (app) app.editDebtPayment(debtId, paymentIndex);
+async function editDebtPayment(debtId, paymentIndex) {
+    if (app) await app.editDebtPayment(debtId, paymentIndex);
 }
 
-function deleteDebtPayment(debtId, paymentIndex) {
-    if (app) app.deleteDebtPayment(debtId, paymentIndex);
+async function deleteDebtPayment(debtId, paymentIndex) {
+    if (app) await app.deleteDebtPayment(debtId, paymentIndex);
 }
 
 // Настройки
-function showSettingsModal() {
-    if (app) app.showSettingsModal();
+async function showSettingsModal() {
+    if (app) await app.showSettingsModal();
 }
 
 // Резервная инициализация
-window.addEventListener('load', function() {
+window.addEventListener('load', async function() {
     console.log("Budget App: Window loaded");
     if (!app) {
         console.log("Budget App: Emergency initialization");
         app = new BudgetApp();
-        app.init();
+        await app.init();
     }
 });
 
