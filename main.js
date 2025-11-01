@@ -149,8 +149,8 @@ const addNewIncomeCategory = safeCall(async function() {
     await app.addNewIncomeCategory();
 }, "Ошибка при добавлении категории доходов");
 
-const addIncomeOperation = safeCall(function() {
-    app.showIncomeCategorySelection();
+const addIncomeOperation = safeCall(async function() {
+    await app.addIncomeOperation();
 }, "Ошибка при добавлении операции дохода");
 
 const addIncomeToCategory = safeCall(async function(categoryId, subcategoryId = null) {
@@ -211,6 +211,10 @@ const makeDebtPayment = safeCall(async function(debtId) {
 const addNewExpenseCategory = safeCall(async function() {
     await app.addNewExpenseCategory();
 }, "Ошибка при добавлении категории расходов");
+
+const addExpenseOperation = safeCall(async function() {
+    await app.addExpenseOperation();
+}, "Ошибка при добавлении операции расхода");
 
 const showCategorySelection = safeCall(function() {
     app.showCategorySelection();
@@ -371,26 +375,32 @@ const exportData = safeCall(async function() {
     ToastService.success("Данные экспортированы");
 }, "Ошибка при экспорте данных");
 
-// Удаление операций (заглушки - должны быть реализованы в сервисах)
+// Удаление операций
 const deleteIncomeOperation = safeCall(async function(id) {
-    await app.incomes.deleteOperation(id);
-    await app.saveData();
-    app.updateUI();
-    ToastService.success("Операция дохода удалена");
+    if (confirm('Удалить эту операцию дохода?')) {
+        await app.incomes.deleteOperation(id);
+        await app.saveData();
+        app.updateUI();
+        ToastService.success("Операция дохода удалена");
+    }
 }, "Ошибка при удалении операции дохода");
 
 const deleteExpenseOperation = safeCall(async function(id) {
-    await app.expenses.deleteOperation(id);
-    await app.saveData();
-    app.updateUI();
-    ToastService.success("Операция расхода удалена");
+    if (confirm('Удалить эту операцию расхода?')) {
+        await app.expenses.deleteOperation(id);
+        await app.saveData();
+        app.updateUI();
+        ToastService.success("Операция расхода удалена");
+    }
 }, "Ошибка при удалении операции расхода");
 
 const deleteDebtOperation = safeCall(async function(id) {
-    await app.debts.delete(id);
-    await app.saveData();
-    app.updateUI();
-    ToastService.success("Долг удален");
+    if (confirm('Удалить этот долг?')) {
+        await app.debts.delete(id);
+        await app.saveData();
+        app.updateUI();
+        ToastService.success("Долг удален");
+    }
 }, "Ошибка при удалении долга");
 
 const deleteIncomeCategory = safeCall(async function(id) {
@@ -410,6 +420,82 @@ const deleteExpenseCategory = safeCall(async function(id) {
         ToastService.success("Категория расходов удалена");
     }
 }, "Ошибка при удалении категории расходов");
+
+// Редактирование операций
+const editIncomeOperation = safeCall(async function(id) {
+    const operation = app.incomes.getOperation(id);
+    if (!operation) return;
+    
+    const newAmountStr = prompt("Введите новую сумму:", operation.amount.toString());
+    if (newAmountStr === null) return;
+    
+    const newAmount = parseFloat(newAmountStr) || 0;
+    if (newAmount <= 0) {
+        ToastService.error("Сумма должна быть больше 0");
+        return;
+    }
+    
+    const newDescription = prompt("Введите новое описание:", operation.description) || operation.description;
+    
+    await app.incomes.updateOperation(id, {
+        amount: newAmount,
+        description: newDescription
+    });
+    
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Операция дохода обновлена");
+}, "Ошибка при редактировании операции дохода");
+
+const editExpenseOperation = safeCall(async function(id) {
+    const operation = app.expenses.getOperation(id);
+    if (!operation) return;
+    
+    const newAmountStr = prompt("Введите новую сумму:", operation.amount.toString());
+    if (newAmountStr === null) return;
+    
+    const newAmount = parseFloat(newAmountStr) || 0;
+    if (newAmount <= 0) {
+        ToastService.error("Сумма должна быть больше 0");
+        return;
+    }
+    
+    const newDescription = prompt("Введите новое описание:", operation.description) || operation.description;
+    
+    await app.expenses.updateOperation(id, {
+        amount: newAmount,
+        description: newDescription
+    });
+    
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Операция расхода обновлена");
+}, "Ошибка при редактировании операции расхода");
+
+const editDebtOperation = safeCall(async function(id) {
+    const debt = app.debts.get(id);
+    if (!debt) return;
+    
+    const newAmountStr = prompt("Введите новую сумму долга:", debt.amount.toString());
+    if (newAmountStr === null) return;
+    
+    const newAmount = parseFloat(newAmountStr) || 0;
+    if (newAmount <= 0) {
+        ToastService.error("Сумма должна быть больше 0");
+        return;
+    }
+    
+    const newDescription = prompt("Введите новое описание:", debt.description) || debt.description;
+    
+    await app.debts.update(id, {
+        amount: newAmount,
+        description: newDescription
+    });
+    
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Долг обновлен");
+}, "Ошибка при редактировании операции долга");
 
 // Резервная инициализация
 window.addEventListener('load', async function() {
