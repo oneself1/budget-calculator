@@ -9,10 +9,10 @@ class StructuredIncomesService {
         try {
             if (data) {
                 this.categories = data.incomeCategories || [];
-                this.operations = data.incomes || [];
+                this.operations = data.incomes || []; // Исправлено: было incomeOperations, стало incomes
             } else {
                 this.categories = await this.storage.getAll('incomeCategories');
-                this.operations = await this.storage.getAll('incomes');
+                this.operations = await this.storage.getAll('incomes'); // Исправлено: было incomeOperations, стало incomes
             }
             
             // Если нет категорий, создаем начальные
@@ -50,6 +50,8 @@ class StructuredIncomesService {
             this.updateCategoryAmountsFromOperations();
         } catch (error) {
             console.error('Error loading incomes:', error);
+            this.categories = [];
+            this.operations = [];
         }
     }
 
@@ -90,7 +92,8 @@ class StructuredIncomesService {
             id: Date.now(),
             amount: 0,
             subcategories: [],
-            ...category
+            ...category,
+            date: new Date().toISOString()
         };
         
         this.categories.push(newCategory);
@@ -286,5 +289,12 @@ class StructuredIncomesService {
                 category.amount -= operation.amount;
             }
         }
+    }
+
+    toJSON() {
+        return {
+            categories: this.categories,
+            operations: this.operations
+        };
     }
 }
