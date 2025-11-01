@@ -422,7 +422,7 @@ class BudgetApp {
                 `<button class="circle-action-btn circle-budget-add" onclick="event.stopPropagation(); setCategoryBudget(${category.id})">💸</button>`;
             
             return `
-                <div class="circle-item circle-expense budget-${budgetStatus}" onclick="editExpenseCategory(${category.id})">
+                <div class="circle-item circle-expense budget-${budgetStatus}" onclick="addExpenseToCategory(${category.id})">
                     <div class="circle-actions">
                         ${budgetButton}
                         ${deleteButton}
@@ -776,18 +776,104 @@ class BudgetApp {
         }
     }
 
-    // Модальные окна для выбора категорий
+    // Метод для добавления дохода через быструю кнопку
+    async addIncomeOperation() {
+        try {
+            const amountStr = prompt("Введите сумму дохода:", "0");
+            if (amountStr === null) return;
+            
+            const amount = parseFloat(amountStr) || 0;
+            if (amount <= 0) {
+                ToastService.error("Сумма должна быть больше 0");
+                return;
+            }
+            
+            const description = prompt("Введите описание дохода:", "Доход") || "Доход";
+            const icon = prompt("Введите иконку:", "💰") || "💰";
+            
+            // Используем первую категорию доходов или создаем временную
+            const categories = this.incomes.getCategories();
+            let categoryId;
+            
+            if (categories.length > 0) {
+                categoryId = categories[0].id;
+            } else {
+                categoryId = 'quick_income_' + Date.now();
+            }
+            
+            await this.incomes.addOperation({
+                categoryId: categoryId,
+                amount: amount,
+                description: description,
+                icon: icon
+            });
+            
+            await this.saveData();
+            this.updateUI();
+            ToastService.success(`Доход ${this.settings.currency}${amount.toFixed(2)} добавлен`);
+        } catch (error) {
+            console.error("Error adding income operation:", error);
+            ToastService.error("Ошибка при добавлении дохода: " + error.message);
+        }
+    }
+
+    // Метод для добавления расхода через быструю кнопку
+    async addExpenseOperation() {
+        try {
+            const amountStr = prompt("Введите сумму расхода:", "0");
+            if (amountStr === null) return;
+            
+            const amount = parseFloat(amountStr) || 0;
+            if (amount <= 0) {
+                ToastService.error("Сумма должна быть больше 0");
+                return;
+            }
+            
+            const description = prompt("Введите описание расхода:", "Расход") || "Расход";
+            const icon = prompt("Введите иконку:", "🛒") || "🛒";
+            
+            // Используем первую категорию расходов или создаем временную
+            const categories = this.expenses.getCategories();
+            let categoryId;
+            
+            if (categories.length > 0) {
+                categoryId = categories[0].id;
+            } else {
+                categoryId = 'quick_expense_' + Date.now();
+            }
+            
+            await this.expenses.addOperation({
+                categoryId: categoryId,
+                amount: amount,
+                description: description,
+                icon: icon
+            });
+            
+            await this.saveData();
+            this.updateUI();
+            ToastService.success(`Расход ${this.settings.currency}${amount.toFixed(2)} добавлен`);
+        } catch (error) {
+            console.error("Error adding expense operation:", error);
+            ToastService.error("Ошибка при добавлении расхода: " + error.message);
+        }
+    }
+
+    // Модальные окна для выбора категорий расходов
     showCategorySelection() {
         const categories = this.expenses.getCategories();
         const categoryList = document.getElementById('category-list');
         
-        categoryList.innerHTML = categories.map(category => `
-            <button class="category-option" onclick="selectExpenseCategory(${category.id})">
-                <span class="category-option-icon">${category.icon}</span>
-                <span class="category-option-name">${category.name}</span>
-                <span class="category-option-amount">${this.settings.currency}${this.expenses.calculateCategoryTotal(category)}</span>
-            </button>
-        `).join('');
+        if (!categories || categories.length === 0) {
+            categoryList.innerHTML = '<div class="empty-state">Нет категорий расходов</div>';
+        } else {
+            categoryList.innerHTML = categories.map(category => `
+                <button class="category-option" onclick="selectExpenseCategory(${category.id})">
+                    <span class="category-option-icon">${category.icon}</span>
+                    <span class="category-option-name">${category.name}</span>
+                    <span class="category-option-amount">${this.settings.currency}${this.expenses.calculateCategoryTotal(category)}</span>
+                </button>
+            `).join('');
+        }
         
         document.getElementById('category-modal').classList.add('active');
     }
@@ -837,18 +923,22 @@ class BudgetApp {
         document.getElementById('subcategory-modal').classList.remove('active');
     }
 
-    // Аналогичные методы для доходов
+    // Методы для выбора категорий доходов
     showIncomeCategorySelection() {
         const categories = this.incomes.getCategories();
         const categoryList = document.getElementById('income-category-list');
         
-        categoryList.innerHTML = categories.map(category => `
-            <button class="category-option" onclick="selectIncomeCategory(${category.id})">
-                <span class="category-option-icon">${category.icon}</span>
-                <span class="category-option-name">${category.name}</span>
-                <span class="category-option-amount">${this.settings.currency}${this.incomes.calculateCategoryTotal(category)}</span>
-            </button>
-        `).join('');
+        if (!categories || categories.length === 0) {
+            categoryList.innerHTML = '<div class="empty-state">Нет категорий доходов</div>';
+        } else {
+            categoryList.innerHTML = categories.map(category => `
+                <button class="category-option" onclick="selectIncomeCategory(${category.id})">
+                    <span class="category-option-icon">${category.icon}</span>
+                    <span class="category-option-name">${category.name}</span>
+                    <span class="category-option-amount">${this.settings.currency}${this.incomes.calculateCategoryTotal(category)}</span>
+                </button>
+            `).join('');
+        }
         
         document.getElementById('income-category-modal').classList.add('active');
     }
@@ -869,7 +959,7 @@ class BudgetApp {
         const subcategoryList = document.getElementById('income-subcategory-list');
         const modalTitle = document.getElementById('income-subcategory-modal-title');
         
-        modalTitle.textContent = `Выберите подкатегорию дохода для "${category.name}"`;
+        modalTitle.textContent = `Выберите подкатегорию для "${category.name}"`;
         
         subcategoryList.innerHTML = category.subcategories.map(subcategory => `
             <button class="category-option" onclick="selectIncomeSubcategory(${category.id}, ${subcategory.id})">
