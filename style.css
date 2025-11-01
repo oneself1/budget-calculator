@@ -31,6 +31,7 @@ body {
     overflow-x: hidden;
     padding: 0;
     margin: 0;
+    padding-bottom: 80px; /* Отступ для фиксированной навигации */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: none;
     touch-action: pan-y;
@@ -55,6 +56,8 @@ html {
     top: 0;
     z-index: 10;
     background: var(--ios-background);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 /* Main Container */
@@ -62,9 +65,10 @@ html {
     max-width: 390px;
     margin: 0 auto;
     min-height: calc(100vh - 120px);
-    padding: 0 16px 80px;
+    padding: 0 16px 20px; /* Уменьшили нижний padding */
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 120px - env(safe-area-inset-bottom));
 }
 
 /* Header */
@@ -115,6 +119,7 @@ html {
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 16px;
+    position: relative;
 }
 
 .section-title {
@@ -281,7 +286,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin: 20px 0;
+    margin: 20px 0 80px; /* Увеличили нижний отступ для навигации */
 }
 
 .add-income-btn {
@@ -379,7 +384,7 @@ html {
     font-weight: 600;
 }
 
-/* Bottom Navigation */
+/* Bottom Navigation - ФИКСИРОВАННАЯ */
 .bottom-nav {
     position: fixed;
     bottom: 0;
@@ -392,7 +397,10 @@ html {
     border-top: 1px solid var(--ios-light-gray);
     max-width: 390px;
     margin: 0 auto;
-    z-index: 100;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transform: translateZ(0);
 }
 
 .nav-item {
@@ -427,6 +435,7 @@ html {
     background: var(--ios-card);
     border-radius: 16px;
     overflow: hidden;
+    margin-bottom: 80px; /* Отступ для навигации */
 }
 
 .operations-group {
@@ -818,6 +827,11 @@ html {
 @supports (padding: max(0px)) {
     .bottom-nav {
         padding-bottom: max(10px, env(safe-area-inset-bottom));
+        bottom: env(safe-area-inset-bottom);
+    }
+    
+    body {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
     }
     
     .status-bar {
@@ -829,7 +843,7 @@ html {
 @media (max-width: 390px) {
     .app-container {
         max-width: 100%;
-        padding: 0 12px 80px;
+        padding: 0 12px 20px;
     }
     
     .circle-item {
@@ -900,6 +914,7 @@ html {
 /* Screens */
 .screen {
     display: none;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .screen.active {
@@ -912,4 +927,29 @@ input, textarea {
     -moz-user-select: text;
     -ms-user-select: text;
     user-select: text;
+}
+
+/* Фикс для Safari */
+@supports (-webkit-touch-callout: none) {
+    .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        max-width: 390px;
+        left: 50%;
+        transform: translateX(-50%);
+        -webkit-transform: translateX(-50%);
+    }
+}
+
+/* Улучшенная прокрутка для всего приложения */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Фикс для Android */
+@supports not (-webkit-overflow-scrolling: touch) {
+    .app-container {
+        overflow-y: scroll;
+    }
 }
