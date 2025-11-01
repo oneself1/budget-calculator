@@ -12,7 +12,9 @@ class ExpensesService {
                 subcategories: [
                     { id: 101, name: "Супермаркет", icon: "🛒", amount: 0 },
                     { id: 102, name: "Рынок", icon: "🥦", amount: 0 },
-                    { id: 103, name: "Молочные", icon: "🥛", amount: 0 }
+                    { id: 103, name: "Молочные", icon: "🥛", amount: 0 },
+                    { id: 104, name: "Мясо и рыба", icon: "🍖", amount: 0 },
+                    { id: 105, name: "Фрукты и овощи", icon: "🍎", amount: 0 }
                 ]
             },
             { 
@@ -23,7 +25,9 @@ class ExpensesService {
                 subcategories: [
                     { id: 201, name: "Бензин", icon: "⛽", amount: 0 },
                     { id: 202, name: "Такси", icon: "🚕", amount: 0 },
-                    { id: 203, name: "Общественный", icon: "🚌", amount: 0 }
+                    { id: 203, name: "Общественный", icon: "🚌", amount: 0 },
+                    { id: 204, name: "Такси", icon: "🚖", amount: 0 },
+                    { id: 205, name: "Парковка", icon: "🅿️", amount: 0 }
                 ]
             },
             { 
@@ -34,7 +38,9 @@ class ExpensesService {
                 subcategories: [
                     { id: 301, name: "Аренда", icon: "🏠", amount: 0 },
                     { id: 302, name: "Коммунальные", icon: "💡", amount: 0 },
-                    { id: 303, name: "Ремонт", icon: "🛠️", amount: 0 }
+                    { id: 303, name: "Ремонт", icon: "🛠️", amount: 0 },
+                    { id: 304, name: "Мебель", icon: "🛋️", amount: 0 },
+                    { id: 305, name: "Бытовая техника", icon: "📺", amount: 0 }
                 ]
             },
             { 
@@ -42,7 +48,12 @@ class ExpensesService {
                 name: "Связь/интернет", 
                 amount: 0, 
                 icon: "📱",
-                subcategories: []
+                subcategories: [
+                    { id: 401, name: "Мобильная связь", icon: "📱", amount: 0 },
+                    { id: 402, name: "Интернет", icon: "🌐", amount: 0 },
+                    { id: 403, name: "Телевидение", icon: "📺", amount: 0 },
+                    { id: 404, name: "Стриминговые сервисы", icon: "🎬", amount: 0 }
+                ]
             },
             { 
                 id: 5, 
@@ -52,7 +63,96 @@ class ExpensesService {
                 subcategories: [
                     { id: 501, name: "Одежда", icon: "👕", amount: 0 },
                     { id: 502, name: "Обувь", icon: "👟", amount: 0 },
-                    { id: 503, name: "Аксессуары", icon: "🕶️", amount: 0 }
+                    { id: 503, name: "Аксессуары", icon: "🕶️", amount: 0 },
+                    { id: 504, name: "Нижнее белье", icon: "🎽", amount: 0 }
+                ]
+            },
+            { 
+                id: 6, 
+                name: "Здоровье", 
+                amount: 0, 
+                icon: "🏥",
+                subcategories: [
+                    { id: 601, name: "Лекарства", icon: "💊", amount: 0 },
+                    { id: 602, name: "Врачи", icon: "👨‍⚕️", amount: 0 },
+                    { id: 603, name: "Стоматолог", icon: "🦷", amount: 0 },
+                    { id: 604, name: "Аптека", icon: "💊", amount: 0 },
+                    { id: 605, name: "Страхование", icon: "📄", amount: 0 }
+                ]
+            },
+            { 
+                id: 7, 
+                name: "Развлечения", 
+                amount: 0, 
+                icon: "🎮",
+                subcategories: [
+                    { id: 701, name: "Кино", icon: "🎬", amount: 0 },
+                    { id: 702, name: "Рестораны", icon: "🍽️", amount: 0 },
+                    { id: 703, name: "Кафе", icon: "☕", amount: 0 },
+                    { id: 704, name: "Концерты", icon: "🎵", amount: 0 },
+                    { id: 705, name: "Хобби", icon: "🎨", amount: 0 }
+                ]
+            },
+            { 
+                id: 8, 
+                name: "Образование", 
+                amount: 0, 
+                icon: "📚",
+                subcategories: [
+                    { id: 801, name: "Книги", icon: "📖", amount: 0 },
+                    { id: 802, name: "Курсы", icon: "🎓", amount: 0 },
+                    { id: 803, name: "Семинары", icon: "💡", amount: 0 },
+                    { id: 804, name: "Репетитор", icon: "✏️", amount: 0 }
+                ]
+            },
+            { 
+                id: 9, 
+                name: "Красота", 
+                amount: 0, 
+                icon: "💅",
+                subcategories: [
+                    { id: 901, name: "Парикмахерская", icon: "💇", amount: 0 },
+                    { id: 902, name: "Косметика", icon: "💄", amount: 0 },
+                    { id: 903, name: "Спа", icon: "🧖", amount: 0 },
+                    { id: 904, name: "Маникюр", icon: "💅", amount: 0 }
+                ]
+            },
+            { 
+                id: 10, 
+                name: "Подарки", 
+                amount: 0, 
+                icon: "🎁",
+                subcategories: [
+                    { id: 1001, name: "Дни рождения", icon: "🎂", amount: 0 },
+                    { id: 1002, name: "Праздники", icon: "🎄", amount: 0 },
+                    { id: 1003, name: "Цветы", icon: "💐", amount: 0 },
+                    { id: 1004, name: "Сувениры", icon: "🎀", amount: 0 }
+                ]
+            },
+            { 
+                id: 11, 
+                name: "Путешествия", 
+                amount: 0, 
+                icon: "✈️",
+                subcategories: [
+                    { id: 1101, name: "Авиабилеты", icon: "✈️", amount: 0 },
+                    { id: 1102, name: "Отели", icon: "🏨", amount: 0 },
+                    { id: 1103, name: "Туры", icon: "🗺️", amount: 0 },
+                    { id: 1104, name: "Экскурсии", icon: "🏛️", amount: 0 },
+                    { id: 1105, name: "Сувениры", icon: "🎎", amount: 0 }
+                ]
+            },
+            { 
+                id: 12, 
+                name: "Автомобиль", 
+                amount: 0, 
+                icon: "🚙",
+                subcategories: [
+                    { id: 1201, name: "Страховка", icon: "📋", amount: 0 },
+                    { id: 1202, name: "Техобслуживание", icon: "🔧", amount: 0 },
+                    { id: 1203, name: "Шиномонтаж", icon: "🌀", amount: 0 },
+                    { id: 1204, name: "Мойка", icon: "🧼", amount: 0 },
+                    { id: 1205, name: "Запчасти", icon: "⚙️", amount: 0 }
                 ]
             }
         ];
@@ -147,6 +247,11 @@ class ExpensesService {
     }
 
     deleteCategory(id) {
+        // Запрещаем удаление базовых категорий (ID 1-12)
+        if (id >= 1 && id <= 12) {
+            throw new Error("Базовые категории нельзя удалить");
+        }
+        
         const index = this.categories.findIndex(cat => cat.id === id);
         if (index !== -1) {
             // Удаляем ВСЕ связанные операции
