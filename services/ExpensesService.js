@@ -19,6 +19,8 @@ class ExpensesService {
             this.updateCategoryAmountsFromOperations();
         } catch (error) {
             console.error('Error loading expenses:', error);
+            this.categories = [];
+            this.operations = [];
         }
     }
 
@@ -50,9 +52,7 @@ class ExpensesService {
     }
 
     getDefaultCategories() {
-        // Возвращаем те же категории, что и в IndexedDBService
-        const indexedDBService = new IndexedDBService();
-        return indexedDBService.getDefaultExpenseCategories();
+        return this.storage.getDefaultExpenseCategories();
     }
 
     updateCategoryAmountsFromOperations() {
@@ -296,5 +296,12 @@ class ExpensesService {
             });
         }
         return total;
+    }
+
+    toJSON() {
+        return {
+            categories: this.categories,
+            operations: this.operations
+        };
     }
 }
