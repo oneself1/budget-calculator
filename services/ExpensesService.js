@@ -115,11 +115,11 @@ class ExpensesService {
                 // Операция для подкатегории
                 const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
                 if (subcategory) {
-                    subcategory.amount += operation.amount;
+                    subcategory.amount = (subcategory.amount || 0) + operation.amount;
                 }
             } else {
                 // Операция для основной категории
-                category.amount += operation.amount;
+                category.amount = (category.amount || 0) + operation.amount;
             }
         }
     }
@@ -149,7 +149,7 @@ class ExpensesService {
     deleteCategory(id) {
         const index = this.categories.findIndex(cat => cat.id === id);
         if (index !== -1) {
-            // Удаляем связанные операции
+            // Удаляем ВСЕ связанные операции
             this.operations = this.operations.filter(op => op.categoryId !== id);
             return this.categories.splice(index, 1)[0];
         }
@@ -201,17 +201,10 @@ class ExpensesService {
             if (index !== -1) {
                 const deletedSub = category.subcategories.splice(index, 1)[0];
                 
-                // Перемещаем операции из подкатегории в основную категорию
-                this.operations.forEach(operation => {
-                    if (operation.subcategoryId === subcategoryId) {
-                        operation.subcategoryId = null;
-                        operation.description = category.name;
-                        operation.icon = category.icon;
-                    }
-                });
-                
-                // Добавляем сумму подкатегории к основной категории
-                category.amount += deletedSub.amount;
+                // Удаляем операции этой подкатегории
+                this.operations = this.operations.filter(operation => 
+                    !(operation.categoryId === categoryId && operation.subcategoryId === subcategoryId)
+                );
                 
                 return deletedSub;
             }
