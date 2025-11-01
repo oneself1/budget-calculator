@@ -11,7 +11,7 @@ class BudgetApp {
         this.budgets = new BudgetService(this.expenses, this.storage);
         this.recurring = new RecurringTransactionsService(this.storage, this.expenses, this.incomes);
         this.savingsGoals = new SavingsGoalsService(this.storage);
-        this.cache = new CacheService(50, 2 * 60 * 1000); // 50 записей, 2 минуты TTL
+        this.cache = new CacheService(50, 2 * 60 * 1000);
         
         this.settings = { 
             currency: "₽",
@@ -63,9 +63,9 @@ class BudgetApp {
     async loadData() {
         try {
             const data = await this.storage.getAllData();
-            console.log("Loaded data:", data); // Отладочная информация
+            console.log("Loaded data:", data);
             
-            if (data) {
+            if (data && Object.keys(data).length > 0) {
                 // Загружаем данные в правильном порядке
                 await this.expenses.load(data);
                 await this.incomes.load(data);
@@ -78,13 +78,31 @@ class BudgetApp {
                 if (data.settings) {
                     this.settings = { ...this.settings, ...data.settings };
                 }
+                
+                console.log("Data loaded successfully");
             } else {
-                console.log("No data found, resetting to defaults");
-                await this.resetToDefaults();
+                console.log("No data found, initializing with defaults");
+                await this.initializeWithDefaults();
             }
         } catch (error) {
             console.error('Error loading data:', error);
-            await this.resetToDefaults();
+            await this.initializeWithDefaults();
+        }
+    }
+
+    async initializeWithDefaults() {
+        try {
+            // Инициализируем сервисы с пустыми данными
+            await this.expenses.load({});
+            await this.incomes.load({});
+            await this.debts.load({});
+            await this.budgets.load({});
+            await this.recurring.load({});
+            await this.savingsGoals.load({});
+            
+            console.log("Initialized with default data");
+        } catch (error) {
+            console.error('Error initializing defaults:', error);
         }
     }
 
@@ -93,10 +111,76 @@ class BudgetApp {
         
         try {
             await this.storage.saveSettings(this.settings);
-            this.cache.clear(); // Очищаем кэш при сохранении
+            
+            // Сохраняем данные каждого сервиса
+            const savePromises = [
+                this.saveExpensesData(),
+                this.saveIncomesData(),
+                this.saveDebtsData(),
+                this.saveBudgetsData(),
+                this.saveRecurringData(),
+                this.saveSavingsGoalsData()
+            ];
+            
+            await Promise.all(savePromises);
+            this.cache.clear();
+            
+            console.log("Data saved successfully");
         } catch (error) {
             console.error('Error saving data:', error);
             ToastService.error("Ошибка сохранения данных");
+        }
+    }
+
+    async saveExpensesData() {
+        const categories = this.expenses.getCategories();
+        const operations = this.expenses.getOperations();
+        
+        for (const category of categories) {
+            await this.storage.put('expenseCategories', category);
+        }
+        for (const operation of operations) {
+            await this.storage.put('expenseOperations', operation);
+        }
+    }
+
+    async saveIncomesData() {
+        const categories = this.incomes.getCategories();
+        const operations = this.incomes.getOperations();
+        
+        for (const category of categories) {
+            await this.storage.put('incomeCategories', category);
+        }
+        for (const operation of operations) {
+            await this.storage.put('incomes', operation);
+        }
+    }
+
+    async saveDebtsData() {
+        const debts = this.debts.getAll();
+        for (const debt of debts) {
+            await this.storage.put('debts', debt);
+        }
+    }
+
+    async saveBudgetsData() {
+        const budgets = this.budgets.getAllBudgets();
+        for (const budget of budgets) {
+            await this.storage.put('budgets', budget);
+        }
+    }
+
+    async saveRecurringData() {
+        const recurring = this.recurring.getRecurringTransactions();
+        for (const transaction of recurring) {
+            await this.storage.put('recurringTransactions', transaction);
+        }
+    }
+
+    async saveSavingsGoalsData() {
+        const goals = this.savingsGoals.getGoals();
+        for (const goal of goals) {
+            await this.storage.put('savingsGoals', goal);
         }
     }
 
@@ -148,7 +232,7 @@ class BudgetApp {
         }
         
         const operations = this.operations.getAllOperations();
-        console.log("Found operations:", operations); // Отладочная информация
+        console.log("Found operations:", operations);
         
         if (operations.length === 0) {
             container.innerHTML = this.createEmptyOperationsState();
@@ -171,7 +255,6 @@ class BudgetApp {
     }
 
     createOperationsHTML(operations) {
-        // Группировка операций по типам
         const incomeOperations = operations.filter(op => op.type === 'income');
         const expenseOperations = operations.filter(op => op.type === 'expense');
         const debtOperations = operations.filter(op => op.type === 'debt' || op.type === 'debt-payment');
@@ -301,7 +384,13 @@ class BudgetApp {
         }
     }
 
-    // Обновленные кружки с бюджетом
+    // Обновленные кружки
+    updateCircles() {
+        this.updateExpenseCategories();
+        this.updateIncomeCategories();
+        this.updateDebtCategories();
+    }
+
     updateExpenseCategories() {
         const container = document.getElementById('expense-circles');
         if (!container) return;
@@ -348,6 +437,73 @@ class BudgetApp {
                         </div>
                         <div class="budget-remaining">
                             ${this.settings.currency}${remaining}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    updateIncomeCategories() {
+        const container = document.getElementById('income-circles');
+        if (!container) return;
+        
+        const categories = this.incomes.getCategories();
+        if (!categories || categories.length === 0) {
+            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
+            return;
+        }
+        
+        container.innerHTML = categories.map(category => {
+            const totalAmount = this.incomes.calculateCategoryTotal(category);
+            const showAmount = totalAmount > 0;
+            const icon = category.icon || '💰';
+            const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+            
+            const deleteButton = category.id > 2 ?
+                `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteIncomeCategory(${category.id})">×</button>` :
+                '';
+            
+            return `
+                <div class="circle-item circle-income" onclick="addIncomeToCategory(${category.id})">
+                    <div class="circle-actions">
+                        ${deleteButton}
+                    </div>
+                    <div class="circle-icon">${icon}</div>
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
+                    <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    updateDebtCategories() {
+        const container = document.getElementById('debt-circles');
+        if (!container) return;
+        
+        const debts = this.debts.getAll();
+        if (!debts || debts.length === 0) {
+            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
+            return;
+        }
+        
+        container.innerHTML = debts.map(debt => {
+            const remaining = debt.amount - (debt.paidAmount || 0);
+            const isPaid = remaining <= 0;
+            const icon = debt.icon || '💳';
+            
+            return `
+                <div class="circle-item circle-debt ${isPaid ? 'paid' : ''}" onclick="makeDebtPayment(${debt.id})">
+                    <div class="circle-actions">
+                        ${!isPaid ? `<button class="circle-action-btn circle-check" onclick="event.stopPropagation(); makeDebtPayment(${debt.id})">✓</button>` : ''}
+                        <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteDebtOperation(${debt.id})">×</button>
+                    </div>
+                    <div class="circle-icon">${icon}</div>
+                    <div class="circle-amount">${this.settings.currency}${remaining}</div>
+                    <div class="circle-label">${debt.description}</div>
+                    ${!isPaid ? `
+                        <div class="debt-progress">
+                            <div class="debt-progress-bar" style="width: ${((debt.paidAmount || 0) / debt.amount) * 100}%"></div>
                         </div>
                     ` : ''}
                 </div>
@@ -462,6 +618,7 @@ class BudgetApp {
                 icon: icon
             });
             await this.saveData();
+            this.updateUI();
             ToastService.success('Категория доходов добавлена!');
         } catch (error) {
             console.error("Error adding income category:", error);
@@ -481,6 +638,7 @@ class BudgetApp {
                 icon: icon
             });
             await this.saveData();
+            this.updateUI();
             ToastService.success('Категория расходов добавлена!');
         } catch (error) {
             console.error("Error adding expense category:", error);
@@ -513,6 +671,7 @@ class BudgetApp {
                     icon: icon
                 });
                 await this.saveData();
+                this.updateUI();
                 ToastService.success('Долг добавлен!');
             }
         } catch (error) {
@@ -561,6 +720,7 @@ class BudgetApp {
             });
             
             await this.saveData();
+            this.updateUI();
             ToastService.success(`Доход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
         } catch (error) {
             console.error("Error adding income:", error);
@@ -608,11 +768,132 @@ class BudgetApp {
             });
             
             await this.saveData();
+            this.updateUI();
             ToastService.success(`Расход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
         } catch (error) {
             console.error("Error adding expense:", error);
             ToastService.error("Ошибка при добавлении расхода: " + error.message);
         }
+    }
+
+    // Модальные окна для выбора категорий
+    showCategorySelection() {
+        const categories = this.expenses.getCategories();
+        const categoryList = document.getElementById('category-list');
+        
+        categoryList.innerHTML = categories.map(category => `
+            <button class="category-option" onclick="selectExpenseCategory(${category.id})">
+                <span class="category-option-icon">${category.icon}</span>
+                <span class="category-option-name">${category.name}</span>
+                <span class="category-option-amount">${this.settings.currency}${this.expenses.calculateCategoryTotal(category)}</span>
+            </button>
+        `).join('');
+        
+        document.getElementById('category-modal').classList.add('active');
+    }
+
+    selectExpenseCategory(categoryId) {
+        const category = this.expenses.getCategory(categoryId);
+        if (!category) return;
+        
+        // Если есть подкатегории, показываем их выбор
+        if (category.subcategories && category.subcategories.length > 0) {
+            this.showSubcategorySelection(category);
+        } else {
+            // Если нет подкатегорий, сразу добавляем операцию
+            this.addExpenseToCategory(categoryId);
+            this.hideCategorySelection();
+        }
+    }
+
+    showSubcategorySelection(category) {
+        const subcategoryList = document.getElementById('subcategory-list');
+        const modalTitle = document.getElementById('subcategory-modal-title');
+        
+        modalTitle.textContent = `Выберите подкатегорию для "${category.name}"`;
+        
+        subcategoryList.innerHTML = category.subcategories.map(subcategory => `
+            <button class="category-option" onclick="selectSubcategory(${category.id}, ${subcategory.id})">
+                <span class="category-option-icon">${subcategory.icon}</span>
+                <span class="category-option-name">${subcategory.name}</span>
+                <span class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</span>
+            </button>
+        `).join('');
+        
+        this.hideCategorySelection();
+        document.getElementById('subcategory-modal').classList.add('active');
+    }
+
+    selectSubcategory(categoryId, subcategoryId) {
+        this.addExpenseToCategory(categoryId, subcategoryId);
+        this.hideSubcategorySelection();
+    }
+
+    hideCategorySelection() {
+        document.getElementById('category-modal').classList.remove('active');
+    }
+
+    hideSubcategorySelection() {
+        document.getElementById('subcategory-modal').classList.remove('active');
+    }
+
+    // Аналогичные методы для доходов
+    showIncomeCategorySelection() {
+        const categories = this.incomes.getCategories();
+        const categoryList = document.getElementById('income-category-list');
+        
+        categoryList.innerHTML = categories.map(category => `
+            <button class="category-option" onclick="selectIncomeCategory(${category.id})">
+                <span class="category-option-icon">${category.icon}</span>
+                <span class="category-option-name">${category.name}</span>
+                <span class="category-option-amount">${this.settings.currency}${this.incomes.calculateCategoryTotal(category)}</span>
+            </button>
+        `).join('');
+        
+        document.getElementById('income-category-modal').classList.add('active');
+    }
+
+    selectIncomeCategory(categoryId) {
+        const category = this.incomes.getCategory(categoryId);
+        if (!category) return;
+        
+        if (category.subcategories && category.subcategories.length > 0) {
+            this.showIncomeSubcategorySelection(category);
+        } else {
+            this.addIncomeToCategory(categoryId);
+            this.hideIncomeCategorySelection();
+        }
+    }
+
+    showIncomeSubcategorySelection(category) {
+        const subcategoryList = document.getElementById('income-subcategory-list');
+        const modalTitle = document.getElementById('income-subcategory-modal-title');
+        
+        modalTitle.textContent = `Выберите подкатегорию дохода для "${category.name}"`;
+        
+        subcategoryList.innerHTML = category.subcategories.map(subcategory => `
+            <button class="category-option" onclick="selectIncomeSubcategory(${category.id}, ${subcategory.id})">
+                <span class="category-option-icon">${subcategory.icon}</span>
+                <span class="category-option-name">${subcategory.name}</span>
+                <span class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</span>
+            </button>
+        `).join('');
+        
+        this.hideIncomeCategorySelection();
+        document.getElementById('income-subcategory-modal').classList.add('active');
+    }
+
+    selectIncomeSubcategory(categoryId, subcategoryId) {
+        this.addIncomeToCategory(categoryId, subcategoryId);
+        this.hideIncomeSubcategorySelection();
+    }
+
+    hideIncomeCategorySelection() {
+        document.getElementById('income-category-modal').classList.remove('active');
+    }
+
+    hideIncomeSubcategorySelection() {
+        document.getElementById('income-subcategory-modal').classList.remove('active');
     }
 
     // Бюджет методы
@@ -632,6 +913,7 @@ class BudgetApp {
         try {
             await this.budgets.setCategoryBudget(categoryId, monthlyLimit);
             await this.saveData();
+            this.updateUI();
             ToastService.success(`Бюджет для "${category.name}" установлен!`);
         } catch (error) {
             ToastService.error("Ошибка при установке бюджета: " + error.message);
@@ -659,6 +941,7 @@ class BudgetApp {
         try {
             await this.budgets.setCategoryBudget(categoryId, newLimit);
             await this.saveData();
+            this.updateUI();
             ToastService.success(`Бюджет для "${category.name}" обновлен!`);
         } catch (error) {
             ToastService.error("Ошибка при обновлении бюджета: " + error.message);
@@ -686,6 +969,7 @@ class BudgetApp {
         try {
             await this.savingsGoals.addToGoal(goalId, amount);
             await this.saveData();
+            this.updateUI();
             ToastService.success(`Средства добавлены в цель "${goal.name}"!`);
         } catch (error) {
             ToastService.error("Ошибка при добавлении средств: " + error.message);
@@ -735,6 +1019,7 @@ class BudgetApp {
             });
             await this.saveData();
             this.hideAddGoalModal();
+            this.updateUI();
             ToastService.success('Цель создана!');
         } catch (error) {
             ToastService.error("Ошибка при создании цели: " + error.message);
@@ -787,7 +1072,7 @@ class BudgetApp {
         try {
             await this.recurring.toggleTransactionActive(id);
             await this.saveData();
-            this.showRecurringTransactionsModal(); // Обновляем модалку
+            this.showRecurringTransactionsModal();
             ToastService.info('Статус операции изменен');
         } catch (error) {
             ToastService.error("Ошибка при изменении статуса: " + error.message);
@@ -872,6 +1157,37 @@ class BudgetApp {
         setInterval(updateTime, 60000);
     }
 
+    updateBalance() {
+        const totalIncome = this.incomes.getTotal();
+        const totalExpenses = this.expenses.getTotalExpenses();
+        const totalPaidDebts = this.debts.getTotalPaid();
+        const balance = totalIncome - totalExpenses - totalPaidDebts;
+        
+        const balanceElement = document.getElementById('balance-amount');
+        if (balanceElement) {
+            balanceElement.textContent = `${this.settings.currency}${balance.toFixed(2)}`;
+        }
+        
+        const incomeStat = document.querySelector('.stat-income');
+        const expenseStat = document.querySelector('.stat-expense');
+        if (incomeStat) incomeStat.textContent = `Доходы: ${this.settings.currency}${totalIncome.toFixed(2)}`;
+        if (expenseStat) expenseStat.textContent = `Расходы: ${this.settings.currency}${totalExpenses.toFixed(2)}`;
+    }
+
+    updateReport() {
+        const report = this.reports.generateReport();
+        
+        const reportIncome = document.getElementById('report-income');
+        const reportExpense = document.getElementById('report-expense');
+        const reportDebt = document.getElementById('report-debt');
+        const reportBalance = document.getElementById('report-balance');
+        
+        if (reportIncome) reportIncome.textContent = `${this.settings.currency}${report.totalIncome.toFixed(2)}`;
+        if (reportExpense) reportExpense.textContent = `${this.settings.currency}${report.totalExpenses.toFixed(2)}`;
+        if (reportDebt) reportDebt.textContent = `${this.settings.currency}${report.totalPaidDebts.toFixed(2)}`;
+        if (reportBalance) reportBalance.textContent = `${this.settings.currency}${report.balance.toFixed(2)}`;
+    }
+
     // Навигация
     switchScreen(screenName) {
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -905,20 +1221,6 @@ class BudgetApp {
         } else if (screenName === 'goals') {
             this.updateSavingsGoals();
         }
-    }
-
-    // Методы для обновления UI (заглушки - должны быть реализованы в других сервисах)
-    updateCircles() {
-        // Реализация в других сервисах
-        this.updateExpenseCategories();
-    }
-
-    updateBalance() {
-        // Реализация в других сервисах
-    }
-
-    updateReport() {
-        // Реализация в других сервисах
     }
 }
 
