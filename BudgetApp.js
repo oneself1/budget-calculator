@@ -7,32 +7,53 @@ class BudgetApp {
         this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
         this.reports = new ReportService(this.incomes, this.debts, this.expenses);
         
-        this.settings = { currency: "₽" };
+        // Новые сервисы
+        this.budgets = new BudgetService(this.expenses, this.storage);
+        this.recurring = new RecurringTransactionsService(this.storage, this.expenses, this.incomes);
+        this.savingsGoals = new SavingsGoalsService(this.storage);
+        this.cache = new CacheService(50, 2 * 60 * 1000); // 50 записей, 2 минуты TTL
+        
+        this.settings = { 
+            currency: "₽",
+            budgetAlerts: true,
+            autoProcessRecurring: true
+        };
+        
         this.currentState = {
             editingCategoryId: null,
             editingSubcategory: null,
             selectedCategoryId: null,
-            selectedIncomeCategoryId: null
+            selectedIncomeCategoryId: null,
+            virtualizedOperations: null
         };
         
+        this.uiUpdater = new DebouncedUpdater(150);
         this.initialized = false;
     }
 
     async init() {
         console.log("Budget App: Initializing...");
         try {
-            // Инициализируем IndexedDB
             await this.storage.init();
-            
-            // Загружаем данные
             await this.loadData();
+            
+            // Обрабатываем повторяющиеся операции при запуске
+            if (this.settings.autoProcessRecurring) {
+                const processed = await this.recurring.processRecurringTransactions();
+                if (processed.length > 0) {
+                    ToastService.success(`Создано ${processed.length} повторяющихся операций`);
+                }
+            }
+            
             this.updateUI();
             this.startClock();
+            this.setupVirtualizedOperations();
             
             this.initialized = true;
             console.log("Budget App: Initialized successfully");
         } catch (error) {
             console.error("Budget App: Initialization error:", error);
+            ToastService.error("Ошибка инициализации приложения");
             await this.resetToDefaults();
         }
     }
@@ -44,7 +65,10 @@ class BudgetApp {
                 await this.incomes.load(data);
                 await this.debts.load(data);
                 await this.expenses.load(data);
-                this.settings = data.settings || this.settings;
+                await this.budgets.load(data);
+                await this.recurring.load(data);
+                await this.savingsGoals.load(data);
+                this.settings = { ...this.settings, ...data.settings };
             } else {
                 await this.resetToDefaults();
             }
@@ -58,20 +82,16 @@ class BudgetApp {
         if (!this.initialized) return;
         
         try {
-            // Сохраняем настройки
             await this.storage.saveSettings(this.settings);
-            
-            // Обновляем UI
-            this.updateUI();
+            this.cache.clear(); // Очищаем кэш при сохранении
         } catch (error) {
             console.error('Error saving data:', error);
-            alert("Ошибка сохранения данных");
+            ToastService.error("Ошибка сохранения данных");
         }
     }
 
     async resetToDefaults() {
         try {
-            // Очищаем данные через IndexedDBService
             await this.storage.clearAllData();
             
             // Пересоздаем сервисы
@@ -80,190 +100,76 @@ class BudgetApp {
             this.expenses = new ExpensesService(this.storage);
             this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
             this.reports = new ReportService(this.incomes, this.debts, this.expenses);
+            this.budgets = new BudgetService(this.expenses, this.storage);
+            this.recurring = new RecurringTransactionsService(this.storage, this.expenses, this.incomes);
+            this.savingsGoals = new SavingsGoalsService(this.storage);
             
-            this.settings = { currency: "₽" };
+            this.settings = { 
+                currency: "₽",
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            };
             
-            // Загружаем заново
             await this.loadData();
+            ToastService.success("Данные сброшены к начальным настройкам");
         } catch (error) {
             console.error('Error resetting to defaults:', error);
+            ToastService.error("Ошибка сброса данных");
         }
     }
 
-    // UI методы
+    // UI методы с виртуализацией
     updateUI() {
-        this.updateCircles();
-        this.updateBalance();
-        this.updateReport();
-        this.updateOperationsList();
+        this.uiUpdater.scheduleUpdate(() => {
+            this.updateCircles();
+            this.updateBalance();
+            this.updateReport();
+            this.updateOperationsList();
+            this.updateSavingsGoals();
+            this.checkAndShowAlerts();
+        });
     }
 
-    updateCircles() {
-        this.updateIncomeCategories();
-        this.updateDebtCategories();
-        this.updateExpenseCategories();
-    }
-
-    updateIncomeCategories() {
-        const container = document.getElementById('income-circles');
-        if (!container) return;
-        
-        const categories = this.incomes.getCategories();
-        if (!categories || categories.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
-            return;
-        }
-        
-        container.innerHTML = categories.map(category => {
-            const totalAmount = this.incomes.calculateCategoryTotal(category);
-            const showAmount = totalAmount > 0;
-            const icon = category.icon || '💰';
-            const hasSubcategories = category.subcategories && category.subcategories.length > 0;
-            
-            return `
-                <div class="circle-item circle-income" onclick="editIncomeCategory(${category.id})">
-                    <div class="circle-actions">
-                        <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteIncomeCategory(${category.id})">×</button>
-                    </div>
-                    <div class="circle-icon">${icon}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
-                    <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    updateDebtCategories() {
-        const container = document.getElementById('debt-circles');
-        if (!container) return;
-        
-        const debts = this.debts.getAll();
-        if (!debts || debts.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
-            return;
-        }
-        
-        container.innerHTML = debts.map(debt => {
-            const remainingAmount = (debt.amount || 0) - (debt.paidAmount || 0);
-            const isPaid = remainingAmount <= 0;
-            const progressPercent = debt.amount > 0 ? ((debt.paidAmount || 0) / debt.amount * 100) : 0;
-            const icon = debt.icon || '💳';
-            
-            return `
-                <div class="circle-item circle-debt ${isPaid ? 'paid' : ''}" onclick="editCircle('debt', ${debt.id})">
-                    <div class="circle-actions">
-                        <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteCircle('debt', ${debt.id})">×</button>
-                        ${!isPaid ? `<button class="circle-action-btn circle-check" onclick="event.stopPropagation(); makeDebtPayment(${debt.id})">✓</button>` : ''}
-                    </div>
-                    <div class="circle-icon">${icon}</div>
-                    <div class="circle-amount">${this.settings.currency}${remainingAmount.toFixed(2)}</div>
-                    <div class="circle-label">${debt.description}</div>
-                    ${!isPaid ? `<div class="debt-progress">
-                        <div class="debt-progress-bar" style="width: ${progressPercent}%"></div>
-                    </div>` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    updateExpenseCategories() {
-        const container = document.getElementById('expense-circles');
-        if (!container) return;
-        
-        const categories = this.expenses.getCategories();
-        if (!categories || categories.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
-            return;
-        }
-        
-        container.innerHTML = categories.map(category => {
-            const totalAmount = this.expenses.calculateCategoryTotal(category);
-            const showAmount = totalAmount > 0;
-            const icon = category.icon || '🛒';
-            const hasSubcategories = category.subcategories && category.subcategories.length > 0;
-            
-            const deleteButton = category.id > 12 ?
-                `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
-                '';
-            
-            return `
-                <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
-                    <div class="circle-actions">${deleteButton}</div>
-                    <div class="circle-icon">${icon}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
-                    <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    updateBalance() {
-        const report = this.reports.generateReport();
-        const balanceElement = document.getElementById('balance-amount');
-        if (balanceElement) {
-            balanceElement.textContent = this.settings.currency + report.balance.toFixed(2);
-        }
-    }
-
-    updateReport() {
-        const report = this.reports.generateReport();
-        
-        const reportIncome = document.getElementById('report-income');
-        const reportExpense = document.getElementById('report-expense');
-        const reportDebt = document.getElementById('report-debt');
-        const reportBalance = document.getElementById('report-balance');
-        
-        if (reportIncome) reportIncome.textContent = this.settings.currency + report.totalIncome.toFixed(2);
-        if (reportExpense) reportExpense.textContent = this.settings.currency + report.totalExpenses.toFixed(2);
-        if (reportDebt) reportDebt.textContent = this.settings.currency + report.totalPaidDebts.toFixed(2);
-        if (reportBalance) reportBalance.textContent = this.settings.currency + report.balance.toFixed(2);
-        
-        const reportDetails = document.getElementById('report-details');
-        if (reportDetails) {
-            reportDetails.innerHTML = `
-                <div class="result-item">
-                    <span>Общий доход:</span>
-                    <span class="income">${this.settings.currency}${report.totalIncome.toFixed(2)}</span>
-                </div>
-                <div class="result-item">
-                    <span>Оплаченные долги:</span>
-                    <span class="debt">${this.settings.currency}${report.totalPaidDebts.toFixed(2)}</span>
-                </div>
-                <div class="result-item">
-                    <span>Общие расходы:</span>
-                    <span class="expense">${this.settings.currency}${report.totalExpenses.toFixed(2)}</span>
-                </div>
-                <div class="result-item total">
-                    <span>Итоговый баланс:</span>
-                    <span class="${report.balance >= 0 ? 'balance-positive' : 'balance-negative'}">${this.settings.currency}${Math.abs(report.balance).toFixed(2)}</span>
-                </div>
-            `;
+    setupVirtualizedOperations() {
+        const container = document.getElementById('operations-list');
+        if (container && !this.currentState.virtualizedOperations) {
+            this.currentState.virtualizedOperations = new VirtualizedOperationsList(container);
         }
     }
 
     updateOperationsList() {
-        const container = document.getElementById('operations-list');
-        if (!container) {
-            console.log("Operations container not found");
-            return;
+        if (this.currentState.virtualizedOperations) {
+            const operations = this.operations.getAllOperations();
+            this.currentState.virtualizedOperations.setOperations(operations);
+        } else {
+            // Fallback для обычного рендеринга
+            const container = document.getElementById('operations-list');
+            if (!container) return;
+            
+            const operations = this.operations.getAllOperations();
+            
+            if (operations.length === 0) {
+                container.innerHTML = this.createEmptyOperationsState();
+                return;
+            }
+            
+            container.innerHTML = this.createOperationsHTML(operations);
         }
-        
-        const operations = this.operations.getAllOperations();
-        console.log("Found operations:", operations.length);
-        
-        if (operations.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
-                    <div>Нет операций</div>
-                    <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
-                        Добавьте доходы, расходы или долги чтобы увидеть их здесь
-                    </div>
+    }
+
+    createEmptyOperationsState() {
+        return `
+            <div class="empty-state">
+                <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
+                <div>Нет операций</div>
+                <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                    Добавьте доходы, расходы или долги чтобы увидеть их здесь
                 </div>
-            `;
-            return;
-        }
-        
+            </div>
+        `;
+    }
+
+    createOperationsHTML(operations) {
         // Группировка операций по типам
         const incomeOperations = operations.filter(op => op.type === 'income');
         const expenseOperations = operations.filter(op => op.type === 'expense');
@@ -304,111 +210,356 @@ class BudgetApp {
             `;
         }
         
-        container.innerHTML = operationsHTML;
+        return operationsHTML;
     }
 
-    createOperationHTML(operation) {
-        let typeClass = operation.type;
-        let typeIcon, typeColor;
-        let amountSign = '';
-        let displayAmount = Math.abs(operation.displayAmount);
+    // Обновленные кружки с бюджетом
+    updateExpenseCategories() {
+        const container = document.getElementById('expense-circles');
+        if (!container) return;
         
-        switch(operation.type) {
-            case 'income':
-                typeIcon = operation.icon || '💰';
-                typeColor = '#34C759';
-                amountSign = '+';
-                break;
-            case 'expense':
-                typeIcon = operation.icon || '🛒';
-                typeColor = '#FF3B30';
-                amountSign = '-';
-                break;
-            case 'debt':
-                typeIcon = operation.icon || '💳';
-                typeColor = '#FF9500';
-                amountSign = '-';
-                break;
-            case 'debt-payment':
-                typeIcon = operation.icon || '✅';
-                typeColor = '#34C759';
-                amountSign = '+';
-                break;
-            default:
-                typeIcon = operation.icon || '🛒';
-                typeColor = '#8E8E93';
-                amountSign = '';
+        const categories = this.expenses.getCategories();
+        if (!categories || categories.length === 0) {
+            container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
+            return;
         }
         
-        let actionButtons = '';
-        if (operation.isEditable) {
-            actionButtons = `
-                <div class="operation-actions">
-                    <button class="operation-action-btn operation-edit" onclick="event.stopPropagation(); ${this.getEditFunctionName(operation)}">✏️</button>
-                    <button class="operation-action-btn operation-delete" onclick="event.stopPropagation(); ${this.getDeleteFunctionName(operation)}">×</button>
+        container.innerHTML = categories.map(category => {
+            const totalAmount = this.expenses.calculateCategoryTotal(category);
+            const showAmount = totalAmount > 0;
+            const icon = category.icon || '🛒';
+            const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+            
+            // Бюджет
+            const budgetStatus = this.budgets.getBudgetStatus(category.id);
+            const remaining = this.budgets.getRemainingBudget(category.id);
+            const usagePercent = this.budgets.getBudgetUsagePercent(category.id);
+            const hasBudget = this.budgets.getCategoryBudget(category.id);
+            
+            const deleteButton = category.id > 12 ?
+                `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
+                '';
+            
+            const budgetButton = hasBudget ? 
+                `<button class="circle-action-btn circle-budget" onclick="event.stopPropagation(); editCategoryBudget(${category.id})">📊</button>` :
+                `<button class="circle-action-btn circle-budget-add" onclick="event.stopPropagation(); setCategoryBudget(${category.id})">💸</button>`;
+            
+            return `
+                <div class="circle-item circle-expense budget-${budgetStatus}" onclick="editExpenseCategory(${category.id})">
+                    <div class="circle-actions">
+                        ${budgetButton}
+                        ${deleteButton}
+                    </div>
+                    <div class="circle-icon">${icon}</div>
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
+                    <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
+                    
+                    ${hasBudget ? `
+                        <div class="budget-progress">
+                            <div class="budget-progress-bar" style="width: ${Math.min(usagePercent, 100)}%"></div>
+                        </div>
+                        <div class="budget-remaining">
+                            ${this.settings.currency}${remaining}
+                        </div>
+                    ` : ''}
                 </div>
             `;
+        }).join('');
+    }
+
+    // Цели накоплений
+    updateSavingsGoals() {
+        const container = document.getElementById('savings-goals');
+        if (!container) return;
+        
+        const goals = this.savingsGoals.getGoals();
+        if (!goals || goals.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🎯</div>
+                    <div>Нет целей накоплений</div>
+                    <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                        Добавьте цель чтобы отслеживать прогресс
+                    </div>
+                </div>
+            `;
+            return;
         }
         
-        return `
-            <div class="operation-item">
-                <div class="operation-main-content">
-                    <div class="operation-info">
-                        <div class="operation-icon" style="background: ${typeColor}">
-                            ${typeIcon}
+        container.innerHTML = goals.map(goal => {
+            const progress = this.savingsGoals.getGoalProgress(goal.id);
+            const daysRemaining = this.savingsGoals.getDaysRemaining(goal.id);
+            const monthlySave = this.savingsGoals.getRecommendedMonthlySave(goal.id);
+            const timeToGoal = this.savingsGoals.getTimeToGoal(goal.id);
+            
+            return `
+                <div class="savings-goal-card ${goal.isCompleted ? 'completed' : ''}">
+                    <div class="goal-header">
+                        <div class="goal-icon">${goal.icon}</div>
+                        <div class="goal-info">
+                            <div class="goal-name">${goal.name}</div>
+                            <div class="goal-amount">
+                                ${this.settings.currency}${goal.currentAmount.toFixed(2)} / 
+                                ${this.settings.currency}${goal.targetAmount.toFixed(2)}
+                            </div>
                         </div>
-                        <div class="operation-details">
-                            <div class="operation-title">${operation.description}</div>
-                            <div class="operation-meta">
-                                <span>${this.formatDate(operation.date)}</span>
-                                <span class="operation-time">${this.formatTime(operation.date)}</span>
+                        <div class="goal-progress">${Math.round(progress)}%</div>
+                    </div>
+                    
+                    <div class="goal-progress-bar">
+                        <div class="goal-progress-fill" style="width: ${progress}%; background: ${goal.color}"></div>
+                    </div>
+                    
+                    ${!goal.isCompleted ? `
+                        <div class="goal-details">
+                            <div class="goal-deadline">
+                                ${daysRemaining > 0 ? 
+                                    `⏱️ ${daysRemaining} дней` : 
+                                    '⌛ Срок истек'}
+                            </div>
+                            ${monthlySave ? `
+                                <div class="goal-monthly">
+                                    💰 ${this.settings.currency}${monthlySave.toFixed(2)}/мес
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="goal-actions">
+                            <button class="add-to-goal-btn" 
+                                    onclick="addToGoal(${goal.id})"
+                                    style="background: ${goal.color}">
+                                + Добавить
+                            </button>
+                            ${timeToGoal ? `
+                                <div class="goal-time">
+                                    ~${timeToGoal} мес
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : `
+                        <div class="goal-completed">
+                            🎉 Цель достигнута! 
+                            <span class="goal-completed-date">${this.formatDate(goal.completedAt)}</span>
+                        </div>
+                    `}
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Система уведомлений
+    checkAndShowAlerts() {
+        if (!this.settings.budgetAlerts) return;
+        
+        const budgetAlerts = this.budgets.checkBudgetAlerts();
+        budgetAlerts.forEach(alert => {
+            if (alert.type === 'budget_warning') {
+                ToastService.warning(alert.message, 5000);
+            } else if (alert.type === 'budget_exceeded') {
+                ToastService.error(alert.message, 6000);
+            }
+        });
+    }
+
+    // Бюджет методы
+    async setCategoryBudget(categoryId) {
+        const category = this.expenses.getCategory(categoryId);
+        if (!category) return;
+        
+        const monthlyLimitStr = prompt(`Введите месячный бюджет для "${category.name}":`, "1000");
+        if (monthlyLimitStr === null) return;
+        
+        const monthlyLimit = parseFloat(monthlyLimitStr) || 0;
+        if (monthlyLimit <= 0) {
+            ToastService.error("Бюджет должен быть больше 0");
+            return;
+        }
+        
+        try {
+            await this.budgets.setCategoryBudget(categoryId, monthlyLimit);
+            await this.saveData();
+            ToastService.success(`Бюджет для "${category.name}" установлен!`);
+        } catch (error) {
+            ToastService.error("Ошибка при установке бюджета: " + error.message);
+        }
+    }
+
+    async editCategoryBudget(categoryId) {
+        const budget = this.budgets.getCategoryBudget(categoryId);
+        const category = this.expenses.getCategory(categoryId);
+        if (!budget || !category) return;
+        
+        const newLimitStr = prompt(
+            `Текущий бюджет для "${category.name}": ${this.settings.currency}${budget.monthlyLimit}\nВведите новый бюджет:`,
+            budget.monthlyLimit.toString()
+        );
+        
+        if (newLimitStr === null) return;
+        
+        const newLimit = parseFloat(newLimitStr) || 0;
+        if (newLimit <= 0) {
+            ToastService.error("Бюджет должен быть больше 0");
+            return;
+        }
+        
+        try {
+            await this.budgets.setCategoryBudget(categoryId, newLimit);
+            await this.saveData();
+            ToastService.success(`Бюджет для "${category.name}" обновлен!`);
+        } catch (error) {
+            ToastService.error("Ошибка при обновлении бюджета: " + error.message);
+        }
+    }
+
+    // Цели методы
+    async addToGoal(goalId) {
+        const goal = this.savingsGoals.getGoals().find(g => g.id === goalId);
+        if (!goal) return;
+        
+        const amountStr = prompt(
+            `Введите сумму для добавления в цель "${goal.name}":\nТекущий прогресс: ${this.settings.currency}${goal.currentAmount} / ${this.settings.currency}${goal.targetAmount}`,
+            "100"
+        );
+        
+        if (amountStr === null) return;
+        
+        const amount = parseFloat(amountStr) || 0;
+        if (amount <= 0) {
+            ToastService.error("Сумма должна быть больше 0");
+            return;
+        }
+        
+        try {
+            await this.savingsGoals.addToGoal(goalId, amount);
+            await this.saveData();
+            ToastService.success(`Средства добавлены в цель "${goal.name}"!`);
+        } catch (error) {
+            ToastService.error("Ошибка при добавлении средств: " + error.message);
+        }
+    }
+
+    showAddGoalModal() {
+        document.getElementById('goal-name').value = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-deadline').value = '';
+        document.getElementById('goal-icon').value = '🎯';
+        document.getElementById('goal-color').value = '#007AFF';
+        
+        document.getElementById('add-goal-modal').classList.add('active');
+    }
+
+    async createNewGoal() {
+        const name = document.getElementById('goal-name').value.trim();
+        const targetAmountStr = document.getElementById('goal-target').value;
+        const deadline = document.getElementById('goal-deadline').value;
+        const icon = document.getElementById('goal-icon').value.trim() || '🎯';
+        const color = document.getElementById('goal-color').value;
+        
+        if (!name) {
+            ToastService.error("Введите название цели");
+            return;
+        }
+        
+        const targetAmount = parseFloat(targetAmountStr) || 0;
+        if (targetAmount <= 0) {
+            ToastService.error("Введите корректную целевую сумму");
+            return;
+        }
+        
+        if (!deadline) {
+            ToastService.error("Укажите срок цели");
+            return;
+        }
+        
+        try {
+            await this.savingsGoals.createGoal({
+                name,
+                targetAmount,
+                deadline,
+                icon,
+                color
+            });
+            await this.saveData();
+            this.hideAddGoalModal();
+            ToastService.success('Цель создана!');
+        } catch (error) {
+            ToastService.error("Ошибка при создании цели: " + error.message);
+        }
+    }
+
+    hideAddGoalModal() {
+        document.getElementById('add-goal-modal').classList.remove('active');
+    }
+
+    // Повторяющиеся операции
+    showRecurringTransactionsModal() {
+        const modal = document.getElementById('recurring-transactions-modal');
+        const list = document.getElementById('recurring-transactions-list');
+        
+        const transactions = this.recurring.getRecurringTransactions();
+        
+        if (transactions.length === 0) {
+            list.innerHTML = '<div class="empty-state">Нет повторяющихся операций</div>';
+        } else {
+            list.innerHTML = transactions.map(transaction => `
+                <div class="recurring-transaction-item ${!transaction.isActive ? 'inactive' : ''}">
+                    <div class="transaction-info">
+                        <div class="transaction-icon">${transaction.icon}</div>
+                        <div class="transaction-details">
+                            <div class="transaction-description">${transaction.description}</div>
+                            <div class="transaction-meta">
+                                ${this.settings.currency}${transaction.amount} • 
+                                ${this.recurring.getRecurrenceText(transaction.recurrence)} • 
+                                След.: ${this.formatDate(transaction.nextDate)}
                             </div>
                         </div>
                     </div>
-                    <div class="operation-amount ${typeClass}">
-                        ${amountSign}${this.settings.currency}${displayAmount.toFixed(2)}
+                    <div class="transaction-actions">
+                        <button class="transaction-toggle" 
+                                onclick="toggleRecurringTransaction(${transaction.id})">
+                            ${transaction.isActive ? '⏸️' : '▶️'}
+                        </button>
+                        <button class="transaction-delete" 
+                                onclick="deleteRecurringTransaction(${transaction.id})">×</button>
                     </div>
                 </div>
-                ${actionButtons}
-            </div>
-        `;
+            `).join('');
+        }
+        
+        modal.classList.add('active');
     }
 
-    getEditFunctionName(operation) {
-        switch(operation.type) {
-            case 'income': return `editIncomeOperation(${operation.id})`;
-            case 'expense': return `editExpenseOperation(${operation.id})`;
-            case 'debt': return `editDebtOperation(${operation.id})`;
-            case 'debt-payment': return `editDebtPayment(${operation.debtId}, ${operation.paymentIndex})`;
-            default: return `editExpenseOperation(${operation.id})`;
+    async toggleRecurringTransaction(id) {
+        try {
+            await this.recurring.toggleTransactionActive(id);
+            await this.saveData();
+            this.showRecurringTransactionsModal(); // Обновляем модалку
+            ToastService.info('Статус операции изменен');
+        } catch (error) {
+            ToastService.error("Ошибка при изменении статуса: " + error.message);
         }
     }
 
-    getDeleteFunctionName(operation) {
-        switch(operation.type) {
-            case 'income': return `deleteIncomeOperation(${operation.id})`;
-            case 'expense': return `deleteExpenseOperation(${operation.id})`;
-            case 'debt': return `deleteDebtOperation(${operation.id})`;
-            case 'debt-payment': return `deleteDebtPayment(${operation.debtId}, ${operation.paymentIndex})`;
-            default: return `deleteExpenseOperation(${operation.id})`;
+    async deleteRecurringTransaction(id) {
+        if (confirm('Удалить эту повторяющуюся операцию?')) {
+            try {
+                await this.recurring.deleteRecurringTransaction(id);
+                await this.saveData();
+                this.showRecurringTransactionsModal();
+                ToastService.success('Повторяющаяся операция удалена');
+            } catch (error) {
+                ToastService.error("Ошибка при удалении: " + error.message);
+            }
         }
     }
 
+    // Вспомогательные методы
     formatDate(dateString) {
         try {
             const date = new Date(dateString);
             return date.toLocaleDateString('ru-RU');
         } catch (e) {
             return '--.--.----';
-        }
-    }
-
-    formatTime(dateString) {
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-        } catch (e) {
-            return '--:--';
         }
     }
 
@@ -453,6 +604,8 @@ class BudgetApp {
             if (navItems[1]) navItems[1].classList.add('active');
         } else if (screenName === 'report') {
             if (navItems[2]) navItems[2].classList.add('active');
+        } else if (screenName === 'goals') {
+            if (navItems[3]) navItems[3].classList.add('active');
         }
         
         document.querySelectorAll('.screen').forEach(screen => {
@@ -468,1020 +621,190 @@ class BudgetApp {
             this.updateOperationsList();
         } else if (screenName === 'report') {
             this.updateReport();
+        } else if (screenName === 'goals') {
+            this.updateSavingsGoals();
         }
     }
+}
 
-    // Добавление новых записей
-    async addNewIncomeCategory() {
-        const categoryName = prompt('Введите название категории доходов:');
-        if (!categoryName) return;
-        
-        const icon = prompt('Введите смайлик (иконку) для категории (например: 💰, 💵, 💳):', '💰') || '💰';
-        
-        try {
-            await this.incomes.addCategory({
-                name: categoryName,
-                icon: icon
-            });
-            await this.saveData();
-        } catch (error) {
-            alert("Ошибка при добавлении категории доходов: " + error.message);
-        }
+// Вспомогательные классы
+class DebouncedUpdater {
+    constructor(delay = 100) {
+        this.delay = delay;
+        this.timeoutId = null;
     }
-
-    async addNewCircle(type) {
-        const amountStr = prompt(`Введите сумму ${this.getTypeName(type)}:`, "0");
-        if (amountStr === null) return;
-        
-        const amount = parseFloat(amountStr) || 0;
-        if (amount < 0) {
-            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-            return;
+    
+    scheduleUpdate(updateFunction) {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
         }
         
-        const description = prompt('Введите описание:') || this.getDefaultDescription(type);
+        this.timeoutId = setTimeout(() => {
+            updateFunction();
+            this.timeoutId = null;
+        }, this.delay);
+    }
+}
+
+class VirtualizedOperationsList {
+    constructor(container, itemHeight = 80) {
+        this.container = container;
+        this.itemHeight = itemHeight;
+        this.visibleItems = Math.ceil(container.clientHeight / itemHeight) + 2;
+        this.scrollTop = 0;
+        this.operations = [];
         
-        let defaultIcon = '💰';
-        if (type === 'debt') defaultIcon = '💳';
+        this.init();
+    }
+    
+    init() {
+        this.container.addEventListener('scroll', this.handleScroll.bind(this));
+        this.render();
+    }
+    
+    setOperations(operations) {
+        this.operations = operations;
+        this.render();
+    }
+    
+    handleScroll() {
+        this.scrollTop = this.container.scrollTop;
+        this.render();
+    }
+    
+    render() {
+        const startIndex = Math.floor(this.scrollTop / this.itemHeight);
+        const endIndex = Math.min(startIndex + this.visibleItems, this.operations.length);
         
-        const icon = prompt('Введите смайлик (иконку):', defaultIcon) || defaultIcon;
+        const visibleOperations = this.operations.slice(startIndex, endIndex);
         
-        try {
-            if (type === 'debt') {
-                await this.debts.add({
-                    amount: amount,
-                    description: description,
-                    icon: icon
-                });
-                await this.saveData();
-            }
-        } catch (error) {
-            alert("Ошибка при добавлении: " + error.message);
-        }
-    }
-
-    async addNewExpenseCategory() {
-        const categoryName = prompt('Введите название категории расходов:');
-        if (!categoryName) return;
+        // Устанавливаем высоту контейнера для правильной прокрутки
+        this.container.style.height = `${this.operations.length * this.itemHeight}px`;
         
-        const icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, 🚗, 🎮):', '🛒') || '🛒';
+        // Рендерим только видимые элементы
+        const fragment = document.createDocumentFragment();
         
-        try {
-            await this.expenses.addCategory({
-                name: categoryName,
-                icon: icon
-            });
-            await this.saveData();
-        } catch (error) {
-            alert("Ошибка при добавлении категории: " + error.message);
-        }
+        visibleOperations.forEach((operation, index) => {
+            const top = (startIndex + index) * this.itemHeight;
+            const element = this.createOperationElement(operation, top);
+            fragment.appendChild(element);
+        });
+        
+        this.container.innerHTML = '';
+        this.container.appendChild(fragment);
     }
-
-    // Редактирование доходов
-    editIncomeCategory(categoryId) {
-        this.showEditIncomeCategoryModal(categoryId);
+    
+    createOperationElement(operation, top) {
+        const element = document.createElement('div');
+        element.className = 'operation-item';
+        element.style.position = 'absolute';
+        element.style.top = `${top}px`;
+        element.style.width = '100%';
+        element.style.height = `${this.itemHeight}px`;
+        element.innerHTML = this.createOperationHTML(operation);
+        return element;
     }
-
-    editExpenseCategory(categoryId) {
-        this.showEditCategoryModal(categoryId);
-    }
-
-    async editCircle(type, id) {
-        if (type === 'debt') {
-            const debt = this.debts.get(id);
-            if (debt) {
-                const newAmountStr = prompt('Изменить общую сумму долга:', debt.amount);
-                if (newAmountStr !== null) {
-                    const newAmount = parseFloat(newAmountStr) || 0;
-                    if (newAmount >= 0) {
-                        if (newAmount < debt.paidAmount) {
-                            debt.paidAmount = newAmount;
-                        }
-                        debt.amount = newAmount;
-                    } else {
-                        alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                        return;
-                    }
-                }
-                
-                const newDescription = prompt('Изменить описание:', debt.description) || debt.description;
-                debt.description = newDescription;
-                
-                const newIcon = prompt('Изменить иконку (смайлик):', debt.icon) || debt.icon;
-                debt.icon = newIcon;
-                
-                await this.debts.update(id, debt);
-                await this.saveData();
-            }
-        }
-    }
-
-    // Удаление
-    async deleteIncomeCategory(categoryId) {
-        if (confirm('Удалить эту категорию доходов?')) {
-            try {
-                await this.incomes.deleteCategory(categoryId);
-                await this.saveData();
-            } catch (error) {
-                alert("Ошибка при удалении: " + error.message);
-            }
-        }
-    }
-
-    async deleteCircle(type, id) {
-        if (confirm('Удалить эту запись?')) {
-            if (type === 'debt') {
-                try {
-                    await this.debts.delete(id);
-                    await this.saveData();
-                } catch (error) {
-                    alert("Ошибка при удалении: " + error.message);
-                }
-            }
-        }
-    }
-
-    async deleteExpenseCategory(categoryId) {
-        // Запрещаем удаление базовых категорий (ID 1-12)
-        if (categoryId >= 1 && categoryId <= 12) {
-            alert("Базовые категории расходов нельзя удалить!");
-            return;
+    
+    createOperationHTML(operation) {
+        let typeClass = operation.type;
+        let typeIcon, typeColor;
+        let amountSign = '';
+        let displayAmount = Math.abs(operation.displayAmount);
+        
+        switch(operation.type) {
+            case 'income':
+                typeIcon = operation.icon || '💰';
+                typeColor = '#34C759';
+                amountSign = '+';
+                break;
+            case 'expense':
+                typeIcon = operation.icon || '🛒';
+                typeColor = '#FF3B30';
+                amountSign = '-';
+                break;
+            case 'debt':
+                typeIcon = operation.icon || '💳';
+                typeColor = '#FF9500';
+                amountSign = '-';
+                break;
+            case 'debt-payment':
+                typeIcon = operation.icon || '✅';
+                typeColor = '#34C759';
+                amountSign = '+';
+                break;
+            default:
+                typeIcon = operation.icon || '🛒';
+                typeColor = '#8E8E93';
+                amountSign = '';
         }
         
-        if (confirm('Удалить эту категорию?')) {
-            try {
-                await this.expenses.deleteCategory(categoryId);
-                await this.saveData();
-            } catch (error) {
-                alert("Ошибка при удалении: " + error.message);
-            }
-        }
-    }
-
-    // Долги - платежи
-    async makeDebtPayment(debtId) {
-        const debt = this.debts.get(debtId);
-        if (debt) {
-            const remaining = debt.amount - (debt.paidAmount || 0);
-            
-            if (remaining <= 0) {
-                alert("Долг уже полностью погашен!");
-                return;
-            }
-            
-            const paymentStr = prompt(
-                `Введите сумму платежа по долгу "${debt.description}"\nОсталось погасить: ${this.settings.currency}${remaining.toFixed(2)}`,
-                remaining.toString()
-            );
-            
-            if (paymentStr === null) return;
-            
-            const payment = parseFloat(paymentStr) || 0;
-            
-            try {
-                await this.debts.makePayment(debtId, payment);
-                await this.saveData();
-                
-                if (debt.paidAmount >= debt.amount) {
-                    alert("Долг полностью погашен!");
-                }
-            } catch (error) {
-                alert("Ошибка при внесении платежа: " + error.message);
-            }
-        }
-    }
-
-    // Вспомогательные методы
-    getTypeName(type) {
-        const names = {
-            income: 'дохода',
-            debt: 'долга', 
-            expense: 'расхода'
-        };
-        return names[type] || 'операции';
-    }
-
-    getDefaultDescription(type) {
-        const defaults = {
-            income: 'Доход',
-            debt: 'Долг', 
-            expense: 'Расход'
-        };
-        return defaults[type] || 'Операция';
-    }
-
-    // Модальные окна для расходов
-    showCategorySelection() {
-        const modal = document.getElementById('category-modal');
-        const categoryList = document.getElementById('category-list');
-        
-        const categories = this.expenses.getCategories();
-        if (!categories || categories.length === 0) {
-            alert('Сначала добавьте категории расходов!');
-            return;
-        }
-        
-        categoryList.innerHTML = categories.map(category => {
-            const totalAmount = this.expenses.calculateCategoryTotal(category);
-            return `
-                <button class="category-option" onclick="selectExpenseCategory(${category.id})">
-                    <div class="category-option-icon">${category.icon}</div>
-                    <div class="category-option-name">${category.name}</div>
-                    <div class="category-option-amount">${this.settings.currency}${totalAmount}</div>
-                </button>
-            `;
-        }).join('');
-        
-        modal.classList.add('active');
-    }
-
-    hideCategorySelection() {
-        const modal = document.getElementById('category-modal');
-        modal.classList.remove('active');
-    }
-
-    selectExpenseCategory(categoryId) {
-        const category = this.expenses.getCategory(categoryId);
-        if (category) {
-            this.currentState.selectedCategoryId = categoryId;
-            
-            if (category.subcategories && category.subcategories.length > 0) {
-                this.showSubcategorySelection(category);
-            } else {
-                this.hideCategorySelection();
-                this.addExpenseToCategory(categoryId, null);
-            }
-        }
-    }
-
-    showSubcategorySelection(category) {
-        const modal = document.getElementById('subcategory-modal');
-        const subcategoryList = document.getElementById('subcategory-list');
-        const title = document.getElementById('subcategory-modal-title');
-        
-        title.textContent = `Выберите подкатегорию для ${category.name}`;
-        
-        let optionsHTML = '';
-        
-        optionsHTML += `
-            <button class="category-option" onclick="selectSubcategory(null)">
-                <div class="category-option-icon">${category.icon}</div>
-                <div class="category-option-name">${category.name} (основная)</div>
-                <div class="category-option-amount">${this.settings.currency}${category.amount || 0}</div>
-            </button>
-        `;
-        
-        if (category.subcategories) {
-            category.subcategories.forEach(subcategory => {
-                optionsHTML += `
-                    <button class="category-option" onclick="selectSubcategory(${subcategory.id})">
-                        <div class="category-option-icon">${subcategory.icon}</div>
-                        <div class="category-option-name">${subcategory.name}</div>
-                        <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
-                    </button>
-                `;
-            });
-        }
-        
-        subcategoryList.innerHTML = optionsHTML;
-        
-        this.hideCategorySelection();
-        modal.classList.add('active');
-    }
-
-    hideSubcategorySelection() {
-        const modal = document.getElementById('subcategory-modal');
-        modal.classList.remove('active');
-        this.showCategorySelection();
-    }
-
-    selectSubcategory(subcategoryId) {
-        this.hideSubcategorySelection();
-        this.addExpenseToCategory(this.currentState.selectedCategoryId, subcategoryId);
-    }
-
-    async addExpenseToCategory(categoryId, subcategoryId) {
-        const category = this.expenses.getCategory(categoryId);
-        if (!category) return;
-        
-        let targetName = category.name;
-        let targetIcon = category.icon;
-        
-        if (subcategoryId) {
-            const subcategory = category.subcategories.find(s => s.id === subcategoryId);
-            if (subcategory) {
-                targetName = subcategory.name;
-                targetIcon = subcategory.icon;
-            }
-        }
-        
-        const amountStr = prompt(`Введите сумму расхода для "${targetName}":`, "0");
-        if (amountStr === null) return;
-        
-        const amount = parseFloat(amountStr) || 0;
-        if (amount <= 0) {
-            alert("Пожалуйста, введите корректную сумму (больше 0)");
-            return;
-        }
-        
-        try {
-            await this.expenses.addOperation({
-                categoryId: category.id,
-                subcategoryId: subcategoryId,
-                categoryName: category.name,
-                subcategoryName: subcategoryId ? targetName : null,
-                amount: amount,
-                description: `${category.name}${subcategoryId ? ` - ${targetName}` : ''}`,
-                icon: targetIcon
-            });
-            
-            await this.saveData();
-            
-            alert(`Расход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
-        } catch (error) {
-            alert("Ошибка при добавлении расхода: " + error.message);
-        }
-    }
-
-    // Модальные окна для доходов
-    showIncomeCategorySelection() {
-        const modal = document.getElementById('income-category-modal');
-        const categoryList = document.getElementById('income-category-list');
-        
-        const categories = this.incomes.getCategories();
-        if (!categories || categories.length === 0) {
-            alert('Сначала добавьте категории доходов!');
-            return;
-        }
-        
-        categoryList.innerHTML = categories.map(category => {
-            const totalAmount = this.incomes.calculateCategoryTotal(category);
-            return `
-                <button class="category-option" onclick="selectIncomeCategory(${category.id})">
-                    <div class="category-option-icon">${category.icon}</div>
-                    <div class="category-option-name">${category.name}</div>
-                    <div class="category-option-amount">${this.settings.currency}${totalAmount}</div>
-                </button>
-            `;
-        }).join('');
-        
-        modal.classList.add('active');
-    }
-
-    hideIncomeCategorySelection() {
-        const modal = document.getElementById('income-category-modal');
-        modal.classList.remove('active');
-    }
-
-    selectIncomeCategory(categoryId) {
-        const category = this.incomes.getCategory(categoryId);
-        if (category) {
-            this.currentState.selectedIncomeCategoryId = categoryId;
-            
-            if (category.subcategories && category.subcategories.length > 0) {
-                this.showIncomeSubcategorySelection(category);
-            } else {
-                this.hideIncomeCategorySelection();
-                this.addIncomeToCategory(categoryId, null);
-            }
-        }
-    }
-
-    showIncomeSubcategorySelection(category) {
-        const modal = document.getElementById('income-subcategory-modal');
-        const subcategoryList = document.getElementById('income-subcategory-list');
-        const title = document.getElementById('income-subcategory-modal-title');
-        
-        title.textContent = `Выберите подкатегорию для ${category.name}`;
-        
-        let optionsHTML = '';
-        
-        optionsHTML += `
-            <button class="category-option" onclick="selectIncomeSubcategory(null)">
-                <div class="category-option-icon">${category.icon}</div>
-                <div class="category-option-name">${category.name} (основная)</div>
-                <div class="category-option-amount">${this.settings.currency}${category.amount || 0}</div>
-            </button>
-        `;
-        
-        if (category.subcategories) {
-            category.subcategories.forEach(subcategory => {
-                optionsHTML += `
-                    <button class="category-option" onclick="selectIncomeSubcategory(${subcategory.id})">
-                        <div class="category-option-icon">${subcategory.icon}</div>
-                        <div class="category-option-name">${subcategory.name}</div>
-                        <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
-                    </button>
-                `;
-            });
-        }
-        
-        subcategoryList.innerHTML = optionsHTML;
-        
-        this.hideIncomeCategorySelection();
-        modal.classList.add('active');
-    }
-
-    hideIncomeSubcategorySelection() {
-        const modal = document.getElementById('income-subcategory-modal');
-        modal.classList.remove('active');
-        this.showIncomeCategorySelection();
-    }
-
-    selectIncomeSubcategory(subcategoryId) {
-        this.hideIncomeSubcategorySelection();
-        this.addIncomeToCategory(this.currentState.selectedIncomeCategoryId, subcategoryId);
-    }
-
-    async addIncomeToCategory(categoryId, subcategoryId) {
-        const category = this.incomes.getCategory(categoryId);
-        if (!category) return;
-        
-        let targetName = category.name;
-        let targetIcon = category.icon;
-        
-        if (subcategoryId) {
-            const subcategory = category.subcategories.find(s => s.id === subcategoryId);
-            if (subcategory) {
-                targetName = subcategory.name;
-                targetIcon = subcategory.icon;
-            }
-        }
-        
-        const amountStr = prompt(`Введите сумму дохода для "${targetName}":`, "0");
-        if (amountStr === null) return;
-        
-        const amount = parseFloat(amountStr) || 0;
-        if (amount < 0) {
-            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-            return;
-        }
-        
-        try {
-            await this.incomes.addOperation({
-                categoryId: category.id,
-                subcategoryId: subcategoryId,
-                categoryName: category.name,
-                subcategoryName: subcategoryId ? targetName : null,
-                amount: amount,
-                description: `${category.name}${subcategoryId ? ` - ${targetName}` : ''}`,
-                icon: targetIcon
-            });
-            
-            await this.saveData();
-            
-            alert(`Доход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
-        } catch (error) {
-            alert("Ошибка при добавлении дохода: " + error.message);
-        }
-    }
-
-    // Модальные окна редактирования категорий расходов
-    showEditCategoryModal(categoryId) {
-        const category = this.expenses.getCategory(categoryId);
-        if (!category) return;
-        
-        this.currentState.editingCategoryId = categoryId;
-        
-        document.getElementById('edit-category-title').textContent = `Редактировать ${category.name}`;
-        document.getElementById('edit-category-name').value = category.name;
-        document.getElementById('edit-category-icon').value = category.icon;
-        
-        this.updateSubcategoriesList();
-        
-        document.getElementById('edit-category-modal').classList.add('active');
-    }
-
-    hideEditCategoryModal() {
-        document.getElementById('edit-category-modal').classList.remove('active');
-        this.currentState.editingCategoryId = null;
-    }
-
-    updateSubcategoriesList() {
-        const container = document.getElementById('subcategories-list');
-        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
-        
-        if (!category) return;
-        
-        if (!category.subcategories || category.subcategories.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нет подкатегорий</div>';
-            return;
-        }
-        
-        container.innerHTML = category.subcategories.map(subcategory => `
-            <div class="subcategory-item">
-                <div class="subcategory-info">
-                    <div class="category-option-icon">${subcategory.icon}</div>
-                    <div class="category-option-name">${subcategory.name}</div>
-                    <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
+        let actionButtons = '';
+        if (operation.isEditable) {
+            actionButtons = `
+                <div class="operation-actions">
+                    <button class="operation-action-btn operation-edit" onclick="event.stopPropagation(); ${this.getEditFunctionName(operation)}">✏️</button>
+                    <button class="operation-action-btn operation-delete" onclick="event.stopPropagation(); ${this.getDeleteFunctionName(operation)}">×</button>
                 </div>
-                <div class="subcategory-actions">
-                    <button class="subcategory-action-btn subcategory-edit" onclick="editSubcategory(${subcategory.id})">✏️</button>
-                    <button class="subcategory-action-btn subcategory-delete" onclick="deleteSubcategory(${subcategory.id})">×</button>
+            `;
+        }
+        
+        return `
+            <div class="operation-main-content">
+                <div class="operation-info">
+                    <div class="operation-icon" style="background: ${typeColor}">
+                        ${typeIcon}
+                    </div>
+                    <div class="operation-details">
+                        <div class="operation-title">${operation.description}</div>
+                        <div class="operation-meta">
+                            <span>${this.formatDate(operation.date)}</span>
+                            <span class="operation-time">${this.formatTime(operation.date)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="operation-amount ${typeClass}">
+                    ${amountSign}${app.settings.currency}${displayAmount.toFixed(2)}
                 </div>
             </div>
-        `).join('');
+            ${actionButtons}
+        `;
     }
-
-    async saveCategoryChanges() {
-        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
-        if (!category) return;
-        
-        const newName = document.getElementById('edit-category-name').value.trim();
-        const newIcon = document.getElementById('edit-category-icon').value.trim();
-        
-        if (!newName) {
-            alert("Введите название категории");
-            return;
+    
+    getEditFunctionName(operation) {
+        switch(operation.type) {
+            case 'income': return `editIncomeOperation(${operation.id})`;
+            case 'expense': return `editExpenseOperation(${operation.id})`;
+            case 'debt': return `editDebtOperation(${operation.id})`;
+            case 'debt-payment': return `editDebtPayment(${operation.debtId}, ${operation.paymentIndex})`;
+            default: return `editExpenseOperation(${operation.id})`;
         }
-        
+    }
+    
+    getDeleteFunctionName(operation) {
+        switch(operation.type) {
+            case 'income': return `deleteIncomeOperation(${operation.id})`;
+            case 'expense': return `deleteExpenseOperation(${operation.id})`;
+            case 'debt': return `deleteDebtOperation(${operation.id})`;
+            case 'debt-payment': return `deleteDebtPayment(${operation.debtId}, ${operation.paymentIndex})`;
+            default: return `deleteExpenseOperation(${operation.id})`;
+        }
+    }
+    
+    formatDate(dateString) {
         try {
-            await this.expenses.updateCategory(category.id, {
-                name: newName,
-                icon: newIcon
-            });
-            await this.saveData();
-            this.hideEditCategoryModal();
-        } catch (error) {
-            alert("Ошибка при сохранении: " + error.message);
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU');
+        } catch (e) {
+            return '--.--.----';
         }
     }
-
-    async addNewSubcategory() {
-        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
-        if (!category) return;
-        
+    
+    formatTime(dateString) {
         try {
-            await this.expenses.addSubcategory(category.id, {
-                name: "Новая подкатегория",
-                icon: "📁"
-            });
-            this.updateSubcategoriesList();
-        } catch (error) {
-            alert("Ошибка при добавлении подкатегории: " + error.message);
+            const date = new Date(dateString);
+            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return '--:--';
         }
-    }
-
-    editSubcategory(subcategoryId) {
-        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
-        if (!category || !category.subcategories) return;
-        
-        const subcategory = category.subcategories.find(s => s.id === subcategoryId);
-        if (!subcategory) return;
-        
-        this.currentState.editingSubcategory = subcategory;
-        
-        document.getElementById('edit-subcategory-title').textContent = `Редактировать ${subcategory.name}`;
-        document.getElementById('edit-subcategory-name').value = subcategory.name;
-        document.getElementById('edit-subcategory-icon').value = subcategory.icon;
-        
-        this.hideEditCategoryModal();
-        document.getElementById('edit-subcategory-modal').classList.add('active');
-    }
-
-    hideEditSubcategoryModal() {
-        document.getElementById('edit-subcategory-modal').classList.remove('active');
-        this.currentState.editingSubcategory = null;
-        this.showEditCategoryModal(this.currentState.editingCategoryId);
-    }
-
-    async saveSubcategoryChanges() {
-        if (!this.currentState.editingSubcategory) return;
-        
-        const newName = document.getElementById('edit-subcategory-name').value.trim();
-        const newIcon = document.getElementById('edit-subcategory-icon').value.trim();
-        
-        if (!newName) {
-            alert("Введите название подкатегории");
-            return;
-        }
-        
-        try {
-            await this.expenses.updateSubcategory(
-                this.currentState.editingCategoryId,
-                this.currentState.editingSubcategory.id,
-                {
-                    name: newName,
-                    icon: newIcon
-                }
-            );
-            await this.saveData();
-            this.hideEditSubcategoryModal();
-        } catch (error) {
-            alert("Ошибка при сохранении: " + error.message);
-        }
-    }
-
-    async deleteSubcategory(subcategoryId) {
-        if (!confirm("Удалить эту подкатегорию? Все связанные расходы будут удалены.")) {
-            return;
-        }
-        
-        try {
-            await this.expenses.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
-            await this.saveData();
-            this.updateSubcategoriesList();
-        } catch (error) {
-            alert("Ошибка при удалении: " + error.message);
-        }
-    }
-
-    // Модальные окна редактирования категорий доходов
-    showEditIncomeCategoryModal(categoryId) {
-        const category = this.incomes.getCategory(categoryId);
-        if (!category) return;
-        
-        this.currentState.editingCategoryId = categoryId;
-        
-        document.getElementById('edit-income-category-title').textContent = `Редактировать ${category.name}`;
-        document.getElementById('edit-income-category-name').value = category.name;
-        document.getElementById('edit-income-category-icon').value = category.icon;
-        
-        this.updateIncomeSubcategoriesList();
-        
-        document.getElementById('edit-income-category-modal').classList.add('active');
-    }
-
-    hideEditIncomeCategoryModal() {
-        document.getElementById('edit-income-category-modal').classList.remove('active');
-        this.currentState.editingCategoryId = null;
-    }
-
-    updateIncomeSubcategoriesList() {
-        const container = document.getElementById('income-subcategories-list');
-        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
-        
-        if (!category) return;
-        
-        if (!category.subcategories || category.subcategories.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нет подкатегорий</div>';
-            return;
-        }
-        
-        container.innerHTML = category.subcategories.map(subcategory => `
-            <div class="subcategory-item">
-                <div class="subcategory-info">
-                    <div class="category-option-icon">${subcategory.icon}</div>
-                    <div class="category-option-name">${subcategory.name}</div>
-                    <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
-                </div>
-                <div class="subcategory-actions">
-                    <button class="subcategory-action-btn subcategory-edit" onclick="editIncomeSubcategory(${subcategory.id})">✏️</button>
-                    <button class="subcategory-action-btn subcategory-delete" onclick="deleteIncomeSubcategory(${subcategory.id})">×</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    async saveIncomeCategoryChanges() {
-        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
-        if (!category) return;
-        
-        const newName = document.getElementById('edit-income-category-name').value.trim();
-        const newIcon = document.getElementById('edit-income-category-icon').value.trim();
-        
-        if (!newName) {
-            alert("Введите название категории");
-            return;
-        }
-        
-        try {
-            await this.incomes.updateCategory(category.id, {
-                name: newName,
-                icon: newIcon
-            });
-            await this.saveData();
-            this.hideEditIncomeCategoryModal();
-        } catch (error) {
-            alert("Ошибка при сохранении: " + error.message);
-        }
-    }
-
-    async addNewIncomeSubcategory() {
-        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
-        if (!category) return;
-        
-        try {
-            await this.incomes.addSubcategory(category.id, {
-                name: "Новая подкатегория",
-                icon: "📁"
-            });
-            this.updateIncomeSubcategoriesList();
-        } catch (error) {
-            alert("Ошибка при добавлении подкатегории: " + error.message);
-        }
-    }
-
-    editIncomeSubcategory(subcategoryId) {
-        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
-        if (!category || !category.subcategories) return;
-        
-        const subcategory = category.subcategories.find(s => s.id === subcategoryId);
-        if (!subcategory) return;
-        
-        this.currentState.editingSubcategory = subcategory;
-        
-        document.getElementById('edit-income-subcategory-title').textContent = `Редактировать ${subcategory.name}`;
-        document.getElementById('edit-income-subcategory-name').value = subcategory.name;
-        document.getElementById('edit-income-subcategory-icon').value = subcategory.icon;
-        
-        this.hideEditIncomeCategoryModal();
-        document.getElementById('edit-income-subcategory-modal').classList.add('active');
-    }
-
-    hideEditIncomeSubcategoryModal() {
-        document.getElementById('edit-income-subcategory-modal').classList.remove('active');
-        this.currentState.editingSubcategory = null;
-        this.showEditIncomeCategoryModal(this.currentState.editingCategoryId);
-    }
-
-    async saveIncomeSubcategoryChanges() {
-        if (!this.currentState.editingSubcategory) return;
-        
-        const newName = document.getElementById('edit-income-subcategory-name').value.trim();
-        const newIcon = document.getElementById('edit-income-subcategory-icon').value.trim();
-        
-        if (!newName) {
-            alert("Введите название подкатегории");
-            return;
-        }
-        
-        try {
-            await this.incomes.updateSubcategory(
-                this.currentState.editingCategoryId,
-                this.currentState.editingSubcategory.id,
-                {
-                    name: newName,
-                    icon: newIcon
-                }
-            );
-            await this.saveData();
-            this.hideEditIncomeSubcategoryModal();
-        } catch (error) {
-            alert("Ошибка при сохранении: " + error.message);
-        }
-    }
-
-    async deleteIncomeSubcategory(subcategoryId) {
-        if (!confirm("Удалить эту подкатегорию? Все связанные доходы будут удалены.")) {
-            return;
-        }
-        
-        try {
-            await this.incomes.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
-            await this.saveData();
-            this.updateIncomeSubcategoriesList();
-        } catch (error) {
-            alert("Ошибка при удалении: " + error.message);
-        }
-    }
-
-    // Редактирование операций
-    async editExpenseOperation(id) {
-        const operation = this.expenses.getOperation(id);
-        if (!operation) {
-            alert("Операция не найдена");
-            return;
-        }
-
-        const category = this.expenses.getCategory(operation.categoryId);
-        if (!category) {
-            alert("Категория не найдена");
-            return;
-        }
-
-        let targetName = category.name;
-        if (operation.subcategoryId) {
-            const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
-            if (subcategory) {
-                targetName = subcategory.name;
-            }
-        }
-
-        const newAmountStr = prompt(`Введите новую сумму расхода для "${targetName}":`, operation.amount.toString());
-        if (newAmountStr === null) return;
-
-        const newAmount = parseFloat(newAmountStr) || 0;
-        if (newAmount <= 0) {
-            alert("Пожалуйста, введите корректную сумму (больше 0)");
-            return;
-        }
-
-        try {
-            await this.expenses.updateOperation(id, { amount: newAmount });
-            await this.saveData();
-            alert("Расход успешно обновлен!");
-        } catch (error) {
-            alert("Ошибка при обновлении расхода: " + error.message);
-        }
-    }
-
-    async deleteExpenseOperation(id) {
-        if (confirm('Удалить эту операцию расхода?')) {
-            try {
-                await this.expenses.deleteOperation(id);
-                await this.saveData();
-                alert("Расход успешно удален!");
-            } catch (error) {
-                alert("Ошибка при удалении расхода: " + error.message);
-            }
-        }
-    }
-
-    async editIncomeOperation(id) {
-        const operation = this.incomes.getOperation(id);
-        if (!operation) {
-            alert("Операция дохода не найдена");
-            return;
-        }
-
-        const category = this.incomes.getCategory(operation.categoryId);
-        if (!category) {
-            alert("Категория не найдена");
-            return;
-        }
-
-        let targetName = category.name;
-        if (operation.subcategoryId) {
-            const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
-            if (subcategory) {
-                targetName = subcategory.name;
-            }
-        }
-
-        const newAmountStr = prompt(`Введите новую сумму дохода для "${targetName}":`, operation.amount.toString());
-        if (newAmountStr === null) return;
-
-        const newAmount = parseFloat(newAmountStr) || 0;
-        if (newAmount < 0) {
-            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-            return;
-        }
-
-        try {
-            await this.incomes.updateOperation(id, { amount: newAmount });
-            await this.saveData();
-            alert("Доход успешно обновлен!");
-        } catch (error) {
-            alert("Ошибка при обновлении дохода: " + error.message);
-        }
-    }
-
-    async deleteIncomeOperation(id) {
-        if (confirm('Удалить эту операцию дохода?')) {
-            try {
-                await this.incomes.deleteOperation(id);
-                await this.saveData();
-                alert("Доход успешно удален!");
-            } catch (error) {
-                alert("Ошибка при удалении дохода: " + error.message);
-            }
-        }
-    }
-
-    async editDebtOperation(id) {
-        const debt = this.debts.get(id);
-        if (!debt) {
-            alert("Долг не найден");
-            return;
-        }
-
-        const newAmountStr = prompt(`Введите новую сумму долга для "${debt.description}":`, debt.amount.toString());
-        if (newAmountStr === null) return;
-
-        const newAmount = parseFloat(newAmountStr) || 0;
-        if (newAmount < 0) {
-            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-            return;
-        }
-
-        if (newAmount < debt.paidAmount) {
-            alert("Новая сумма долга не может быть меньше уже оплаченной суммы");
-            return;
-        }
-
-        const newDescription = prompt(`Введите новое описание долга:`, debt.description);
-        if (newDescription === null) return;
-
-        if (!newDescription.trim()) {
-            alert("Описание долга не может быть пустым");
-            return;
-        }
-
-        try {
-            await this.debts.update(id, {
-                description: newDescription.trim(),
-                amount: newAmount
-            });
-            await this.saveData();
-            alert("Долг успешно обновлен!");
-        } catch (error) {
-            alert("Ошибка при обновлении долга: " + error.message);
-        }
-    }
-
-    async deleteDebtOperation(id) {
-        if (confirm('Удалить эту операцию долга?')) {
-            try {
-                await this.debts.delete(id);
-                await this.saveData();
-                alert("Долг успешно удален!");
-            } catch (error) {
-                alert("Ошибка при удалении долга: " + error.message);
-            }
-        }
-    }
-
-    async editDebtPayment(debtId, paymentIndex) {
-        const debt = this.debts.get(debtId);
-        if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
-            alert("Платеж не найден");
-            return;
-        }
-
-        const payment = debt.paymentHistory[paymentIndex];
-        const remainingBeforePayment = debt.amount - (debt.paidAmount - payment.amount);
-        
-        const newAmountStr = prompt(
-            `Введите новую сумму платежа по долгу "${debt.description}"\nМаксимально возможная сумма: ${this.settings.currency}${remainingBeforePayment.toFixed(2)}`,
-            payment.amount.toString()
-        );
-        
-        if (newAmountStr === null) return;
-
-        const newAmount = parseFloat(newAmountStr) || 0;
-        if (newAmount <= 0) {
-            alert("Сумма платежа должна быть больше 0");
-            return;
-        }
-
-        if (newAmount > remainingBeforePayment) {
-            alert("Сумма платежа не может превышать оставшуюся сумму долга");
-            return;
-        }
-
-        try {
-            await this.debts.updatePayment(debtId, paymentIndex, {
-                amount: newAmount,
-                date: new Date().toISOString()
-            });
-            await this.saveData();
-            alert("Платеж успешно обновлен!");
-        } catch (error) {
-            alert("Ошибка при обновлении платежа: " + error.message);
-        }
-    }
-
-    async deleteDebtPayment(debtId, paymentIndex) {
-        if (confirm('Удалить этот платеж по долгу?')) {
-            try {
-                await this.debts.deletePayment(debtId, paymentIndex);
-                await this.saveData();
-                alert("Платеж успешно удален!");
-            } catch (error) {
-                alert("Ошибка при удалении платежа: " + error.message);
-            }
-        }
-    }
-
-    // Настройки
-    async showSettingsModal() {
-        const totalIncome = this.incomes.getTotal();
-        const totalPaidDebts = this.debts.getTotalPaid();
-        const totalExpenses = this.expenses.getTotalExpenses();
-        const balance = totalIncome - totalPaidDebts - totalExpenses;
-        
-        const debugInfo = `
-=== ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
-
-Доходы: ${this.incomes.getCategories().length} категорий
-Долги: ${this.debts.getAll().length} записей
-Категории расходов: ${this.expenses.getCategories().length}
-Операции расходов: ${this.expenses.getOperations().length}
-
-ОБЩАЯ СТАТИСТИКА:
-- Доходы: ${this.settings.currency}${totalIncome.toFixed(2)}
-- Оплаченные долги: ${this.settings.currency}${totalPaidDebts.toFixed(2)}
-- Расходы: ${this.settings.currency}${totalExpenses.toFixed(2)}
-- Баланс: ${this.settings.currency}${balance.toFixed(2)}
-        `.trim();
-        
-        const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
-        
-        if (userChoice) {
-            await this.clearAllData();
-        }
-    }
-
-    async clearAllData() {
-        if (confirm('Вы уверены? Все данные будут удалены, кроме базовых категорий расходов.')) {
-            await this.resetToDefaults();
-            alert('Все данные очищены! Базовые категории сохранены.');
-        }
-    }
-
-    // Кнопка добавления дохода
-    addIncomeOperation() {
-        this.showIncomeCategorySelection();
     }
 }
