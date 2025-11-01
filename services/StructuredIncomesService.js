@@ -9,37 +9,15 @@ class StructuredIncomesService {
         try {
             if (data) {
                 this.categories = data.incomeCategories || [];
-                this.operations = data.incomes || []; // Исправлено: было incomeOperations, стало incomes
+                this.operations = data.incomes || [];
             } else {
                 this.categories = await this.storage.getAll('incomeCategories');
-                this.operations = await this.storage.getAll('incomes'); // Исправлено: было incomeOperations, стало incomes
+                this.operations = await this.storage.getAll('incomes');
             }
             
             // Если нет категорий, создаем начальные
             if (this.categories.length === 0) {
-                this.categories = [
-                    { 
-                        id: 1, 
-                        name: "Зарплата", 
-                        amount: 0, 
-                        icon: "💰",
-                        subcategories: [
-                            { id: 101, name: "Основная зарплата", icon: "💵", amount: 0 },
-                            { id: 102, name: "Премия", icon: "🎁", amount: 0 },
-                            { id: 103, name: "Аванс", icon: "📅", amount: 0 }
-                        ]
-                    },
-                    { 
-                        id: 2, 
-                        name: "Стипендия", 
-                        amount: 0, 
-                        icon: "🎓",
-                        subcategories: [
-                            { id: 201, name: "Академическая", icon: "📚", amount: 0 },
-                            { id: 202, name: "Социальная", icon: "❤️", amount: 0 }
-                        ]
-                    }
-                ];
+                this.categories = this.storage.getDefaultIncomeCategories();
                 
                 // Сохраняем начальные категории
                 for (const category of this.categories) {
@@ -289,6 +267,17 @@ class StructuredIncomesService {
                 category.amount -= operation.amount;
             }
         }
+    }
+
+    // Новый метод для получения операций по категории
+    getOperationsByCategory(categoryId) {
+        return this.operations.filter(op => op.categoryId === categoryId);
+    }
+
+    getOperationsBySubcategory(categoryId, subcategoryId) {
+        return this.operations.filter(op => 
+            op.categoryId === categoryId && op.subcategoryId === subcategoryId
+        );
     }
 
     toJSON() {
