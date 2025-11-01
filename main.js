@@ -6,13 +6,101 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("Budget App: Starting...");
     app = new BudgetApp();
     app.init();
+    
+    // Инициализация фиксированной навигации
+    fixNavigationLayout();
+    
+    // Реинициализация после полной загрузки
+    window.addEventListener('load', fixNavigationLayout);
+    
+    // Реинициализация при изменении ориентации
+    window.addEventListener('resize', fixNavigationLayout);
+    window.addEventListener('orientationchange', function() {
+        setTimeout(fixNavigationLayout, 300);
+    });
 });
+
+// Фикс для фиксированной навигации
+function fixNavigationLayout() {
+    const nav = document.querySelector('.bottom-nav');
+    const appContainer = document.querySelector('.app-container');
+    
+    if (!nav || !appContainer) return;
+    
+    // Рассчитываем высоту навигации
+    const navHeight = nav.offsetHeight;
+    
+    // Устанавливаем отступы
+    document.body.style.paddingBottom = navHeight + 'px';
+    appContainer.style.paddingBottom = '20px';
+    
+    // Для экрана операций и отчета устанавливаем минимальную высоту
+    const screens = document.querySelectorAll('.screen');
+    screens.forEach(screen => {
+        if (screen.id !== 'overview-screen') {
+            screen.style.minHeight = `calc(100vh - ${navHeight}px - 60px)`;
+        }
+    });
+}
+
+// Улучшенная навигация между экранами
+function smoothSwitchScreen(screenName) {
+    const currentScreen = document.querySelector('.screen.active');
+    const targetScreen = document.getElementById(screenName + '-screen');
+    
+    if (!currentScreen || !targetScreen) return;
+    
+    // Анимация перехода
+    currentScreen.style.opacity = '0';
+    currentScreen.style.transform = 'translateY(10px)';
+    
+    setTimeout(() => {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        
+        // Обновляем активную кнопку навигации
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Активируем соответствующую кнопку навигации
+        const navItems = document.querySelectorAll('.nav-item');
+        if (screenName === 'overview') {
+            if (navItems[0]) navItems[0].classList.add('active');
+        } else if (screenName === 'operations') {
+            if (navItems[1]) navItems[1].classList.add('active');
+        } else if (screenName === 'report') {
+            if (navItems[2]) navItems[2].classList.add('active');
+        }
+        
+        targetScreen.classList.add('active');
+        targetScreen.style.opacity = '0';
+        targetScreen.style.transform = 'translateY(10px)';
+        
+        // Запускаем анимацию появления
+        requestAnimationFrame(() => {
+            targetScreen.style.transition = 'all 0.3s ease-out';
+            targetScreen.style.opacity = '1';
+            targetScreen.style.transform = 'translateY(0)';
+        });
+        
+        // Обновляем UI приложения
+        if (window.app) {
+            if (screenName === 'operations') {
+                setTimeout(() => app.updateOperationsList(), 100);
+            } else if (screenName === 'report') {
+                setTimeout(() => app.updateReport(), 100);
+            }
+        }
+    }, 150);
+}
 
 // Глобальные функции для вызовов из HTML
 
 // Навигация
 function switchScreen(screenName) {
-    if (app) app.switchScreen(screenName);
+    smoothSwitchScreen(screenName);
 }
 
 // Доходы
@@ -206,6 +294,25 @@ window.addEventListener('load', function() {
         app = new BudgetApp();
         app.init();
     }
+});
+
+// Фикс для касаний в навигации
+document.addEventListener('DOMContentLoaded', function() {
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    navItems.forEach(item => {
+        item.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        
+        item.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+        
+        item.addEventListener('touchcancel', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
 });
 
 // Запрет масштабирования на iOS
