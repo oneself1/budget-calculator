@@ -185,7 +185,7 @@ class IndexedDBService {
             return {
                 incomes,
                 incomeCategories,
-                incomeOperations: incomes, // для совместимости
+                incomeOperations: incomes,
                 debts,
                 expenseCategories,
                 expenseOperations,
