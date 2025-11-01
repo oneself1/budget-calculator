@@ -4,11 +4,19 @@ class DebtsService {
         this.debts = [];
     }
 
-    load(data) {
-        this.debts = data?.debts || [];
+    async load(data = null) {
+        try {
+            if (data) {
+                this.debts = data.debts || [];
+            } else {
+                this.debts = await this.storage.getAll('debts');
+            }
+        } catch (error) {
+            console.error('Error loading debts:', error);
+        }
     }
 
-    add(debt) {
+    async add(debt) {
         const newDebt = {
             id: Date.now(),
             paidAmount: 0,
@@ -17,24 +25,28 @@ class DebtsService {
             date: new Date().toISOString()
         };
         this.debts.push(newDebt);
+        await this.storage.add('debts', newDebt);
         return newDebt;
     }
 
-    update(id, updatedDebt) {
+    async update(id, updatedDebt) {
         const index = this.debts.findIndex(debt => debt.id === id);
         if (index !== -1) {
             this.debts[index] = { ...this.debts[index], ...updatedDebt };
+            await this.storage.put('debts', this.debts[index]);
             return this.debts[index];
         }
         return null;
     }
 
-    delete(id) {
+    async delete(id) {
         const index = this.debts.findIndex(debt => debt.id === id);
         if (index !== -1) {
-            return this.debts.splice(index, 1)[0];
+            this.debts.splice(index, 1);
+            await this.storage.delete('debts', id);
+            return true;
         }
-        return null;
+        return false;
     }
 
     get(id) {
@@ -53,7 +65,7 @@ class DebtsService {
         return this.debts.reduce((sum, item) => sum + (item.paidAmount || 0), 0);
     }
 
-    makePayment(debtId, paymentAmount) {
+    async makePayment(debtId, paymentAmount) {
         const debt = this.get(debtId);
         if (!debt) {
             throw new Error("Долг не найден");
@@ -80,10 +92,11 @@ class DebtsService {
             amount: paymentAmount
         });
 
+        await this.storage.put('debts', debt);
         return debt;
     }
 
-    updatePayment(debtId, paymentIndex, updatedPayment) {
+    async updatePayment(debtId, paymentIndex, updatedPayment) {
         const debt = this.get(debtId);
         if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
             throw new Error("Платеж не найден");
@@ -99,10 +112,11 @@ class DebtsService {
         // Добавляем новую сумму платежа
         debt.paidAmount += debt.paymentHistory[paymentIndex].amount;
 
+        await this.storage.put('debts', debt);
         return debt.paymentHistory[paymentIndex];
     }
 
-    deletePayment(debtId, paymentIndex) {
+    async deletePayment(debtId, paymentIndex) {
         const debt = this.get(debtId);
         if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
             throw new Error("Платеж не найден");
@@ -111,6 +125,7 @@ class DebtsService {
         const deletedPayment = debt.paymentHistory.splice(paymentIndex, 1)[0];
         debt.paidAmount -= deletedPayment.amount;
 
+        await this.storage.put('debts', debt);
         return deletedPayment;
     }
 }
