@@ -98,7 +98,7 @@ function deleteSubcategory(subcategoryId) {
     if (app) app.deleteSubcategory(subcategoryId);
 }
 
-// Заглушки для операций
+// Функции для операций
 function editExpenseOperation(id) {
     if (app) app.editExpenseOperation(id);
 }
