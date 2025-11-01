@@ -172,4 +172,22 @@ class OperationsService {
             balance: totalIncome - totalExpenses - totalDebtPayments
         };
     }
+
+    // Новые методы для фильтрации
+    getOperationsByType(type) {
+        return this.getAllOperations().filter(op => op.type === type);
+    }
+
+    getRecentOperations(limit = 10) {
+        return this.getAllOperations()
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, limit);
+    }
+
+    getOperationsByDate(date) {
+        const targetDate = new Date(date).toDateString();
+        return this.getAllOperations().filter(op => 
+            new Date(op.date).toDateString() === targetDate
+        );
+    }
 }
