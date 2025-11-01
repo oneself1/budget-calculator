@@ -1,6 +1,6 @@
 class BudgetApp {
     constructor() {
-        this.storage = new StorageService();
+        this.storage = new IndexedDBService();
         this.incomes = new StructuredIncomesService(this.storage);
         this.debts = new DebtsService(this.storage);
         this.expenses = new ExpensesService(this.storage);
@@ -14,76 +14,80 @@ class BudgetApp {
             selectedCategoryId: null,
             selectedIncomeCategoryId: null
         };
+        
+        this.initialized = false;
     }
 
-    init() {
+    async init() {
         console.log("Budget App: Initializing...");
         try {
-            this.loadData();
+            // Инициализируем IndexedDB
+            await this.storage.init();
+            
+            // Загружаем данные
+            await this.loadData();
             this.updateUI();
             this.startClock();
+            
+            this.initialized = true;
             console.log("Budget App: Initialized successfully");
         } catch (error) {
             console.error("Budget App: Initialization error:", error);
-            this.resetToDefaults();
+            await this.resetToDefaults();
         }
     }
 
-    loadData() {
-        const data = this.storage.load();
-        if (data) {
-            this.incomes.load(data);
-            this.debts.load(data);
-            this.expenses.load(data);
-            this.settings = data.settings || this.settings;
-        } else {
-            this.resetToDefaults();
+    async loadData() {
+        try {
+            const data = await this.storage.getAllData();
+            if (data) {
+                await this.incomes.load(data);
+                await this.debts.load(data);
+                await this.expenses.load(data);
+                this.settings = data.settings || this.settings;
+            } else {
+                await this.resetToDefaults();
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+            await this.resetToDefaults();
         }
     }
 
-    saveData() {
-        const data = {
-            incomes: this.incomes.getAll(),
-            incomeCategories: this.incomes.getCategories(),
-            incomeOperations: this.incomes.getOperations(),
-            debts: this.debts.getAll(),
-            expenseCategories: this.expenses.getCategories(),
-            expenseOperations: this.expenses.getOperations(),
-            settings: this.settings
-        };
-        if (this.storage.save(data)) {
+    async saveData() {
+        if (!this.initialized) return;
+        
+        try {
+            // Сохраняем настройки
+            await this.storage.saveSettings(this.settings);
+            
+            // Обновляем UI
             this.updateUI();
-        } else {
+        } catch (error) {
+            console.error('Error saving data:', error);
             alert("Ошибка сохранения данных");
         }
     }
 
-    resetToDefaults() {
-        // Сохраняем базовые категории расходов перед сбросом
-        const currentExpenseCategories = this.expenses.getCategories();
-        const basicExpenseCategories = currentExpenseCategories.filter(cat => 
-            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(cat.id) // ID базовых категорий от 1 до 12
-        );
-
-        this.incomes = new StructuredIncomesService(this.storage);
-        this.debts = new DebtsService(this.storage);
-        this.expenses = new ExpensesService(this.storage);
-        this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
-        this.reports = new ReportService(this.incomes, this.debts, this.expenses);
-        
-        this.settings = { currency: "₽" };
-        
-        // Восстанавливаем базовые категории расходов
-        if (basicExpenseCategories.length > 0) {
-            basicExpenseCategories.forEach(category => {
-                const existingCategory = this.expenses.getCategory(category.id);
-                if (!existingCategory) {
-                    this.expenses.categories.push(category);
-                }
-            });
+    async resetToDefaults() {
+        try {
+            // Очищаем данные через IndexedDBService
+            await this.storage.clearAllData();
+            
+            // Пересоздаем сервисы
+            this.incomes = new StructuredIncomesService(this.storage);
+            this.debts = new DebtsService(this.storage);
+            this.expenses = new ExpensesService(this.storage);
+            this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
+            this.reports = new ReportService(this.incomes, this.debts, this.expenses);
+            
+            this.settings = { currency: "₽" };
+            
+            // Загружаем заново
+            await this.loadData();
+        } catch (error) {
+            console.error('Error resetting to defaults:', error);
         }
-        
-        this.saveData();
     }
 
     // UI методы
@@ -91,7 +95,7 @@ class BudgetApp {
         this.updateCircles();
         this.updateBalance();
         this.updateReport();
-        this.updateOperationsList(); // Всегда обновляем список операций
+        this.updateOperationsList();
     }
 
     updateCircles() {
@@ -178,7 +182,7 @@ class BudgetApp {
             const icon = category.icon || '🛒';
             const hasSubcategories = category.subcategories && category.subcategories.length > 0;
             
-            const deleteButton = category.id > 12 ? // Не показывать кнопку удаления для базовых категорий (1-12)
+            const deleteButton = category.id > 12 ?
                 `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
                 '';
             
@@ -468,24 +472,24 @@ class BudgetApp {
     }
 
     // Добавление новых записей
-    addNewIncomeCategory() {
+    async addNewIncomeCategory() {
         const categoryName = prompt('Введите название категории доходов:');
         if (!categoryName) return;
         
         const icon = prompt('Введите смайлик (иконку) для категории (например: 💰, 💵, 💳):', '💰') || '💰';
         
         try {
-            this.incomes.addCategory({
+            await this.incomes.addCategory({
                 name: categoryName,
                 icon: icon
             });
-            this.saveData();
+            await this.saveData();
         } catch (error) {
             alert("Ошибка при добавлении категории доходов: " + error.message);
         }
     }
 
-    addNewCircle(type) {
+    async addNewCircle(type) {
         const amountStr = prompt(`Введите сумму ${this.getTypeName(type)}:`, "0");
         if (amountStr === null) return;
         
@@ -504,30 +508,30 @@ class BudgetApp {
         
         try {
             if (type === 'debt') {
-                this.debts.add({
+                await this.debts.add({
                     amount: amount,
                     description: description,
                     icon: icon
                 });
-                this.saveData();
+                await this.saveData();
             }
         } catch (error) {
             alert("Ошибка при добавлении: " + error.message);
         }
     }
 
-    addNewExpenseCategory() {
+    async addNewExpenseCategory() {
         const categoryName = prompt('Введите название категории расходов:');
         if (!categoryName) return;
         
         const icon = prompt('Введите смайлик (иконку) для категории (например: 🍔, 🚗, 🎮):', '🛒') || '🛒';
         
         try {
-            this.expenses.addCategory({
+            await this.expenses.addCategory({
                 name: categoryName,
                 icon: icon
             });
-            this.saveData();
+            await this.saveData();
         } catch (error) {
             alert("Ошибка при добавлении категории: " + error.message);
         }
@@ -542,7 +546,7 @@ class BudgetApp {
         this.showEditCategoryModal(categoryId);
     }
 
-    editCircle(type, id) {
+    async editCircle(type, id) {
         if (type === 'debt') {
             const debt = this.debts.get(id);
             if (debt) {
@@ -566,29 +570,38 @@ class BudgetApp {
                 const newIcon = prompt('Изменить иконку (смайлик):', debt.icon) || debt.icon;
                 debt.icon = newIcon;
                 
-                this.saveData();
+                await this.debts.update(id, debt);
+                await this.saveData();
             }
         }
     }
 
     // Удаление
-    deleteIncomeCategory(categoryId) {
+    async deleteIncomeCategory(categoryId) {
         if (confirm('Удалить эту категорию доходов?')) {
-            this.incomes.deleteCategory(categoryId);
-            this.saveData();
-        }
-    }
-
-    deleteCircle(type, id) {
-        if (confirm('Удалить эту запись?')) {
-            if (type === 'debt') {
-                this.debts.delete(id);
-                this.saveData();
+            try {
+                await this.incomes.deleteCategory(categoryId);
+                await this.saveData();
+            } catch (error) {
+                alert("Ошибка при удалении: " + error.message);
             }
         }
     }
 
-    deleteExpenseCategory(categoryId) {
+    async deleteCircle(type, id) {
+        if (confirm('Удалить эту запись?')) {
+            if (type === 'debt') {
+                try {
+                    await this.debts.delete(id);
+                    await this.saveData();
+                } catch (error) {
+                    alert("Ошибка при удалении: " + error.message);
+                }
+            }
+        }
+    }
+
+    async deleteExpenseCategory(categoryId) {
         // Запрещаем удаление базовых категорий (ID 1-12)
         if (categoryId >= 1 && categoryId <= 12) {
             alert("Базовые категории расходов нельзя удалить!");
@@ -596,13 +609,17 @@ class BudgetApp {
         }
         
         if (confirm('Удалить эту категорию?')) {
-            this.expenses.deleteCategory(categoryId);
-            this.saveData();
+            try {
+                await this.expenses.deleteCategory(categoryId);
+                await this.saveData();
+            } catch (error) {
+                alert("Ошибка при удалении: " + error.message);
+            }
         }
     }
 
     // Долги - платежи
-    makeDebtPayment(debtId) {
+    async makeDebtPayment(debtId) {
         const debt = this.debts.get(debtId);
         if (debt) {
             const remaining = debt.amount - (debt.paidAmount || 0);
@@ -622,8 +639,8 @@ class BudgetApp {
             const payment = parseFloat(paymentStr) || 0;
             
             try {
-                this.debts.makePayment(debtId, payment);
-                this.saveData();
+                await this.debts.makePayment(debtId, payment);
+                await this.saveData();
                 
                 if (debt.paidAmount >= debt.amount) {
                     alert("Долг полностью погашен!");
@@ -743,7 +760,7 @@ class BudgetApp {
         this.addExpenseToCategory(this.currentState.selectedCategoryId, subcategoryId);
     }
 
-    addExpenseToCategory(categoryId, subcategoryId) {
+    async addExpenseToCategory(categoryId, subcategoryId) {
         const category = this.expenses.getCategory(categoryId);
         if (!category) return;
         
@@ -768,7 +785,7 @@ class BudgetApp {
         }
         
         try {
-            const operation = this.expenses.addOperation({
+            await this.expenses.addOperation({
                 categoryId: category.id,
                 subcategoryId: subcategoryId,
                 categoryName: category.name,
@@ -778,7 +795,7 @@ class BudgetApp {
                 icon: targetIcon
             });
             
-            this.saveData();
+            await this.saveData();
             
             alert(`Расход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
         } catch (error) {
@@ -876,7 +893,7 @@ class BudgetApp {
         this.addIncomeToCategory(this.currentState.selectedIncomeCategoryId, subcategoryId);
     }
 
-    addIncomeToCategory(categoryId, subcategoryId) {
+    async addIncomeToCategory(categoryId, subcategoryId) {
         const category = this.incomes.getCategory(categoryId);
         if (!category) return;
         
@@ -901,7 +918,7 @@ class BudgetApp {
         }
         
         try {
-            const operation = this.incomes.addOperation({
+            await this.incomes.addOperation({
                 categoryId: category.id,
                 subcategoryId: subcategoryId,
                 categoryName: category.name,
@@ -911,7 +928,7 @@ class BudgetApp {
                 icon: targetIcon
             });
             
-            this.saveData();
+            await this.saveData();
             
             alert(`Доход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
         } catch (error) {
@@ -966,7 +983,7 @@ class BudgetApp {
         `).join('');
     }
 
-    saveCategoryChanges() {
+    async saveCategoryChanges() {
         const category = this.expenses.getCategory(this.currentState.editingCategoryId);
         if (!category) return;
         
@@ -979,23 +996,23 @@ class BudgetApp {
         }
         
         try {
-            this.expenses.updateCategory(category.id, {
+            await this.expenses.updateCategory(category.id, {
                 name: newName,
                 icon: newIcon
             });
-            this.saveData();
+            await this.saveData();
             this.hideEditCategoryModal();
         } catch (error) {
             alert("Ошибка при сохранении: " + error.message);
         }
     }
 
-    addNewSubcategory() {
+    async addNewSubcategory() {
         const category = this.expenses.getCategory(this.currentState.editingCategoryId);
         if (!category) return;
         
         try {
-            this.expenses.addSubcategory(category.id, {
+            await this.expenses.addSubcategory(category.id, {
                 name: "Новая подкатегория",
                 icon: "📁"
             });
@@ -1028,7 +1045,7 @@ class BudgetApp {
         this.showEditCategoryModal(this.currentState.editingCategoryId);
     }
 
-    saveSubcategoryChanges() {
+    async saveSubcategoryChanges() {
         if (!this.currentState.editingSubcategory) return;
         
         const newName = document.getElementById('edit-subcategory-name').value.trim();
@@ -1040,7 +1057,7 @@ class BudgetApp {
         }
         
         try {
-            this.expenses.updateSubcategory(
+            await this.expenses.updateSubcategory(
                 this.currentState.editingCategoryId,
                 this.currentState.editingSubcategory.id,
                 {
@@ -1048,21 +1065,21 @@ class BudgetApp {
                     icon: newIcon
                 }
             );
-            this.saveData();
+            await this.saveData();
             this.hideEditSubcategoryModal();
         } catch (error) {
             alert("Ошибка при сохранении: " + error.message);
         }
     }
 
-    deleteSubcategory(subcategoryId) {
+    async deleteSubcategory(subcategoryId) {
         if (!confirm("Удалить эту подкатегорию? Все связанные расходы будут удалены.")) {
             return;
         }
         
         try {
-            this.expenses.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
-            this.saveData();
+            await this.expenses.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
+            await this.saveData();
             this.updateSubcategoriesList();
         } catch (error) {
             alert("Ошибка при удалении: " + error.message);
@@ -1116,7 +1133,7 @@ class BudgetApp {
         `).join('');
     }
 
-    saveIncomeCategoryChanges() {
+    async saveIncomeCategoryChanges() {
         const category = this.incomes.getCategory(this.currentState.editingCategoryId);
         if (!category) return;
         
@@ -1129,23 +1146,23 @@ class BudgetApp {
         }
         
         try {
-            this.incomes.updateCategory(category.id, {
+            await this.incomes.updateCategory(category.id, {
                 name: newName,
                 icon: newIcon
             });
-            this.saveData();
+            await this.saveData();
             this.hideEditIncomeCategoryModal();
         } catch (error) {
             alert("Ошибка при сохранении: " + error.message);
         }
     }
 
-    addNewIncomeSubcategory() {
+    async addNewIncomeSubcategory() {
         const category = this.incomes.getCategory(this.currentState.editingCategoryId);
         if (!category) return;
         
         try {
-            this.incomes.addSubcategory(category.id, {
+            await this.incomes.addSubcategory(category.id, {
                 name: "Новая подкатегория",
                 icon: "📁"
             });
@@ -1178,7 +1195,7 @@ class BudgetApp {
         this.showEditIncomeCategoryModal(this.currentState.editingCategoryId);
     }
 
-    saveIncomeSubcategoryChanges() {
+    async saveIncomeSubcategoryChanges() {
         if (!this.currentState.editingSubcategory) return;
         
         const newName = document.getElementById('edit-income-subcategory-name').value.trim();
@@ -1190,7 +1207,7 @@ class BudgetApp {
         }
         
         try {
-            this.incomes.updateSubcategory(
+            await this.incomes.updateSubcategory(
                 this.currentState.editingCategoryId,
                 this.currentState.editingSubcategory.id,
                 {
@@ -1198,21 +1215,21 @@ class BudgetApp {
                     icon: newIcon
                 }
             );
-            this.saveData();
+            await this.saveData();
             this.hideEditIncomeSubcategoryModal();
         } catch (error) {
             alert("Ошибка при сохранении: " + error.message);
         }
     }
 
-    deleteIncomeSubcategory(subcategoryId) {
+    async deleteIncomeSubcategory(subcategoryId) {
         if (!confirm("Удалить эту подкатегорию? Все связанные доходы будут удалены.")) {
             return;
         }
         
         try {
-            this.incomes.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
-            this.saveData();
+            await this.incomes.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
+            await this.saveData();
             this.updateIncomeSubcategoriesList();
         } catch (error) {
             alert("Ошибка при удалении: " + error.message);
@@ -1220,7 +1237,7 @@ class BudgetApp {
     }
 
     // Редактирование операций
-    editExpenseOperation(id) {
+    async editExpenseOperation(id) {
         const operation = this.expenses.getOperation(id);
         if (!operation) {
             alert("Операция не найдена");
@@ -1251,19 +1268,19 @@ class BudgetApp {
         }
 
         try {
-            this.expenses.updateOperation(id, { amount: newAmount });
-            this.saveData();
+            await this.expenses.updateOperation(id, { amount: newAmount });
+            await this.saveData();
             alert("Расход успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении расхода: " + error.message);
         }
     }
 
-    deleteExpenseOperation(id) {
+    async deleteExpenseOperation(id) {
         if (confirm('Удалить эту операцию расхода?')) {
             try {
-                this.expenses.deleteOperation(id);
-                this.saveData();
+                await this.expenses.deleteOperation(id);
+                await this.saveData();
                 alert("Расход успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении расхода: " + error.message);
@@ -1271,7 +1288,7 @@ class BudgetApp {
         }
     }
 
-    editIncomeOperation(id) {
+    async editIncomeOperation(id) {
         const operation = this.incomes.getOperation(id);
         if (!operation) {
             alert("Операция дохода не найдена");
@@ -1302,19 +1319,19 @@ class BudgetApp {
         }
 
         try {
-            this.incomes.updateOperation(id, { amount: newAmount });
-            this.saveData();
+            await this.incomes.updateOperation(id, { amount: newAmount });
+            await this.saveData();
             alert("Доход успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении дохода: " + error.message);
         }
     }
 
-    deleteIncomeOperation(id) {
+    async deleteIncomeOperation(id) {
         if (confirm('Удалить эту операцию дохода?')) {
             try {
-                this.incomes.deleteOperation(id);
-                this.saveData();
+                await this.incomes.deleteOperation(id);
+                await this.saveData();
                 alert("Доход успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении дохода: " + error.message);
@@ -1322,7 +1339,7 @@ class BudgetApp {
         }
     }
 
-    editDebtOperation(id) {
+    async editDebtOperation(id) {
         const debt = this.debts.get(id);
         if (!debt) {
             alert("Долг не найден");
@@ -1352,22 +1369,22 @@ class BudgetApp {
         }
 
         try {
-            this.debts.update(id, {
+            await this.debts.update(id, {
                 description: newDescription.trim(),
                 amount: newAmount
             });
-            this.saveData();
+            await this.saveData();
             alert("Долг успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении долга: " + error.message);
         }
     }
 
-    deleteDebtOperation(id) {
+    async deleteDebtOperation(id) {
         if (confirm('Удалить эту операцию долга?')) {
             try {
-                this.debts.delete(id);
-                this.saveData();
+                await this.debts.delete(id);
+                await this.saveData();
                 alert("Долг успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении долга: " + error.message);
@@ -1375,7 +1392,7 @@ class BudgetApp {
         }
     }
 
-    editDebtPayment(debtId, paymentIndex) {
+    async editDebtPayment(debtId, paymentIndex) {
         const debt = this.debts.get(debtId);
         if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
             alert("Платеж не найден");
@@ -1404,22 +1421,22 @@ class BudgetApp {
         }
 
         try {
-            this.debts.updatePayment(debtId, paymentIndex, {
+            await this.debts.updatePayment(debtId, paymentIndex, {
                 amount: newAmount,
                 date: new Date().toISOString()
             });
-            this.saveData();
+            await this.saveData();
             alert("Платеж успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении платежа: " + error.message);
         }
     }
 
-    deleteDebtPayment(debtId, paymentIndex) {
+    async deleteDebtPayment(debtId, paymentIndex) {
         if (confirm('Удалить этот платеж по долгу?')) {
             try {
-                this.debts.deletePayment(debtId, paymentIndex);
-                this.saveData();
+                await this.debts.deletePayment(debtId, paymentIndex);
+                await this.saveData();
                 alert("Платеж успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении платежа: " + error.message);
@@ -1428,7 +1445,7 @@ class BudgetApp {
     }
 
     // Настройки
-    showSettingsModal() {
+    async showSettingsModal() {
         const totalIncome = this.incomes.getTotal();
         const totalPaidDebts = this.debts.getTotalPaid();
         const totalExpenses = this.expenses.getTotalExpenses();
@@ -1452,13 +1469,13 @@ class BudgetApp {
         const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
         
         if (userChoice) {
-            this.clearAllData();
+            await this.clearAllData();
         }
     }
 
-    clearAllData() {
+    async clearAllData() {
         if (confirm('Вы уверены? Все данные будут удалены, кроме базовых категорий расходов.')) {
-            this.resetToDefaults();
+            await this.resetToDefaults();
             alert('Все данные очищены! Базовые категории сохранены.');
         }
     }
