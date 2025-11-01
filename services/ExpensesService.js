@@ -298,6 +298,17 @@ class ExpensesService {
         return total;
     }
 
+    // Новый метод для получения операций по категории
+    getOperationsByCategory(categoryId) {
+        return this.operations.filter(op => op.categoryId === categoryId);
+    }
+
+    getOperationsBySubcategory(categoryId, subcategoryId) {
+        return this.operations.filter(op => 
+            op.categoryId === categoryId && op.subcategoryId === subcategoryId
+        );
+    }
+
     toJSON() {
         return {
             categories: this.categories,
