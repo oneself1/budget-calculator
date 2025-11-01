@@ -1,4 +1,3 @@
-// main.js - глобальные функции для HTML
 let app = null;
 
 // Асинхронная инициализация при загрузке
@@ -154,29 +153,58 @@ const addIncomeOperation = safeCall(function() {
     app.showIncomeCategorySelection();
 }, "Ошибка при добавлении операции дохода");
 
-const editIncomeCategory = safeCall(function(categoryId) {
-    app.editIncomeCategory(categoryId);
-}, "Ошибка при редактировании категории доходов");
+const addIncomeToCategory = safeCall(async function(categoryId, subcategoryId = null) {
+    await app.addIncomeToCategory(categoryId, subcategoryId);
+}, "Ошибка при добавлении дохода в категорию");
 
-const deleteIncomeCategory = safeCall(async function(categoryId) {
-    await app.deleteIncomeCategory(categoryId);
-}, "Ошибка при удалении категории доходов");
+const showIncomeCategorySelection = safeCall(function() {
+    app.showIncomeCategorySelection();
+}, "Ошибка при выборе категории доходов");
+
+const hideIncomeCategorySelection = safeCall(function() {
+    app.hideIncomeCategorySelection();
+}, "Ошибка при скрытии выбора категории доходов");
+
+const selectIncomeCategory = safeCall(function(categoryId) {
+    app.selectIncomeCategory(categoryId);
+}, "Ошибка при выборе категории доходов");
+
+const selectIncomeSubcategory = safeCall(function(categoryId, subcategoryId) {
+    app.selectIncomeSubcategory(categoryId, subcategoryId);
+}, "Ошибка при выборе подкатегории доходов");
+
+const hideIncomeSubcategorySelection = safeCall(function() {
+    app.hideIncomeSubcategorySelection();
+}, "Ошибка при скрытии выбора подкатегории доходов");
 
 // Долги
 const addNewCircle = safeCall(async function(type) {
     await app.addNewCircle(type);
 }, "Ошибка при добавлении");
 
-const editCircle = safeCall(async function(type, id) {
-    await app.editCircle(type, id);
-}, "Ошибка при редактировании");
-
-const deleteCircle = safeCall(async function(type, id) {
-    await app.deleteCircle(type, id);
-}, "Ошибка при удалении");
-
 const makeDebtPayment = safeCall(async function(debtId) {
-    await app.makeDebtPayment(debtId);
+    const debt = app.debts.get(debtId);
+    if (!debt) return;
+    
+    const remaining = debt.amount - (debt.paidAmount || 0);
+    if (remaining <= 0) {
+        ToastService.info("Долг уже полностью погашен");
+        return;
+    }
+    
+    const amountStr = prompt(`Введите сумму платежа по долгу "${debt.description}" (осталось: ${app.settings.currency}${remaining}):`, remaining.toString());
+    if (amountStr === null) return;
+    
+    const amount = parseFloat(amountStr) || 0;
+    if (amount <= 0 || amount > remaining) {
+        ToastService.error("Введите корректную сумму платежа");
+        return;
+    }
+    
+    await app.debts.makePayment(debtId, amount);
+    await app.saveData();
+    app.updateUI();
+    ToastService.success(`Платеж ${app.settings.currency}${amount.toFixed(2)} внесен`);
 }, "Ошибка при оплате долга");
 
 // Расходы
@@ -196,21 +224,17 @@ const selectExpenseCategory = safeCall(function(categoryId) {
     app.selectExpenseCategory(categoryId);
 }, "Ошибка при выборе категории расходов");
 
-const selectSubcategory = safeCall(function(subcategoryId) {
-    app.selectSubcategory(subcategoryId);
+const selectSubcategory = safeCall(function(categoryId, subcategoryId) {
+    app.selectSubcategory(categoryId, subcategoryId);
 }, "Ошибка при выборе подкатегории");
 
 const hideSubcategorySelection = safeCall(function() {
     app.hideSubcategorySelection();
 }, "Ошибка при скрытии выбора подкатегории");
 
-const editExpenseCategory = safeCall(function(categoryId) {
-    app.editExpenseCategory(categoryId);
-}, "Ошибка при редактировании категории расходов");
-
-const deleteExpenseCategory = safeCall(async function(categoryId) {
-    await app.deleteExpenseCategory(categoryId);
-}, "Ошибка при удалении категории расходов");
+const addExpenseToCategory = safeCall(async function(categoryId, subcategoryId = null) {
+    await app.addExpenseToCategory(categoryId, subcategoryId);
+}, "Ошибка при добавлении расхода в категорию");
 
 // Бюджет
 const setCategoryBudget = safeCall(async function(categoryId) {
@@ -347,116 +371,45 @@ const exportData = safeCall(async function() {
     ToastService.success("Данные экспортированы");
 }, "Ошибка при экспорте данных");
 
-// Модальные окна редактирования расходов
-const hideEditCategoryModal = safeCall(function() {
-    app.hideEditCategoryModal();
-}, "Ошибка при закрытии редактирования категории");
-
-const saveCategoryChanges = safeCall(async function() {
-    await app.saveCategoryChanges();
-}, "Ошибка при сохранении категории");
-
-const addNewSubcategory = safeCall(async function() {
-    await app.addNewSubcategory();
-}, "Ошибка при добавлении подкатегории");
-
-const editSubcategory = safeCall(function(subcategoryId) {
-    app.editSubcategory(subcategoryId);
-}, "Ошибка при редактировании подкатегории");
-
-const hideEditSubcategoryModal = safeCall(function() {
-    app.hideEditSubcategoryModal();
-}, "Ошибка при закрытии редактирования подкатегории");
-
-const saveSubcategoryChanges = safeCall(async function() {
-    await app.saveSubcategoryChanges();
-}, "Ошибка при сохранении подкатегории");
-
-const deleteSubcategory = safeCall(async function(subcategoryId) {
-    await app.deleteSubcategory(subcategoryId);
-}, "Ошибка при удалении подкатегории");
-
-// Модальные окна для доходов
-const showIncomeCategorySelection = safeCall(function() {
-    app.showIncomeCategorySelection();
-}, "Ошибка при выборе категории доходов");
-
-const hideIncomeCategorySelection = safeCall(function() {
-    app.hideIncomeCategorySelection();
-}, "Ошибка при скрытии выбора категории доходов");
-
-const selectIncomeCategory = safeCall(function(categoryId) {
-    app.selectIncomeCategory(categoryId);
-}, "Ошибка при выборе категории доходов");
-
-const selectIncomeSubcategory = safeCall(function(subcategoryId) {
-    app.selectIncomeSubcategory(subcategoryId);
-}, "Ошибка при выборе подкатегории доходов");
-
-const hideIncomeSubcategorySelection = safeCall(function() {
-    app.hideIncomeSubcategorySelection();
-}, "Ошибка при скрытии выбора подкатегории доходов");
-
-const hideEditIncomeCategoryModal = safeCall(function() {
-    app.hideEditIncomeCategoryModal();
-}, "Ошибка при закрытии редактирования категории доходов");
-
-const saveIncomeCategoryChanges = safeCall(async function() {
-    await app.saveIncomeCategoryChanges();
-}, "Ошибка при сохранении категории доходов");
-
-const addNewIncomeSubcategory = safeCall(async function() {
-    await app.addNewIncomeSubcategory();
-}, "Ошибка при добавлении подкатегории доходов");
-
-const editIncomeSubcategory = safeCall(function(subcategoryId) {
-    app.editIncomeSubcategory(subcategoryId);
-}, "Ошибка при редактировании подкатегории доходов");
-
-const hideEditIncomeSubcategoryModal = safeCall(function() {
-    app.hideEditIncomeSubcategoryModal();
-}, "Ошибка при закрытии редактирования подкатегории доходов");
-
-const saveIncomeSubcategoryChanges = safeCall(async function() {
-    await app.saveIncomeSubcategoryChanges();
-}, "Ошибка при сохранении подкатегории доходов");
-
-const deleteIncomeSubcategory = safeCall(async function(subcategoryId) {
-    await app.deleteIncomeSubcategory(subcategoryId);
-}, "Ошибка при удалении подкатегории доходов");
-
-// Операции
-const editExpenseOperation = safeCall(async function(id) {
-    await app.editExpenseOperation(id);
-}, "Ошибка при редактировании операции расхода");
-
-const deleteExpenseOperation = safeCall(async function(id) {
-    await app.deleteExpenseOperation(id);
-}, "Ошибка при удалении операции расхода");
-
-const editIncomeOperation = safeCall(async function(id) {
-    await app.editIncomeOperation(id);
-}, "Ошибка при редактировании операции дохода");
-
+// Удаление операций (заглушки - должны быть реализованы в сервисах)
 const deleteIncomeOperation = safeCall(async function(id) {
-    await app.deleteIncomeOperation(id);
+    await app.incomes.deleteOperation(id);
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Операция дохода удалена");
 }, "Ошибка при удалении операции дохода");
 
-const editDebtOperation = safeCall(async function(id) {
-    await app.editDebtOperation(id);
-}, "Ошибка при редактировании операции долга");
+const deleteExpenseOperation = safeCall(async function(id) {
+    await app.expenses.deleteOperation(id);
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Операция расхода удалена");
+}, "Ошибка при удалении операции расхода");
 
 const deleteDebtOperation = safeCall(async function(id) {
-    await app.deleteDebtOperation(id);
-}, "Ошибка при удалении операции долга");
+    await app.debts.delete(id);
+    await app.saveData();
+    app.updateUI();
+    ToastService.success("Долг удален");
+}, "Ошибка при удалении долга");
 
-const editDebtPayment = safeCall(async function(debtId, paymentIndex) {
-    await app.editDebtPayment(debtId, paymentIndex);
-}, "Ошибка при редактировании платежа по долгу");
+const deleteIncomeCategory = safeCall(async function(id) {
+    if (confirm('Удалить эту категорию доходов? Все связанные операции также будут удалены.')) {
+        await app.incomes.deleteCategory(id);
+        await app.saveData();
+        app.updateUI();
+        ToastService.success("Категория доходов удалена");
+    }
+}, "Ошибка при удалении категории доходов");
 
-const deleteDebtPayment = safeCall(async function(debtId, paymentIndex) {
-    await app.deleteDebtPayment(debtId, paymentIndex);
-}, "Ошибка при удалении платежа по долгу");
+const deleteExpenseCategory = safeCall(async function(id) {
+    if (confirm('Удалить эту категорию расходов? Все связанные операции также будут удалены.')) {
+        await app.expenses.deleteCategory(id);
+        await app.saveData();
+        app.updateUI();
+        ToastService.success("Категория расходов удалена");
+    }
+}, "Ошибка при удалении категории расходов");
 
 // Резервная инициализация
 window.addEventListener('load', async function() {
@@ -547,22 +500,11 @@ window.debugApp = function() {
 // Добавляем обработчики для модальных окон
 document.addEventListener('DOMContentLoaded', function() {
     // Закрытие модальных окон по клику на фон
-    const modals = document.querySelectorAll('.modal');
+    const modals = document.querySelectorAll('.category-modal');
     modals.forEach(modal => {
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
                 this.classList.remove('active');
-            }
-        });
-    });
-    
-    // Обработчики для кнопок закрытия
-    const closeButtons = document.querySelectorAll('.modal-close, .close-btn');
-    closeButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            if (modal) {
-                modal.classList.remove('active');
             }
         });
     });
@@ -572,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('keydown', function(e) {
     // ESC закрывает модальные окна
     if (e.key === 'Escape') {
-        const activeModal = document.querySelector('.modal.active');
+        const activeModal = document.querySelector('.category-modal.active');
         if (activeModal) {
             activeModal.classList.remove('active');
         }
