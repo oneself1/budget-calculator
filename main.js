@@ -1,23 +1,30 @@
 // main.js - глобальные функции для HTML
-let app;
+let app = null;
 
 // Асинхронная инициализация при загрузке
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log("Budget App: Starting...");
-    app = new BudgetApp();
-    await app.init();
-    
-    // Инициализация фиксированной навигации
-    fixNavigationLayout();
-    
-    // Реинициализация после полной загрузки
-    window.addEventListener('load', fixNavigationLayout);
-    
-    // Реинициализация при изменении ориентации
-    window.addEventListener('resize', fixNavigationLayout);
-    window.addEventListener('orientationchange', function() {
-        setTimeout(fixNavigationLayout, 300);
-    });
+    console.log("Budget App: Starting initialization...");
+    try {
+        app = new BudgetApp();
+        await app.init();
+        
+        // Инициализация фиксированной навигации
+        fixNavigationLayout();
+        
+        // Реинициализация после полной загрузки
+        window.addEventListener('load', fixNavigationLayout);
+        
+        // Реинициализация при изменении ориентации
+        window.addEventListener('resize', fixNavigationLayout);
+        window.addEventListener('orientationchange', function() {
+            setTimeout(fixNavigationLayout, 300);
+        });
+
+        console.log("Budget App: Initialization complete");
+    } catch (error) {
+        console.error("Budget App: Critical initialization error:", error);
+        alert("Критическая ошибка при загрузке приложения. Пожалуйста, обновите страницу.");
+    }
 });
 
 // Фикс для фиксированной навигации
@@ -25,7 +32,10 @@ function fixNavigationLayout() {
     const nav = document.querySelector('.bottom-nav');
     const appContainer = document.querySelector('.app-container');
     
-    if (!nav || !appContainer) return;
+    if (!nav || !appContainer) {
+        console.log("Navigation elements not found");
+        return;
+    }
     
     // Рассчитываем высоту навигации
     const navHeight = nav.offsetHeight;
@@ -43,189 +53,217 @@ function fixNavigationLayout() {
 
 // Улучшенная навигация между экранами
 function smoothSwitchScreen(screenName) {
-    const currentScreen = document.querySelector('.screen.active');
-    const targetScreen = document.getElementById(screenName + '-screen');
-    
-    if (!currentScreen || !targetScreen) return;
-    
-    // Анимация перехода
-    currentScreen.style.opacity = '0';
-    currentScreen.style.transform = 'translateY(10px)';
-    
-    setTimeout(() => {
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
+    try {
+        const currentScreen = document.querySelector('.screen.active');
+        const targetScreen = document.getElementById(screenName + '-screen');
         
-        // Обновляем активную кнопку навигации
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        // Активируем соответствующую кнопку навигации
-        const navItems = document.querySelectorAll('.nav-item');
-        if (screenName === 'overview') {
-            if (navItems[0]) navItems[0].classList.add('active');
-        } else if (screenName === 'operations') {
-            if (navItems[1]) navItems[1].classList.add('active');
-        } else if (screenName === 'goals') {
-            if (navItems[2]) navItems[2].classList.add('active');
-        } else if (screenName === 'report') {
-            if (navItems[3]) navItems[3].classList.add('active');
+        if (!currentScreen || !targetScreen) {
+            console.log("Screen not found:", screenName);
+            return;
         }
         
-        targetScreen.classList.add('active');
-        targetScreen.style.opacity = '0';
-        targetScreen.style.transform = 'translateY(10px)';
+        // Анимация перехода
+        currentScreen.style.opacity = '0';
+        currentScreen.style.transform = 'translateY(10px)';
         
-        // Запускаем анимацию появления
-        requestAnimationFrame(() => {
-            targetScreen.style.transition = 'all 0.3s ease-out';
-            targetScreen.style.opacity = '1';
-            targetScreen.style.transform = 'translateY(0)';
-        });
-        
-        // Обновляем UI приложения
-        if (window.app) {
-            setTimeout(() => {
-                if (screenName === 'operations') {
-                    app.updateOperationsList();
-                } else if (screenName === 'report') {
-                    app.updateReport();
-                } else if (screenName === 'goals') {
-                    app.updateSavingsGoals();
-                }
-            }, 100);
-        }
-    }, 150);
+        setTimeout(() => {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Обновляем активную кнопку навигации
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Активируем соответствующую кнопку навигации
+            const navItems = document.querySelectorAll('.nav-item');
+            if (screenName === 'overview') {
+                if (navItems[0]) navItems[0].classList.add('active');
+            } else if (screenName === 'operations') {
+                if (navItems[1]) navItems[1].classList.add('active');
+            } else if (screenName === 'goals') {
+                if (navItems[2]) navItems[2].classList.add('active');
+            } else if (screenName === 'report') {
+                if (navItems[3]) navItems[3].classList.add('active');
+            }
+            
+            targetScreen.classList.add('active');
+            targetScreen.style.opacity = '0';
+            targetScreen.style.transform = 'translateY(10px)';
+            
+            // Запускаем анимацию появления
+            requestAnimationFrame(() => {
+                targetScreen.style.transition = 'all 0.3s ease-out';
+                targetScreen.style.opacity = '1';
+                targetScreen.style.transform = 'translateY(0)';
+            });
+            
+            // Обновляем UI приложения
+            if (window.app) {
+                setTimeout(() => {
+                    if (screenName === 'operations') {
+                        app.updateOperationsList();
+                    } else if (screenName === 'report') {
+                        app.updateReport();
+                    } else if (screenName === 'goals') {
+                        app.updateSavingsGoals();
+                    }
+                }, 100);
+            }
+        }, 150);
+    } catch (error) {
+        console.error("Error switching screen:", error);
+    }
 }
 
-// Глобальные функции для вызовов из HTML
+// Глобальные функции для вызовов из HTML с проверкой app
 
 // Навигация
 function switchScreen(screenName) {
+    if (!app) {
+        console.error("App not initialized");
+        return;
+    }
     smoothSwitchScreen(screenName);
 }
 
+// Безопасные обертки для всех функций
+function safeCall(callback, errorMessage = "Ошибка выполнения") {
+    return function(...args) {
+        try {
+            if (!app) {
+                console.error("App not initialized");
+                ToastService.error("Приложение не загружено");
+                return;
+            }
+            return callback(...args);
+        } catch (error) {
+            console.error(errorMessage, error);
+            ToastService.error(errorMessage);
+        }
+    };
+}
+
 // Доходы
-async function addNewIncomeCategory() {
-    if (app) await app.addNewIncomeCategory();
-}
+const addNewIncomeCategory = safeCall(async function() {
+    await app.addNewIncomeCategory();
+}, "Ошибка при добавлении категории доходов");
 
-function addIncomeOperation() {
-    if (app) app.addIncomeOperation();
-}
+const addIncomeOperation = safeCall(function() {
+    app.showIncomeCategorySelection();
+}, "Ошибка при добавлении операции дохода");
 
-function editIncomeCategory(categoryId) {
-    if (app) app.editIncomeCategory(categoryId);
-}
+const editIncomeCategory = safeCall(function(categoryId) {
+    app.editIncomeCategory(categoryId);
+}, "Ошибка при редактировании категории доходов");
 
-async function deleteIncomeCategory(categoryId) {
-    if (app) await app.deleteIncomeCategory(categoryId);
-}
+const deleteIncomeCategory = safeCall(async function(categoryId) {
+    await app.deleteIncomeCategory(categoryId);
+}, "Ошибка при удалении категории доходов");
 
 // Долги
-async function addNewCircle(type) {
-    if (app) await app.addNewCircle(type);
-}
+const addNewCircle = safeCall(async function(type) {
+    await app.addNewCircle(type);
+}, "Ошибка при добавлении");
 
-async function editCircle(type, id) {
-    if (app) await app.editCircle(type, id);
-}
+const editCircle = safeCall(async function(type, id) {
+    await app.editCircle(type, id);
+}, "Ошибка при редактировании");
 
-async function deleteCircle(type, id) {
-    if (app) await app.deleteCircle(type, id);
-}
+const deleteCircle = safeCall(async function(type, id) {
+    await app.deleteCircle(type, id);
+}, "Ошибка при удалении");
 
-async function makeDebtPayment(debtId) {
-    if (app) await app.makeDebtPayment(debtId);
-}
+const makeDebtPayment = safeCall(async function(debtId) {
+    await app.makeDebtPayment(debtId);
+}, "Ошибка при оплате долга");
 
 // Расходы
-async function addNewExpenseCategory() {
-    if (app) await app.addNewExpenseCategory();
-}
+const addNewExpenseCategory = safeCall(async function() {
+    await app.addNewExpenseCategory();
+}, "Ошибка при добавлении категории расходов");
 
-function showCategorySelection() {
-    if (app) app.showCategorySelection();
-}
+const showCategorySelection = safeCall(function() {
+    app.showCategorySelection();
+}, "Ошибка при выборе категории");
 
-function hideCategorySelection() {
-    if (app) app.hideCategorySelection();
-}
+const hideCategorySelection = safeCall(function() {
+    app.hideCategorySelection();
+}, "Ошибка при скрытии выбора категории");
 
-function selectExpenseCategory(categoryId) {
-    if (app) app.selectExpenseCategory(categoryId);
-}
+const selectExpenseCategory = safeCall(function(categoryId) {
+    app.selectExpenseCategory(categoryId);
+}, "Ошибка при выборе категории расходов");
 
-function selectSubcategory(subcategoryId) {
-    if (app) app.selectSubcategory(subcategoryId);
-}
+const selectSubcategory = safeCall(function(subcategoryId) {
+    app.selectSubcategory(subcategoryId);
+}, "Ошибка при выборе подкатегории");
 
-function hideSubcategorySelection() {
-    if (app) app.hideSubcategorySelection();
-}
+const hideSubcategorySelection = safeCall(function() {
+    app.hideSubcategorySelection();
+}, "Ошибка при скрытии выбора подкатегории");
 
-function editExpenseCategory(categoryId) {
-    if (app) app.editExpenseCategory(categoryId);
-}
+const editExpenseCategory = safeCall(function(categoryId) {
+    app.editExpenseCategory(categoryId);
+}, "Ошибка при редактировании категории расходов");
 
-async function deleteExpenseCategory(categoryId) {
-    if (app) await app.deleteExpenseCategory(categoryId);
-}
+const deleteExpenseCategory = safeCall(async function(categoryId) {
+    await app.deleteExpenseCategory(categoryId);
+}, "Ошибка при удалении категории расходов");
 
 // Бюджет
-async function setCategoryBudget(categoryId) {
-    if (app) await app.setCategoryBudget(categoryId);
-}
+const setCategoryBudget = safeCall(async function(categoryId) {
+    await app.setCategoryBudget(categoryId);
+}, "Ошибка при установке бюджета");
 
-async function editCategoryBudget(categoryId) {
-    if (app) await app.editCategoryBudget(categoryId);
-}
+const editCategoryBudget = safeCall(async function(categoryId) {
+    await app.editCategoryBudget(categoryId);
+}, "Ошибка при редактировании бюджета");
 
 // Цели
-function showAddGoalModal() {
-    if (app) app.showAddGoalModal();
-}
+const showAddGoalModal = safeCall(function() {
+    app.showAddGoalModal();
+}, "Ошибка при открытии модалки целей");
 
-function hideAddGoalModal() {
-    if (app) app.hideAddGoalModal();
-}
+const hideAddGoalModal = safeCall(function() {
+    app.hideAddGoalModal();
+}, "Ошибка при закрытии модалки целей");
 
-async function createNewGoal() {
-    if (app) await app.createNewGoal();
-}
+const createNewGoal = safeCall(async function() {
+    await app.createNewGoal();
+}, "Ошибка при создании цели");
 
-async function addToGoal(goalId) {
-    if (app) await app.addToGoal(goalId);
-}
+const addToGoal = safeCall(async function(goalId) {
+    await app.addToGoal(goalId);
+}, "Ошибка при добавлении средств в цель");
 
 // Повторяющиеся операции
-function showRecurringTransactionsModal() {
-    if (app) app.showRecurringTransactionsModal();
-}
+const showRecurringTransactionsModal = safeCall(function() {
+    app.showRecurringTransactionsModal();
+}, "Ошибка при открытии повторяющихся операций");
 
-function hideRecurringTransactionsModal() {
+const hideRecurringTransactionsModal = function() {
     const modal = document.getElementById('recurring-transactions-modal');
     if (modal) modal.classList.remove('active');
-}
+};
 
-function showAddRecurringTransactionModal() {
-    document.getElementById('add-recurring-modal').classList.add('active');
-}
+const showAddRecurringTransactionModal = function() {
+    const modal = document.getElementById('add-recurring-modal');
+    if (modal) modal.classList.add('active');
+};
 
-function hideAddRecurringModal() {
-    document.getElementById('add-recurring-modal').classList.remove('active');
-}
+const hideAddRecurringModal = function() {
+    const modal = document.getElementById('add-recurring-modal');
+    if (modal) modal.classList.remove('active');
+};
 
-async function createRecurringTransaction() {
-    if (!app) return;
-    
-    const type = document.getElementById('recurring-type').value;
-    const amountStr = document.getElementById('recurring-amount').value;
-    const description = document.getElementById('recurring-description').value.trim();
-    const recurrence = document.getElementById('recurring-recurrence').value;
-    const icon = document.getElementById('recurring-icon').value.trim() || '🔄';
+const createRecurringTransaction = safeCall(async function() {
+    const type = document.getElementById('recurring-type')?.value;
+    const amountStr = document.getElementById('recurring-amount')?.value;
+    const description = document.getElementById('recurring-description')?.value.trim();
+    const recurrence = document.getElementById('recurring-recurrence')?.value;
+    const icon = document.getElementById('recurring-icon')?.value.trim() || '🔄';
     
     if (!description) {
         ToastService.error("Введите описание операции");
@@ -238,33 +276,29 @@ async function createRecurringTransaction() {
         return;
     }
     
-    try {
-        await app.recurring.addRecurringTransaction({
-            type,
-            amount,
-            description,
-            recurrence,
-            icon
-        });
-        await app.saveData();
-        hideAddRecurringModal();
-        showRecurringTransactionsModal();
-        ToastService.success("Повторяющаяся операция создана");
-    } catch (error) {
-        ToastService.error("Ошибка при создании операции: " + error.message);
-    }
-}
+    await app.recurring.addRecurringTransaction({
+        type,
+        amount,
+        description,
+        recurrence,
+        icon
+    });
+    await app.saveData();
+    hideAddRecurringModal();
+    showRecurringTransactionsModal();
+    ToastService.success("Повторяющаяся операция создана");
+}, "Ошибка при создании повторяющейся операции");
 
-async function toggleRecurringTransaction(id) {
-    if (app) await app.toggleRecurringTransaction(id);
-}
+const toggleRecurringTransaction = safeCall(async function(id) {
+    await app.toggleRecurringTransaction(id);
+}, "Ошибка при переключении операции");
 
-async function deleteRecurringTransaction(id) {
-    if (app) await app.deleteRecurringTransaction(id);
-}
+const deleteRecurringTransaction = safeCall(async function(id) {
+    await app.deleteRecurringTransaction(id);
+}, "Ошибка при удалении операции");
 
 // Настройки
-function showSettingsModal() {
+const showSettingsModal = safeCall(function() {
     const modal = document.getElementById('settings-modal');
     const budgetAlerts = document.getElementById('setting-budget-alerts');
     const autoRecurring = document.getElementById('setting-auto-recurring');
@@ -275,169 +309,166 @@ function showSettingsModal() {
     }
     
     modal.classList.add('active');
-}
+}, "Ошибка при открытии настроек");
 
-function hideSettingsModal() {
-    document.getElementById('settings-modal').classList.remove('active');
-}
+const hideSettingsModal = function() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.classList.remove('active');
+};
 
-function updateSettings() {
-    if (!app) return;
-    
-    const budgetAlerts = document.getElementById('setting-budget-alerts').checked;
-    const autoRecurring = document.getElementById('setting-auto-recurring').checked;
+const updateSettings = safeCall(function() {
+    const budgetAlerts = document.getElementById('setting-budget-alerts')?.checked;
+    const autoRecurring = document.getElementById('setting-auto-recurring')?.checked;
     
     app.settings.budgetAlerts = budgetAlerts;
     app.settings.autoProcessRecurring = autoRecurring;
     
     app.saveData();
     ToastService.success("Настройки сохранены");
-}
+}, "Ошибка при сохранении настроек");
 
-async function clearAllData() {
-    if (app && confirm('Вы уверены? Все данные будут удалены, включая цели и настройки бюджета.')) {
+const clearAllData = safeCall(async function() {
+    if (confirm('Вы уверены? Все данные будут удалены, включая цели и настройки бюджета.')) {
         await app.resetToDefaults();
     }
-}
+}, "Ошибка при очистке данных");
 
-async function exportData() {
-    if (!app) return;
-    
-    try {
-        const data = await app.storage.getAllData();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `budget-backup-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        ToastService.success("Данные экспортированы");
-    } catch (error) {
-        ToastService.error("Ошибка при экспорте данных");
-    }
-}
+const exportData = safeCall(async function() {
+    const data = await app.storage.getAllData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `budget-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    ToastService.success("Данные экспортированы");
+}, "Ошибка при экспорте данных");
 
 // Модальные окна редактирования расходов
-function hideEditCategoryModal() {
-    if (app) app.hideEditCategoryModal();
-}
+const hideEditCategoryModal = safeCall(function() {
+    app.hideEditCategoryModal();
+}, "Ошибка при закрытии редактирования категории");
 
-async function saveCategoryChanges() {
-    if (app) await app.saveCategoryChanges();
-}
+const saveCategoryChanges = safeCall(async function() {
+    await app.saveCategoryChanges();
+}, "Ошибка при сохранении категории");
 
-async function addNewSubcategory() {
-    if (app) await app.addNewSubcategory();
-}
+const addNewSubcategory = safeCall(async function() {
+    await app.addNewSubcategory();
+}, "Ошибка при добавлении подкатегории");
 
-function editSubcategory(subcategoryId) {
-    if (app) app.editSubcategory(subcategoryId);
-}
+const editSubcategory = safeCall(function(subcategoryId) {
+    app.editSubcategory(subcategoryId);
+}, "Ошибка при редактировании подкатегории");
 
-function hideEditSubcategoryModal() {
-    if (app) app.hideEditSubcategoryModal();
-}
+const hideEditSubcategoryModal = safeCall(function() {
+    app.hideEditSubcategoryModal();
+}, "Ошибка при закрытии редактирования подкатегории");
 
-async function saveSubcategoryChanges() {
-    if (app) await app.saveSubcategoryChanges();
-}
+const saveSubcategoryChanges = safeCall(async function() {
+    await app.saveSubcategoryChanges();
+}, "Ошибка при сохранении подкатегории");
 
-async function deleteSubcategory(subcategoryId) {
-    if (app) await app.deleteSubcategory(subcategoryId);
-}
+const deleteSubcategory = safeCall(async function(subcategoryId) {
+    await app.deleteSubcategory(subcategoryId);
+}, "Ошибка при удалении подкатегории");
 
 // Модальные окна для доходов
-function showIncomeCategorySelection() {
-    if (app) app.showIncomeCategorySelection();
-}
+const showIncomeCategorySelection = safeCall(function() {
+    app.showIncomeCategorySelection();
+}, "Ошибка при выборе категории доходов");
 
-function hideIncomeCategorySelection() {
-    if (app) app.hideIncomeCategorySelection();
-}
+const hideIncomeCategorySelection = safeCall(function() {
+    app.hideIncomeCategorySelection();
+}, "Ошибка при скрытии выбора категории доходов");
 
-function selectIncomeCategory(categoryId) {
-    if (app) app.selectIncomeCategory(categoryId);
-}
+const selectIncomeCategory = safeCall(function(categoryId) {
+    app.selectIncomeCategory(categoryId);
+}, "Ошибка при выборе категории доходов");
 
-function selectIncomeSubcategory(subcategoryId) {
-    if (app) app.selectIncomeSubcategory(subcategoryId);
-}
+const selectIncomeSubcategory = safeCall(function(subcategoryId) {
+    app.selectIncomeSubcategory(subcategoryId);
+}, "Ошибка при выборе подкатегории доходов");
 
-function hideIncomeSubcategorySelection() {
-    if (app) app.hideIncomeSubcategorySelection();
-}
+const hideIncomeSubcategorySelection = safeCall(function() {
+    app.hideIncomeSubcategorySelection();
+}, "Ошибка при скрытии выбора подкатегории доходов");
 
-function hideEditIncomeCategoryModal() {
-    if (app) app.hideEditIncomeCategoryModal();
-}
+const hideEditIncomeCategoryModal = safeCall(function() {
+    app.hideEditIncomeCategoryModal();
+}, "Ошибка при закрытии редактирования категории доходов");
 
-async function saveIncomeCategoryChanges() {
-    if (app) await app.saveIncomeCategoryChanges();
-}
+const saveIncomeCategoryChanges = safeCall(async function() {
+    await app.saveIncomeCategoryChanges();
+}, "Ошибка при сохранении категории доходов");
 
-async function addNewIncomeSubcategory() {
-    if (app) await app.addNewIncomeSubcategory();
-}
+const addNewIncomeSubcategory = safeCall(async function() {
+    await app.addNewIncomeSubcategory();
+}, "Ошибка при добавлении подкатегории доходов");
 
-function editIncomeSubcategory(subcategoryId) {
-    if (app) app.editIncomeSubcategory(subcategoryId);
-}
+const editIncomeSubcategory = safeCall(function(subcategoryId) {
+    app.editIncomeSubcategory(subcategoryId);
+}, "Ошибка при редактировании подкатегории доходов");
 
-function hideEditIncomeSubcategoryModal() {
-    if (app) app.hideEditIncomeSubcategoryModal();
-}
+const hideEditIncomeSubcategoryModal = safeCall(function() {
+    app.hideEditIncomeSubcategoryModal();
+}, "Ошибка при закрытии редактирования подкатегории доходов");
 
-async function saveIncomeSubcategoryChanges() {
-    if (app) await app.saveIncomeSubcategoryChanges();
-}
+const saveIncomeSubcategoryChanges = safeCall(async function() {
+    await app.saveIncomeSubcategoryChanges();
+}, "Ошибка при сохранении подкатегории доходов");
 
-async function deleteIncomeSubcategory(subcategoryId) {
-    if (app) await app.deleteIncomeSubcategory(subcategoryId);
-}
+const deleteIncomeSubcategory = safeCall(async function(subcategoryId) {
+    await app.deleteIncomeSubcategory(subcategoryId);
+}, "Ошибка при удалении подкатегории доходов");
 
 // Операции
-async function editExpenseOperation(id) {
-    if (app) await app.editExpenseOperation(id);
-}
+const editExpenseOperation = safeCall(async function(id) {
+    await app.editExpenseOperation(id);
+}, "Ошибка при редактировании операции расхода");
 
-async function deleteExpenseOperation(id) {
-    if (app) await app.deleteExpenseOperation(id);
-}
+const deleteExpenseOperation = safeCall(async function(id) {
+    await app.deleteExpenseOperation(id);
+}, "Ошибка при удалении операции расхода");
 
-async function editIncomeOperation(id) {
-    if (app) await app.editIncomeOperation(id);
-}
+const editIncomeOperation = safeCall(async function(id) {
+    await app.editIncomeOperation(id);
+}, "Ошибка при редактировании операции дохода");
 
-async function deleteIncomeOperation(id) {
-    if (app) await app.deleteIncomeOperation(id);
-}
+const deleteIncomeOperation = safeCall(async function(id) {
+    await app.deleteIncomeOperation(id);
+}, "Ошибка при удалении операции дохода");
 
-async function editDebtOperation(id) {
-    if (app) await app.editDebtOperation(id);
-}
+const editDebtOperation = safeCall(async function(id) {
+    await app.editDebtOperation(id);
+}, "Ошибка при редактировании операции долга");
 
-async function deleteDebtOperation(id) {
-    if (app) await app.deleteDebtOperation(id);
-}
+const deleteDebtOperation = safeCall(async function(id) {
+    await app.deleteDebtOperation(id);
+}, "Ошибка при удалении операции долга");
 
-async function editDebtPayment(debtId, paymentIndex) {
-    if (app) await app.editDebtPayment(debtId, paymentIndex);
-}
+const editDebtPayment = safeCall(async function(debtId, paymentIndex) {
+    await app.editDebtPayment(debtId, paymentIndex);
+}, "Ошибка при редактировании платежа по долгу");
 
-async function deleteDebtPayment(debtId, paymentIndex) {
-    if (app) await app.deleteDebtPayment(debtId, paymentIndex);
-}
+const deleteDebtPayment = safeCall(async function(debtId, paymentIndex) {
+    await app.deleteDebtPayment(debtId, paymentIndex);
+}, "Ошибка при удалении платежа по долгу");
 
 // Резервная инициализация
 window.addEventListener('load', async function() {
     console.log("Budget App: Window loaded");
     if (!app) {
         console.log("Budget App: Emergency initialization");
-        app = new BudgetApp();
-        await app.init();
+        try {
+            app = new BudgetApp();
+            await app.init();
+        } catch (error) {
+            console.error("Emergency initialization failed:", error);
+        }
     }
 });
 
@@ -483,15 +514,75 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoRecurring = document.getElementById('setting-auto-recurring');
     
     if (budgetAlerts) {
-        budgetAlerts.addEventListener('change', updateSettings);
+        budgetAlerts.addEventListener('change', function() {
+            if (app) {
+                app.settings.budgetAlerts = this.checked;
+                app.saveData();
+                ToastService.info("Настройки сохранены");
+            }
+        });
     }
     
     if (autoRecurring) {
-        autoRecurring.addEventListener('change', updateSettings);
+        autoRecurring.addEventListener('change', function() {
+            if (app) {
+                app.settings.autoProcessRecurring = this.checked;
+                app.saveData();
+                ToastService.info("Настройки сохранены");
+            }
+        });
     }
 });
 
-// Функция для фильтрации операций (заглушка)
+// Функция для фильтрации операций
 function showOperationsFilter() {
     ToastService.info("Фильтрация операций будет доступна в следующем обновлении");
 }
+
+// Глобальный объект для отладки
+window.debugApp = function() {
+    return app;
+};
+
+// Добавляем обработчики для модальных окон
+document.addEventListener('DOMContentLoaded', function() {
+    // Закрытие модальных окон по клику на фон
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+    
+    // Обработчики для кнопок закрытия
+    const closeButtons = document.querySelectorAll('.modal-close, .close-btn');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        });
+    });
+});
+
+// Улучшенная обработка клавиатуры
+document.addEventListener('keydown', function(e) {
+    // ESC закрывает модальные окна
+    if (e.key === 'Escape') {
+        const activeModal = document.querySelector('.modal.active');
+        if (activeModal) {
+            activeModal.classList.remove('active');
+        }
+    }
+});
+
+// Предотвращение потери данных при перезагрузке
+window.addEventListener('beforeunload', function(e) {
+    if (app && app.initialized) {
+        // Сохраняем данные перед закрытием
+        app.saveData().catch(console.error);
+    }
+});
