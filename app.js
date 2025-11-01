@@ -590,4 +590,585 @@ class BudgetApp {
             const remaining = debt.amount - (debt.paidAmount || 0);
             
             if (remaining <= 0) {
-                alert("Долг уже полностью п
+                alert("Долг уже полностью погашен!");
+                return;
+            }
+            
+            const paymentStr = prompt(
+                `Введите сумму платежа по долгу "${debt.description}"\nОсталось погасить: ${this.settings.currency}${remaining.toFixed(2)}`,
+                remaining.toString()
+            );
+            
+            if (paymentStr === null) return;
+            
+            const payment = parseFloat(paymentStr) || 0;
+            
+            try {
+                this.debts.makePayment(debtId, payment);
+                this.saveData();
+                
+                if (debt.paidAmount >= debt.amount) {
+                    alert("Долг полностью погашен!");
+                }
+            } catch (error) {
+                alert("Ошибка при внесении платежа: " + error.message);
+            }
+        }
+    }
+
+    // Вспомогательные методы
+    getTypeName(type) {
+        const names = {
+            income: 'дохода',
+            debt: 'долга', 
+            expense: 'расхода'
+        };
+        return names[type] || 'операции';
+    }
+
+    getDefaultDescription(type) {
+        const defaults = {
+            income: 'Доход',
+            debt: 'Долг', 
+            expense: 'Расход'
+        };
+        return defaults[type] || 'Операция';
+    }
+
+    // Модальные окна для расходов
+    showCategorySelection() {
+        const modal = document.getElementById('category-modal');
+        const categoryList = document.getElementById('category-list');
+        
+        const categories = this.expenses.getCategories();
+        if (!categories || categories.length === 0) {
+            alert('Сначала добавьте категории расходов!');
+            return;
+        }
+        
+        categoryList.innerHTML = categories.map(category => {
+            const totalAmount = this.expenses.calculateCategoryTotal(category);
+            return `
+                <button class="category-option" onclick="selectExpenseCategory(${category.id})">
+                    <div class="category-option-icon">${category.icon}</div>
+                    <div class="category-option-name">${category.name}</div>
+                    <div class="category-option-amount">${this.settings.currency}${totalAmount}</div>
+                </button>
+            `;
+        }).join('');
+        
+        modal.classList.add('active');
+    }
+
+    hideCategorySelection() {
+        const modal = document.getElementById('category-modal');
+        modal.classList.remove('active');
+    }
+
+    selectExpenseCategory(categoryId) {
+        const category = this.expenses.getCategory(categoryId);
+        if (category) {
+            this.currentState.selectedCategoryId = categoryId;
+            
+            // Если у категории есть подкатегории, показываем их выбор
+            if (category.subcategories && category.subcategories.length > 0) {
+                this.showSubcategorySelection(category);
+            } else {
+                // Иначе сразу запрашиваем сумму для категории
+                this.hideCategorySelection();
+                this.addExpenseToCategory(categoryId, null);
+            }
+        }
+    }
+
+    showSubcategorySelection(category) {
+        const modal = document.getElementById('subcategory-modal');
+        const subcategoryList = document.getElementById('subcategory-list');
+        const title = document.getElementById('subcategory-modal-title');
+        
+        title.textContent = `Выберите подкатегорию для ${category.name}`;
+        
+        let optionsHTML = '';
+        
+        // Добавляем вариант для добавления расхода в основную категорию
+        optionsHTML += `
+            <button class="category-option" onclick="selectSubcategory(null)">
+                <div class="category-option-icon">${category.icon}</div>
+                <div class="category-option-name">${category.name} (основная)</div>
+                <div class="category-option-amount">${this.settings.currency}${category.amount || 0}</div>
+            </button>
+        `;
+        
+        // Добавляем подкатегории
+        if (category.subcategories) {
+            category.subcategories.forEach(subcategory => {
+                optionsHTML += `
+                    <button class="category-option" onclick="selectSubcategory(${subcategory.id})">
+                        <div class="category-option-icon">${subcategory.icon}</div>
+                        <div class="category-option-name">${subcategory.name}</div>
+                        <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
+                    </button>
+                `;
+            });
+        }
+        
+        subcategoryList.innerHTML = optionsHTML;
+        
+        // Скрываем выбор категорий и показываем выбор подкатегорий
+        this.hideCategorySelection();
+        modal.classList.add('active');
+    }
+
+    hideSubcategorySelection() {
+        const modal = document.getElementById('subcategory-modal');
+        modal.classList.remove('active');
+        this.showCategorySelection(); // Возвращаемся к выбору категории
+    }
+
+    selectSubcategory(subcategoryId) {
+        this.hideSubcategorySelection();
+        this.addExpenseToCategory(this.currentState.selectedCategoryId, subcategoryId);
+    }
+
+    addExpenseToCategory(categoryId, subcategoryId) {
+        const category = this.expenses.getCategory(categoryId);
+        if (!category) return;
+        
+        let targetName = category.name;
+        let targetIcon = category.icon;
+        
+        if (subcategoryId) {
+            const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+            if (subcategory) {
+                targetName = subcategory.name;
+                targetIcon = subcategory.icon;
+            }
+        }
+        
+        const amountStr = prompt(`Введите сумму расхода для "${targetName}":`, "0");
+        if (amountStr === null) return;
+        
+        const amount = parseFloat(amountStr) || 0;
+        if (amount <= 0) {
+            alert("Пожалуйста, введите корректную сумму (больше 0)");
+            return;
+        }
+        
+        try {
+            const operation = this.expenses.addOperation({
+                categoryId: category.id,
+                subcategoryId: subcategoryId,
+                categoryName: category.name,
+                subcategoryName: subcategoryId ? targetName : null,
+                amount: amount,
+                description: `${category.name}${subcategoryId ? ` - ${targetName}` : ''}`,
+                icon: targetIcon
+            });
+            
+            this.saveData();
+            
+            alert(`Расход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
+        } catch (error) {
+            alert("Ошибка при добавлении расхода: " + error.message);
+        }
+    }
+
+    // Модальные окна редактирования категорий
+    showEditCategoryModal(categoryId) {
+        const category = this.expenses.getCategory(categoryId);
+        if (!category) return;
+        
+        this.currentState.editingCategoryId = categoryId;
+        
+        document.getElementById('edit-category-title').textContent = `Редактировать ${category.name}`;
+        document.getElementById('edit-category-name').value = category.name;
+        document.getElementById('edit-category-icon').value = category.icon;
+        
+        this.updateSubcategoriesList();
+        
+        document.getElementById('edit-category-modal').classList.add('active');
+    }
+
+    hideEditCategoryModal() {
+        document.getElementById('edit-category-modal').classList.remove('active');
+        this.currentState.editingCategoryId = null;
+    }
+
+    updateSubcategoriesList() {
+        const container = document.getElementById('subcategories-list');
+        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
+        
+        if (!category) return;
+        
+        if (!category.subcategories || category.subcategories.length === 0) {
+            container.innerHTML = '<div class="empty-state">Нет подкатегорий</div>';
+            return;
+        }
+        
+        container.innerHTML = category.subcategories.map(subcategory => `
+            <div class="subcategory-item">
+                <div class="subcategory-info">
+                    <div class="category-option-icon">${subcategory.icon}</div>
+                    <div class="category-option-name">${subcategory.name}</div>
+                    <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
+                </div>
+                <div class="subcategory-actions">
+                    <button class="subcategory-action-btn subcategory-edit" onclick="editSubcategory(${subcategory.id})">✏️</button>
+                    <button class="subcategory-action-btn subcategory-delete" onclick="deleteSubcategory(${subcategory.id})">×</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    saveCategoryChanges() {
+        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
+        if (!category) return;
+        
+        const newName = document.getElementById('edit-category-name').value.trim();
+        const newIcon = document.getElementById('edit-category-icon').value.trim();
+        
+        if (!newName) {
+            alert("Введите название категории");
+            return;
+        }
+        
+        try {
+            this.expenses.updateCategory(category.id, {
+                name: newName,
+                icon: newIcon
+            });
+            this.saveData();
+            this.hideEditCategoryModal();
+        } catch (error) {
+            alert("Ошибка при сохранении: " + error.message);
+        }
+    }
+
+    addNewSubcategory() {
+        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
+        if (!category) return;
+        
+        try {
+            this.expenses.addSubcategory(category.id, {
+                name: "Новая подкатегория",
+                icon: "📁"
+            });
+            this.updateSubcategoriesList();
+        } catch (error) {
+            alert("Ошибка при добавлении подкатегории: " + error.message);
+        }
+    }
+
+    editSubcategory(subcategoryId) {
+        const category = this.expenses.getCategory(this.currentState.editingCategoryId);
+        if (!category || !category.subcategories) return;
+        
+        const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+        if (!subcategory) return;
+        
+        this.currentState.editingSubcategory = subcategory;
+        
+        document.getElementById('edit-subcategory-title').textContent = `Редактировать ${subcategory.name}`;
+        document.getElementById('edit-subcategory-name').value = subcategory.name;
+        document.getElementById('edit-subcategory-icon').value = subcategory.icon;
+        
+        this.hideEditCategoryModal();
+        document.getElementById('edit-subcategory-modal').classList.add('active');
+    }
+
+    hideEditSubcategoryModal() {
+        document.getElementById('edit-subcategory-modal').classList.remove('active');
+        this.currentState.editingSubcategory = null;
+        this.showEditCategoryModal(this.currentState.editingCategoryId);
+    }
+
+    saveSubcategoryChanges() {
+        if (!this.currentState.editingSubcategory) return;
+        
+        const newName = document.getElementById('edit-subcategory-name').value.trim();
+        const newIcon = document.getElementById('edit-subcategory-icon').value.trim();
+        
+        if (!newName) {
+            alert("Введите название подкатегории");
+            return;
+        }
+        
+        try {
+            this.expenses.updateSubcategory(
+                this.currentState.editingCategoryId,
+                this.currentState.editingSubcategory.id,
+                {
+                    name: newName,
+                    icon: newIcon
+                }
+            );
+            this.saveData();
+            this.hideEditSubcategoryModal();
+        } catch (error) {
+            alert("Ошибка при сохранении: " + error.message);
+        }
+    }
+
+    deleteSubcategory(subcategoryId) {
+        if (!confirm("Удалить эту подкатегорию? Все связанные расходы будут перемещены в основную категорию.")) {
+            return;
+        }
+        
+        try {
+            this.expenses.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
+            this.saveData();
+            this.updateSubcategoriesList();
+        } catch (error) {
+            alert("Ошибка при удалении: " + error.message);
+        }
+    }
+
+    // Редактирование операций
+    editExpenseOperation(id) {
+        const operation = this.expenses.getOperation(id);
+        if (!operation) {
+            alert("Операция не найдена");
+            return;
+        }
+
+        const category = this.expenses.getCategory(operation.categoryId);
+        if (!category) {
+            alert("Категория не найдена");
+            return;
+        }
+
+        let targetName = category.name;
+        if (operation.subcategoryId) {
+            const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
+            if (subcategory) {
+                targetName = subcategory.name;
+            }
+        }
+
+        const newAmountStr = prompt(`Введите новую сумму расхода для "${targetName}":`, operation.amount.toString());
+        if (newAmountStr === null) return;
+
+        const newAmount = parseFloat(newAmountStr) || 0;
+        if (newAmount <= 0) {
+            alert("Пожалуйста, введите корректную сумму (больше 0)");
+            return;
+        }
+
+        try {
+            this.expenses.updateOperation(id, { amount: newAmount });
+            this.saveData();
+            this.updateOperationsList();
+            alert("Расход успешно обновлен!");
+        } catch (error) {
+            alert("Ошибка при обновлении расхода: " + error.message);
+        }
+    }
+
+    deleteExpenseOperation(id) {
+        if (confirm('Удалить эту операцию расхода?')) {
+            try {
+                this.expenses.deleteOperation(id);
+                this.saveData();
+                this.updateOperationsList();
+                alert("Расход успешно удален!");
+            } catch (error) {
+                alert("Ошибка при удалении расхода: " + error.message);
+            }
+        }
+    }
+
+    editIncomeOperation(id) {
+        const income = this.incomes.get(id);
+        if (!income) {
+            alert("Доход не найден");
+            return;
+        }
+
+        const newAmountStr = prompt(`Введите новую сумму дохода для "${income.name}":`, income.amount.toString());
+        if (newAmountStr === null) return;
+
+        const newAmount = parseFloat(newAmountStr) || 0;
+        if (newAmount < 0) {
+            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+            return;
+        }
+
+        const newName = prompt(`Введите новое название дохода:`, income.name);
+        if (newName === null) return;
+
+        if (!newName.trim()) {
+            alert("Название дохода не может быть пустым");
+            return;
+        }
+
+        try {
+            this.incomes.update(id, {
+                name: newName.trim(),
+                amount: newAmount
+            });
+            this.saveData();
+            this.updateOperationsList();
+            alert("Доход успешно обновлен!");
+        } catch (error) {
+            alert("Ошибка при обновлении дохода: " + error.message);
+        }
+    }
+
+    deleteIncomeOperation(id) {
+        if (confirm('Удалить эту операцию дохода?')) {
+            try {
+                this.incomes.delete(id);
+                this.saveData();
+                this.updateOperationsList();
+                alert("Доход успешно удален!");
+            } catch (error) {
+                alert("Ошибка при удалении дохода: " + error.message);
+            }
+        }
+    }
+
+    editDebtOperation(id) {
+        const debt = this.debts.get(id);
+        if (!debt) {
+            alert("Долг не найден");
+            return;
+        }
+
+        const newAmountStr = prompt(`Введите новую сумму долга для "${debt.description}":`, debt.amount.toString());
+        if (newAmountStr === null) return;
+
+        const newAmount = parseFloat(newAmountStr) || 0;
+        if (newAmount < 0) {
+            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+            return;
+        }
+
+        if (newAmount < debt.paidAmount) {
+            alert("Новая сумма долга не может быть меньше уже оплаченной суммы");
+            return;
+        }
+
+        const newDescription = prompt(`Введите новое описание долга:`, debt.description);
+        if (newDescription === null) return;
+
+        if (!newDescription.trim()) {
+            alert("Описание долга не может быть пустым");
+            return;
+        }
+
+        try {
+            this.debts.update(id, {
+                description: newDescription.trim(),
+                amount: newAmount
+            });
+            this.saveData();
+            this.updateOperationsList();
+            alert("Долг успешно обновлен!");
+        } catch (error) {
+            alert("Ошибка при обновлении долга: " + error.message);
+        }
+    }
+
+    deleteDebtOperation(id) {
+        if (confirm('Удалить эту операцию долга?')) {
+            try {
+                this.debts.delete(id);
+                this.saveData();
+                this.updateOperationsList();
+                alert("Долг успешно удален!");
+            } catch (error) {
+                alert("Ошибка при удалении долга: " + error.message);
+            }
+        }
+    }
+
+    editDebtPayment(debtId, paymentIndex) {
+        const debt = this.debts.get(debtId);
+        if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
+            alert("Платеж не найден");
+            return;
+        }
+
+        const payment = debt.paymentHistory[paymentIndex];
+        const remainingBeforePayment = debt.amount - (debt.paidAmount - payment.amount);
+        
+        const newAmountStr = prompt(
+            `Введите новую сумму платежа по долгу "${debt.description}"\nМаксимально возможная сумма: ${this.settings.currency}${remainingBeforePayment.toFixed(2)}`,
+            payment.amount.toString()
+        );
+        
+        if (newAmountStr === null) return;
+
+        const newAmount = parseFloat(newAmountStr) || 0;
+        if (newAmount <= 0) {
+            alert("Сумма платежа должна быть больше 0");
+            return;
+        }
+
+        if (newAmount > remainingBeforePayment) {
+            alert("Сумма платежа не может превышать оставшуюся сумму долга");
+            return;
+        }
+
+        try {
+            this.debts.updatePayment(debtId, paymentIndex, {
+                amount: newAmount,
+                date: new Date().toISOString() // Обновляем дату платежа
+            });
+            this.saveData();
+            this.updateOperationsList();
+            alert("Платеж успешно обновлен!");
+        } catch (error) {
+            alert("Ошибка при обновлении платежа: " + error.message);
+        }
+    }
+
+    deleteDebtPayment(debtId, paymentIndex) {
+        if (confirm('Удалить этот платеж по долгу?')) {
+            try {
+                this.debts.deletePayment(debtId, paymentIndex);
+                this.saveData();
+                this.updateOperationsList();
+                alert("Платеж успешно удален!");
+            } catch (error) {
+                alert("Ошибка при удалении платежа: " + error.message);
+            }
+        }
+    }
+
+    // Настройки
+    showSettingsModal() {
+        const totalIncome = this.incomes.getTotal();
+        const totalPaidDebts = this.debts.getTotalPaid();
+        const totalExpenses = this.expenses.getTotalExpenses();
+        const balance = totalIncome - totalPaidDebts - totalExpenses;
+        
+        const debugInfo = `
+=== ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
+
+Доходы: ${this.incomes.getAll().length} категорий
+Долги: ${this.debts.getAll().length} записей
+Категории расходов: ${this.expenses.getCategories().length}
+Операции расходов: ${this.expenses.getOperations().length}
+
+ОБЩАЯ СТАТИСТИКА:
+- Доходы: ${this.settings.currency}${totalIncome.toFixed(2)}
+- Оплаченные долги: ${this.settings.currency}${totalPaidDebts.toFixed(2)}
+- Расходы: ${this.settings.currency}${totalExpenses.toFixed(2)}
+- Баланс: ${this.settings.currency}${balance.toFixed(2)}
+        `.trim();
+        
+        const userChoice = confirm(debugInfo + "\n\nНажмите OK для очистки всех данных или Отмена для закрытия");
+        
+        if (userChoice) {
+            this.clearAllData();
+        }
+    }
+
+    clearAllData() {
+        if (confirm('Вы уверены? Все данные будут удалены.')) {
+            this.resetToDefaults();
+            alert('Все данные очищены!');
+        }
+    }
+}
