@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Budget</title>
+    <title>Budget Pro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,15 +13,19 @@
         <div class="status-date" id="current-date">--.--.----</div>
     </div>
 
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
     <!-- Main App Container -->
     <div class="app-container">
         
         <!-- ЭКРАН 1: ОБЗОР (Главная) -->
         <div class="screen active" id="overview-screen">
             <header class="app-header">
-                <h1 class="app-title">Budget</h1>
+                <h1 class="app-title">Budget Pro</h1>
                 <div class="header-actions">
                     <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
+                    <button class="icon-btn recurring-btn" onclick="showRecurringTransactionsModal()">🔄</button>
                 </div>
             </header>
 
@@ -29,6 +33,47 @@
             <section class="balance-card">
                 <div class="balance-amount" id="balance-amount">₽0</div>
                 <div class="balance-label">Общий баланс</div>
+                <div class="balance-stats">
+                    <span class="stat-income">Доходы: ₽0</span>
+                    <span class="stat-expense">Расходы: ₽0</span>
+                </div>
+            </section>
+
+            <!-- Быстрые действия -->
+            <section class="quick-actions">
+                <button class="quick-action-btn" onclick="addIncomeOperation()">
+                    <span class="quick-action-icon">💰</span>
+                    <span class="quick-action-label">Доход</span>
+                </button>
+                <button class="quick-action-btn" onclick="showCategorySelection()">
+                    <span class="quick-action-icon">🛒</span>
+                    <span class="quick-action-label">Расход</span>
+                </button>
+                <button class="quick-action-btn" onclick="addNewCircle('debt')">
+                    <span class="quick-action-icon">💳</span>
+                    <span class="quick-action-label">Долг</span>
+                </button>
+                <button class="quick-action-btn" onclick="showAddGoalModal()">
+                    <span class="quick-action-icon">🎯</span>
+                    <span class="quick-action-label">Цель</span>
+                </button>
+            </section>
+
+            <!-- Цели накоплений -->
+            <section class="savings-section">
+                <h2 class="section-title">
+                    Цели накоплений
+                    <button class="section-action-btn" onclick="showAddGoalModal()">+</button>
+                </h2>
+                <div class="savings-goals" id="savings-goals">
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🎯</div>
+                        <div>Нет целей накоплений</div>
+                        <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                            Добавьте цель чтобы отслеживать прогресс
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- Доходы с кружками -->
@@ -79,10 +124,19 @@
         <div class="screen" id="operations-screen">
             <header class="app-header">
                 <h1 class="app-title">Операции</h1>
+                <div class="header-actions">
+                    <button class="icon-btn filter-btn" onclick="showOperationsFilter()">🔍</button>
+                </div>
             </header>
 
             <div class="operations-list" id="operations-list">
-                <div class="empty-state">Нет операций</div>
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
+                    <div>Нет операций</div>
+                    <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                        Добавьте доходы, расходы или долги чтобы увидеть их здесь
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -117,6 +171,25 @@
                     <h3>Детализация</h3>
                     <div id="report-details"></div>
                 </div>
+
+                <div class="budget-alerts-card" id="budget-alerts">
+                    <h3>Уведомления о бюджете</h3>
+                    <div class="alerts-list" id="alerts-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ЭКРАН 4: ЦЕЛИ -->
+        <div class="screen" id="goals-screen">
+            <header class="app-header">
+                <h1 class="app-title">Цели</h1>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="showAddGoalModal()">+</button>
+                </div>
+            </header>
+
+            <div class="goals-container" id="goals-container">
+                <!-- Goals will be loaded here -->
             </div>
         </div>
 
@@ -246,15 +319,142 @@
         </div>
     </div>
 
+    <!-- Новые модальные окна -->
+
+    <!-- Модалка для добавления цели -->
+    <div class="category-modal" id="add-goal-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Новая цель накопления</h2>
+            <div class="form-group">
+                <label for="goal-name">Название цели:</label>
+                <input type="text" id="goal-name" class="modal-input" placeholder="Например: Новый телефон">
+            </div>
+            <div class="form-group">
+                <label for="goal-target">Целевая сумма:</label>
+                <input type="number" id="goal-target" class="modal-input" placeholder="10000" min="1">
+            </div>
+            <div class="form-group">
+                <label for="goal-deadline">Срок цели:</label>
+                <input type="date" id="goal-deadline" class="modal-input">
+            </div>
+            <div class="form-group">
+                <label for="goal-icon">Иконка:</label>
+                <input type="text" id="goal-icon" class="modal-input" value="🎯" maxlength="2">
+            </div>
+            <div class="form-group">
+                <label for="goal-color">Цвет:</label>
+                <input type="color" id="goal-color" class="modal-input" value="#007AFF">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideAddGoalModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="createNewGoal()">Создать цель</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка для повторяющихся операций -->
+    <div class="category-modal" id="recurring-transactions-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Повторяющиеся операции</h2>
+            <div class="recurring-transactions-list" id="recurring-transactions-list">
+                <div class="empty-state">Нет повторяющихся операций</div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn" onclick="showAddRecurringTransactionModal()">+ Добавить операцию</button>
+                <button class="modal-btn cancel" onclick="hideRecurringTransactionsModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка для добавления повторяющейся операции -->
+    <div class="category-modal" id="add-recurring-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Новая повторяющаяся операция</h2>
+            <div class="form-group">
+                <label for="recurring-type">Тип операции:</label>
+                <select id="recurring-type" class="modal-input">
+                    <option value="expense">Расход</option>
+                    <option value="income">Доход</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="recurring-amount">Сумма:</label>
+                <input type="number" id="recurring-amount" class="modal-input" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="recurring-description">Описание:</label>
+                <input type="text" id="recurring-description" class="modal-input" placeholder="Описание операции">
+            </div>
+            <div class="form-group">
+                <label for="recurring-recurrence">Повторение:</label>
+                <select id="recurring-recurrence" class="modal-input">
+                    <option value="daily">Ежедневно</option>
+                    <option value="weekly">Еженедельно</option>
+                    <option value="monthly" selected>Ежемесячно</option>
+                    <option value="yearly">Ежегодно</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="recurring-icon">Иконка:</label>
+                <input type="text" id="recurring-icon" class="modal-input" value="🔄" maxlength="2">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideAddRecurringModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="createRecurringTransaction()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка настроек -->
+    <div class="category-modal" id="settings-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Настройки</h2>
+            
+            <div class="settings-group">
+                <h3>Основные</h3>
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="setting-budget-alerts" checked>
+                        Уведомления о бюджете
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="setting-auto-recurring" checked>
+                        Авто-создание повторяющихся операций
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>Опасная зона</h3>
+                <div class="setting-item">
+                    <button class="modal-btn warning" onclick="exportData()">Экспорт данных</button>
+                </div>
+                <div class="setting-item">
+                    <button class="modal-btn danger" onclick="clearAllData()">Очистить все данные</button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideSettingsModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ФИКСИРОВАННАЯ нижняя навигация -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchScreen('overview')">
-            <div class="nav-icon">💰</div>
-            <div class="nav-label">Бюджет</div>
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">Главная</div>
         </div>
         <div class="nav-item" onclick="switchScreen('operations')">
             <div class="nav-icon">📝</div>
             <div class="nav-label">Операции</div>
+        </div>
+        <div class="nav-item" onclick="switchScreen('goals')">
+            <div class="nav-icon">🎯</div>
+            <div class="nav-label">Цели</div>
         </div>
         <div class="nav-item" onclick="switchScreen('report')">
             <div class="nav-icon">📊</div>
@@ -269,6 +469,13 @@
     <script src="services/ExpensesService.js"></script>
     <script src="services/OperationsService.js"></script>
     <script src="services/ReportService.js"></script>
+    
+    <!-- Новые сервисы -->
+    <script src="services/BudgetService.js"></script>
+    <script src="services/RecurringTransactionsService.js"></script>
+    <script src="services/SavingsGoalsService.js"></script>
+    <script src="services/ToastService.js"></script>
+    <script src="services/CacheService.js"></script>
     
     <!-- Главное приложение -->
     <script src="BudgetApp.js"></script>
