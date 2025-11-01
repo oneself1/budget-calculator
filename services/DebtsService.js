@@ -82,4 +82,35 @@ class DebtsService {
 
         return debt;
     }
+
+    updatePayment(debtId, paymentIndex, updatedPayment) {
+        const debt = this.get(debtId);
+        if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
+            throw new Error("Платеж не найден");
+        }
+
+        // Вычитаем старую сумму платежа
+        const oldPayment = debt.paymentHistory[paymentIndex];
+        debt.paidAmount -= oldPayment.amount;
+
+        // Обновляем платеж
+        debt.paymentHistory[paymentIndex] = { ...oldPayment, ...updatedPayment };
+
+        // Добавляем новую сумму платежа
+        debt.paidAmount += debt.paymentHistory[paymentIndex].amount;
+
+        return debt.paymentHistory[paymentIndex];
+    }
+
+    deletePayment(debtId, paymentIndex) {
+        const debt = this.get(debtId);
+        if (!debt || !debt.paymentHistory || debt.paymentHistory.length <= paymentIndex) {
+            throw new Error("Платеж не найден");
+        }
+
+        const deletedPayment = debt.paymentHistory.splice(paymentIndex, 1)[0];
+        debt.paidAmount -= deletedPayment.amount;
+
+        return deletedPayment;
+    }
 }
