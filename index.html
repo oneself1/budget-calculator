@@ -115,55 +115,43 @@
 
     </div>
 
-    <!-- Модальное окно выбора категории -->
+    <!-- Модальные окна (остаются без изменений) -->
     <div class="category-modal" id="category-modal">
         <div class="category-modal-content">
             <h2 class="category-modal-title">Выберите категорию</h2>
-            <div class="category-list" id="category-list">
-                <!-- Категории будут добавлены здесь -->
-            </div>
+            <div class="category-list" id="category-list"></div>
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="hideCategorySelection()">Отмена</button>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно выбора подкатегории -->
     <div class="category-modal" id="subcategory-modal">
         <div class="category-modal-content">
             <h2 class="category-modal-title" id="subcategory-modal-title">Выберите подкатегорию</h2>
-            <div class="category-list" id="subcategory-list">
-                <!-- Подкатегории будут добавлены здесь -->
-            </div>
+            <div class="category-list" id="subcategory-list"></div>
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="hideSubcategorySelection()">Назад</button>
             </div>
         </div>
     </div>
 
-    <!-- Модальное окно редактирования категории -->
     <div class="category-modal" id="edit-category-modal">
         <div class="category-modal-content">
             <h2 class="category-modal-title" id="edit-category-title">Редактировать категорию</h2>
-            
             <div class="form-group">
                 <label for="edit-category-name">Название категории:</label>
                 <input type="text" id="edit-category-name" class="modal-input">
             </div>
-            
             <div class="form-group">
                 <label for="edit-category-icon">Иконка:</label>
                 <input type="text" id="edit-category-icon" class="modal-input" maxlength="2">
             </div>
-
             <div class="form-group">
                 <label>Подкатегории:</label>
-                <div class="subcategories-list" id="subcategories-list">
-                    <!-- Список подкатегорий -->
-                </div>
+                <div class="subcategories-list" id="subcategories-list"></div>
                 <button class="modal-btn" onclick="addNewSubcategory()" style="margin-top: 10px;">+ Добавить подкатегорию</button>
             </div>
-
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="hideEditCategoryModal()">Отмена</button>
                 <button class="modal-btn confirm" onclick="saveCategoryChanges()">Сохранить</button>
@@ -171,21 +159,17 @@
         </div>
     </div>
 
-    <!-- Модальное окно редактирования подкатегории -->
     <div class="category-modal" id="edit-subcategory-modal">
         <div class="category-modal-content">
             <h2 class="category-modal-title" id="edit-subcategory-title">Редактировать подкатегорию</h2>
-            
             <div class="form-group">
                 <label for="edit-subcategory-name">Название подкатегории:</label>
                 <input type="text" id="edit-subcategory-name" class="modal-input">
             </div>
-            
             <div class="form-group">
                 <label for="edit-subcategory-icon">Иконка:</label>
                 <input type="text" id="edit-subcategory-icon" class="modal-input" maxlength="2">
             </div>
-
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="hideEditSubcategoryModal()">Отмена</button>
                 <button class="modal-btn confirm" onclick="saveSubcategoryChanges()">Сохранить</button>
@@ -209,6 +193,18 @@
         </div>
     </nav>
 
-    <script src="scripts.js?1.0"></script>
+    <!-- Подключаем сервисы -->
+    <script src="services/StorageService.js"></script>
+    <script src="services/IncomesService.js"></script>
+    <script src="services/DebtsService.js"></script>
+    <script src="services/ExpensesService.js"></script>
+    <script src="services/OperationsService.js"></script>
+    <script src="services/ReportService.js"></script>
+    
+    <!-- Главное приложение -->
+    <script src="app.js"></script>
+    
+    <!-- Инициализация и глобальные функции -->
+    <script src="main.js"></script>
 </body>
 </html>
