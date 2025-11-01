@@ -234,6 +234,28 @@ class ExpensesService {
         return newOperation;
     }
 
+    updateOperation(operationId, updatedData) {
+        const operation = this.getOperation(operationId);
+        if (!operation) {
+            throw new Error("Операция не найдена");
+        }
+
+        const oldAmount = operation.amount;
+        const oldCategoryId = operation.categoryId;
+        const oldSubcategoryId = operation.subcategoryId;
+
+        // Вычитаем старую сумму из старой категории/подкатегории
+        this.reverseCategoryAmounts(operation);
+
+        // Обновляем данные операции
+        Object.assign(operation, updatedData);
+
+        // Добавляем новую сумму в новую категорию/подкатегорию
+        this.updateCategoryAmounts(operation);
+
+        return operation;
+    }
+
     getOperation(id) {
         return this.operations.find(op => op.id === id);
     }
