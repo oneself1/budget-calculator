@@ -1,7 +1,7 @@
 class IndexedDBService {
     constructor() {
         this.dbName = 'BudgetAppDB';
-        this.version = 1;
+        this.version = 2; // Увеличиваем версию для новых хранилищ
         this.db = null;
     }
 
@@ -47,6 +47,22 @@ class IndexedDBService {
                 if (!db.objectStoreNames.contains('settings')) {
                     db.createObjectStore('settings', { keyPath: 'id' });
                 }
+                
+                // Новые хранилища для версии 2
+                if (!db.objectStoreNames.contains('budgets')) {
+                    db.createObjectStore('budgets', { keyPath: 'categoryId' });
+                }
+                
+                if (!db.objectStoreNames.contains('recurringTransactions')) {
+                    const recurringStore = db.createObjectStore('recurringTransactions', { keyPath: 'id', autoIncrement: true });
+                    recurringStore.createIndex('isActive', 'isActive', { unique: false });
+                    recurringStore.createIndex('nextDate', 'nextDate', { unique: false });
+                }
+                
+                if (!db.objectStoreNames.contains('savingsGoals')) {
+                    const goalsStore = db.createObjectStore('savingsGoals', { keyPath: 'id', autoIncrement: true });
+                    goalsStore.createIndex('isCompleted', 'isCompleted', { unique: false });
+                }
             };
         });
     }
@@ -58,7 +74,7 @@ class IndexedDBService {
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => resolve(request.result || []);
             request.onerror = () => reject(request.error);
         });
     }
@@ -120,8 +136,21 @@ class IndexedDBService {
 
     // Специфичные методы для приложения
     async getSettings() {
-        const settings = await this.get('settings', 1);
-        return settings || { currency: "₽" };
+        try {
+            const settings = await this.get('settings', 1);
+            return settings || { 
+                currency: "₽",
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            };
+        } catch (error) {
+            console.error('Error loading settings:', error);
+            return { 
+                currency: "₽",
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            };
+        }
     }
 
     async saveSettings(settings) {
@@ -137,14 +166,20 @@ class IndexedDBService {
                 debts,
                 expenseCategories,
                 expenseOperations,
-                settings
+                settings,
+                budgets,
+                recurringTransactions,
+                savingsGoals
             ] = await Promise.all([
                 this.getAll('incomes'),
                 this.getAll('incomeCategories'),
                 this.getAll('debts'),
                 this.getAll('expenseCategories'),
                 this.getAll('expenseOperations'),
-                this.getSettings()
+                this.getSettings(),
+                this.getAll('budgets'),
+                this.getAll('recurringTransactions'),
+                this.getAll('savingsGoals')
             ]);
 
             return {
@@ -154,7 +189,10 @@ class IndexedDBService {
                 debts,
                 expenseCategories,
                 expenseOperations,
-                settings
+                settings,
+                budgets,
+                recurringTransactions,
+                savingsGoals
             };
         } catch (error) {
             console.error('Error loading all data:', error);
@@ -169,13 +207,22 @@ class IndexedDBService {
                 this.clear('incomes'),
                 this.clear('incomeCategories'),
                 this.clear('debts'),
-                this.clear('expenseOperations')
+                this.clear('expenseOperations'),
+                this.clear('budgets'),
+                this.clear('recurringTransactions'),
+                this.clear('savingsGoals')
             ]);
             
             // Восстанавливаем базовые категории расходов
             const basicCategories = this.getDefaultExpenseCategories();
             for (const category of basicCategories) {
                 await this.put('expenseCategories', category);
+            }
+            
+            // Восстанавливаем базовые категории доходов
+            const basicIncomeCategories = this.getDefaultIncomeCategories();
+            for (const category of basicIncomeCategories) {
+                await this.put('incomeCategories', category);
             }
             
             return true;
@@ -321,6 +368,32 @@ class IndexedDBService {
                     { id: 1201, name: "Страховка", icon: "📋", amount: 0 },
                     { id: 1202, name: "Техобслуживание", icon: "🔧", amount: 0 },
                     { id: 1203, name: "Шиномонтаж", icon: "🌀", amount: 0 }
+                ]
+            }
+        ];
+    }
+
+    getDefaultIncomeCategories() {
+        return [
+            { 
+                id: 1, 
+                name: "Зарплата", 
+                amount: 0, 
+                icon: "💰",
+                subcategories: [
+                    { id: 101, name: "Основная зарплата", icon: "💵", amount: 0 },
+                    { id: 102, name: "Премия", icon: "🎁", amount: 0 },
+                    { id: 103, name: "Аванс", icon: "📅", amount: 0 }
+                ]
+            },
+            { 
+                id: 2, 
+                name: "Стипендия", 
+                amount: 0, 
+                icon: "🎓",
+                subcategories: [
+                    { id: 201, name: "Академическая", icon: "📚", amount: 0 },
+                    { id: 202, name: "Социальная", icon: "❤️", amount: 0 }
                 ]
             }
         ];
