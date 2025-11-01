@@ -91,9 +91,7 @@ class BudgetApp {
         this.updateCircles();
         this.updateBalance();
         this.updateReport();
-        
-        // Всегда обновляем список операций при обновлении UI
-        this.updateOperationsList();
+        this.updateOperationsList(); // Всегда обновляем список операций
     }
 
     updateCircles() {
@@ -241,15 +239,28 @@ class BudgetApp {
 
     updateOperationsList() {
         const container = document.getElementById('operations-list');
-        if (!container) return;
-        
-        const operations = this.operations.getAllOperations();
-        
-        if (operations.length === 0) {
-            container.innerHTML = '<div class="empty-state">Нет операций</div>';
+        if (!container) {
+            console.log("Operations container not found");
             return;
         }
         
+        const operations = this.operations.getAllOperations();
+        console.log("Found operations:", operations.length);
+        
+        if (operations.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
+                    <div>Нет операций</div>
+                    <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                        Добавьте доходы, расходы или долги чтобы увидеть их здесь
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Группировка операций по типам
         const incomeOperations = operations.filter(op => op.type === 'income');
         const expenseOperations = operations.filter(op => op.type === 'expense');
         const debtOperations = operations.filter(op => op.type === 'debt' || op.type === 'debt-payment');
@@ -259,7 +270,9 @@ class BudgetApp {
         if (incomeOperations.length > 0) {
             operationsHTML += `
                 <div class="operations-group">
-                    <div class="operations-group-title">Доходы</div>
+                    <div class="operations-group-title">
+                        📈 Доходы (${incomeOperations.length})
+                    </div>
                     ${incomeOperations.map(operation => this.createOperationHTML(operation)).join('')}
                 </div>
             `;
@@ -268,7 +281,9 @@ class BudgetApp {
         if (expenseOperations.length > 0) {
             operationsHTML += `
                 <div class="operations-group">
-                    <div class="operations-group-title">Расходы</div>
+                    <div class="operations-group-title">
+                        📉 Расходы (${expenseOperations.length})
+                    </div>
                     ${expenseOperations.map(operation => this.createOperationHTML(operation)).join('')}
                 </div>
             `;
@@ -277,7 +292,9 @@ class BudgetApp {
         if (debtOperations.length > 0) {
             operationsHTML += `
                 <div class="operations-group">
-                    <div class="operations-group-title">Долги</div>
+                    <div class="operations-group-title">
+                        💳 Долги (${debtOperations.length})
+                    </div>
                     ${debtOperations.map(operation => this.createOperationHTML(operation)).join('')}
                 </div>
             `;
@@ -1234,7 +1251,6 @@ class BudgetApp {
         try {
             this.expenses.updateOperation(id, { amount: newAmount });
             this.saveData();
-            this.updateOperationsList();
             alert("Расход успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении расхода: " + error.message);
@@ -1246,7 +1262,6 @@ class BudgetApp {
             try {
                 this.expenses.deleteOperation(id);
                 this.saveData();
-                this.updateOperationsList();
                 alert("Расход успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении расхода: " + error.message);
@@ -1287,7 +1302,6 @@ class BudgetApp {
         try {
             this.incomes.updateOperation(id, { amount: newAmount });
             this.saveData();
-            this.updateOperationsList();
             alert("Доход успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении дохода: " + error.message);
@@ -1299,7 +1313,6 @@ class BudgetApp {
             try {
                 this.incomes.deleteOperation(id);
                 this.saveData();
-                this.updateOperationsList();
                 alert("Доход успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении дохода: " + error.message);
@@ -1342,7 +1355,6 @@ class BudgetApp {
                 amount: newAmount
             });
             this.saveData();
-            this.updateOperationsList();
             alert("Долг успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении долга: " + error.message);
@@ -1354,7 +1366,6 @@ class BudgetApp {
             try {
                 this.debts.delete(id);
                 this.saveData();
-                this.updateOperationsList();
                 alert("Долг успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении долга: " + error.message);
@@ -1396,7 +1407,6 @@ class BudgetApp {
                 date: new Date().toISOString()
             });
             this.saveData();
-            this.updateOperationsList();
             alert("Платеж успешно обновлен!");
         } catch (error) {
             alert("Ошибка при обновлении платежа: " + error.message);
@@ -1408,7 +1418,6 @@ class BudgetApp {
             try {
                 this.debts.deletePayment(debtId, paymentIndex);
                 this.saveData();
-                this.updateOperationsList();
                 alert("Платеж успешно удален!");
             } catch (error) {
                 alert("Ошибка при удалении платежа: " + error.message);
