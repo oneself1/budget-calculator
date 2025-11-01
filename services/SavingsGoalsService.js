@@ -1,164 +1,149 @@
-class RecurringTransactionsService {
-    constructor(storageService, expensesService, incomesService) {
+class SavingsGoalsService {
+    constructor(storageService) {
         this.storage = storageService;
-        this.expenses = expensesService;
-        this.incomes = incomesService;
-        this.recurringTransactions = [];
+        this.goals = [];
     }
 
     async load(data = null) {
         try {
-            if (data?.recurringTransactions) {
-                this.recurringTransactions = data.recurringTransactions;
+            if (data?.savingsGoals) {
+                this.goals = data.savingsGoals;
             } else {
-                this.recurringTransactions = await this.storage.getAll('recurringTransactions');
+                this.goals = await this.storage.getAll('savingsGoals');
             }
         } catch (error) {
-            console.error('Error loading recurring transactions:', error);
-            this.recurringTransactions = [];
+            console.error('Error loading savings goals:', error);
+            this.goals = [];
         }
     }
 
-    async addRecurringTransaction(transaction) {
-        const newTransaction = {
+    async createGoal(goalData) {
+        const goal = {
             id: Date.now(),
-            type: transaction.type,
-            amount: transaction.amount,
-            description: transaction.description,
-            categoryId: transaction.categoryId,
-            subcategoryId: transaction.subcategoryId || null,
-            recurrence: transaction.recurrence,
-            nextDate: this.calculateNextDate(transaction.recurrence),
-            icon: transaction.icon || '🔄',
+            name: goalData.name,
+            targetAmount: goalData.targetAmount,
+            currentAmount: goalData.initialAmount || 0,
+            deadline: goalData.deadline,
+            icon: goalData.icon || '🎯',
+            category: goalData.category || 'general',
+            color: goalData.color || '#007AFF',
             createdAt: new Date().toISOString(),
-            isActive: true
+            isCompleted: false
         };
 
-        this.recurringTransactions.push(newTransaction);
-        await this.storage.add('recurringTransactions', newTransaction);
-        return newTransaction;
+        this.goals.push(goal);
+        await this.storage.add('savingsGoals', goal);
+        return goal;
     }
 
-    calculateNextDate(recurrence, fromDate = new Date()) {
-        const date = new Date(fromDate);
-        switch (recurrence) {
-            case 'daily':
-                date.setDate(date.getDate() + 1);
-                break;
-            case 'weekly':
-                date.setDate(date.getDate() + 7);
-                break;
-            case 'monthly':
-                date.setMonth(date.getMonth() + 1);
-                break;
-            case 'yearly':
-                date.setFullYear(date.getFullYear() + 1);
-                break;
-            default:
-                break;
-        }
-        return date.toISOString();
-    }
+    async addToGoal(goalId, amount) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return null;
 
-    async processRecurringTransactions() {
-        const now = new Date();
-        const processed = [];
-        
-        for (const transaction of this.recurringTransactions) {
-            if (!transaction.isActive) continue;
-            
-            if (new Date(transaction.nextDate) <= now) {
-                try {
-                    await this.createTransaction(transaction);
-                    
-                    transaction.nextDate = this.calculateNextDate(
-                        transaction.recurrence, 
-                        new Date(transaction.nextDate)
-                    );
-                    
-                    await this.storage.put('recurringTransactions', transaction);
-                    processed.push(transaction);
-                } catch (error) {
-                    console.error('Error processing recurring transaction:', error);
-                }
-            }
+        goal.currentAmount += amount;
+        if (goal.currentAmount >= goal.targetAmount) {
+            goal.currentAmount = goal.targetAmount;
+            goal.isCompleted = true;
+            goal.completedAt = new Date().toISOString();
         }
         
-        return processed;
+        goal.updatedAt = new Date().toISOString();
+        await this.storage.put('savingsGoals', goal);
+        return goal;
     }
 
-    async createTransaction(transaction) {
-        const operationData = {
-            amount: transaction.amount,
-            description: `${transaction.description} (авто)`,
-            categoryId: transaction.categoryId,
-            subcategoryId: transaction.subcategoryId,
-            icon: transaction.icon,
-            date: new Date().toISOString()
-        };
+    getGoalProgress(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return 0;
+        return (goal.currentAmount / goal.targetAmount) * 100;
+    }
 
-        if (transaction.type === 'expense') {
-            await this.expenses.addOperation(operationData);
-        } else {
-            await this.incomes.addOperation(operationData);
-        }
+    getDaysRemaining(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal || !goal.deadline) return null;
         
-        return operationData;
+        const today = new Date();
+        const deadline = new Date(goal.deadline);
+        const diffTime = deadline - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    getRecurringTransactions() {
-        return this.recurringTransactions.filter(t => t.isActive);
+    getRecommendedMonthlySave(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal || !goal.deadline) return null;
+        
+        const daysRemaining = this.getDaysRemaining(goalId);
+        if (daysRemaining <= 0) return goal.targetAmount - goal.currentAmount;
+        
+        const monthsRemaining = daysRemaining / 30.44;
+        const remainingAmount = goal.targetAmount - goal.currentAmount;
+        
+        return remainingAmount / Math.max(1, Math.ceil(monthsRemaining));
     }
 
-    getRecurringTransaction(id) {
-        return this.recurringTransactions.find(t => t.id === id);
+    getTimeToGoal(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return null;
+        
+        const monthlySave = this.getRecommendedMonthlySave(goalId);
+        const remaining = goal.targetAmount - goal.currentAmount;
+        
+        if (monthlySave <= 0) return null;
+        return Math.ceil(remaining / monthlySave);
     }
 
-    async updateRecurringTransaction(id, updates) {
-        const index = this.recurringTransactions.findIndex(t => t.id === id);
-        if (index !== -1) {
-            this.recurringTransactions[index] = {
-                ...this.recurringTransactions[index],
-                ...updates,
+    getGoals() {
+        return this.goals;
+    }
+
+    getActiveGoals() {
+        return this.goals.filter(goal => !goal.isCompleted);
+    }
+
+    getCompletedGoals() {
+        return this.goals.filter(goal => goal.isCompleted);
+    }
+
+    async updateGoal(goalId, updates) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (goal) {
+            Object.assign(goal, updates, {
                 updatedAt: new Date().toISOString()
-            };
-            await this.storage.put('recurringTransactions', this.recurringTransactions[index]);
-            return this.recurringTransactions[index];
+            });
+            
+            if (goal.currentAmount >= goal.targetAmount) {
+                goal.isCompleted = true;
+                goal.completedAt = new Date().toISOString();
+            } else {
+                goal.isCompleted = false;
+                goal.completedAt = null;
+            }
+            
+            await this.storage.put('savingsGoals', goal);
+            return goal;
         }
         return null;
     }
 
-    async deleteRecurringTransaction(id) {
-        const index = this.recurringTransactions.findIndex(t => t.id === id);
+    async deleteGoal(goalId) {
+        const index = this.goals.findIndex(g => g.id === goalId);
         if (index !== -1) {
-            this.recurringTransactions.splice(index, 1);
-            await this.storage.delete('recurringTransactions', id);
+            this.goals.splice(index, 1);
+            await this.storage.delete('savingsGoals', goalId);
             return true;
         }
         return false;
     }
 
-    async toggleTransactionActive(id) {
-        const transaction = this.getRecurringTransaction(id);
-        if (transaction) {
-            transaction.isActive = !transaction.isActive;
-            await this.storage.put('recurringTransactions', transaction);
-            return transaction;
-        }
-        return null;
+    getTotalSaved() {
+        return this.goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
     }
 
-    getRecurrenceText(recurrence) {
-        const texts = {
-            'daily': 'Ежедневно',
-            'weekly': 'Еженедельно',
-            'monthly': 'Ежемесячно',
-            'yearly': 'Ежегодно'
-        };
-        return texts[recurrence] || recurrence;
+    getTotalTarget() {
+        return this.goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
     }
 
     toJSON() {
-        return this.recurringTransactions;
+        return this.goals;
     }
 }
