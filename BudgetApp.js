@@ -59,6 +59,12 @@ class BudgetApp {
     }
 
     resetToDefaults() {
+        // Сохраняем базовые категории расходов перед сбросом
+        const currentExpenseCategories = this.expenses.getCategories();
+        const basicExpenseCategories = currentExpenseCategories.filter(cat => 
+            [1, 2, 3, 4, 5].includes(cat.id) // ID базовых категорий
+        );
+
         this.incomes = new StructuredIncomesService(this.storage);
         this.debts = new DebtsService(this.storage);
         this.expenses = new ExpensesService(this.storage);
@@ -66,6 +72,17 @@ class BudgetApp {
         this.reports = new ReportService(this.incomes, this.debts, this.expenses);
         
         this.settings = { currency: "₽" };
+        
+        // Восстанавливаем базовые категории расходов
+        if (basicExpenseCategories.length > 0) {
+            basicExpenseCategories.forEach(category => {
+                const existingCategory = this.expenses.getCategory(category.id);
+                if (!existingCategory) {
+                    this.expenses.categories.push(category);
+                }
+            });
+        }
+        
         this.saveData();
     }
 
@@ -74,6 +91,9 @@ class BudgetApp {
         this.updateCircles();
         this.updateBalance();
         this.updateReport();
+        
+        // Всегда обновляем список операций при обновлении UI
+        this.updateOperationsList();
     }
 
     updateCircles() {
@@ -160,7 +180,9 @@ class BudgetApp {
             const icon = category.icon || '🛒';
             const hasSubcategories = category.subcategories && category.subcategories.length > 0;
             
-            const deleteButton = `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>`;
+            const deleteButton = category.id > 5 ? // Не показывать кнопку удаления для базовых категорий
+                `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
+                '';
             
             return `
                 <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
@@ -548,6 +570,12 @@ class BudgetApp {
     }
 
     deleteExpenseCategory(categoryId) {
+        // Запрещаем удаление базовых категорий (ID 1-5)
+        if (categoryId <= 5) {
+            alert("Базовые категории расходов нельзя удалить!");
+            return;
+        }
+        
         if (confirm('Удалить эту категорию?')) {
             this.expenses.deleteCategory(categoryId);
             this.saveData();
@@ -1418,9 +1446,9 @@ class BudgetApp {
     }
 
     clearAllData() {
-        if (confirm('Вы уверены? Все данные будут удалены.')) {
+        if (confirm('Вы уверены? Все данные будут удалены, кроме базовых категорий расходов.')) {
             this.resetToDefaults();
-            alert('Все данные очищены!');
+            alert('Все данные очищены! Базовые категории сохранены.');
         }
     }
 
