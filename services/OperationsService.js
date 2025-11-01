@@ -8,20 +8,30 @@ class OperationsService {
     getAllOperations() {
         const operations = [];
         
-        // Доходы
-        this.incomes.getAll().forEach(income => {
-            if (income.amount > 0) {
-                operations.push({
-                    id: income.id,
-                    amount: income.amount,
-                    displayAmount: income.amount,
-                    description: income.name,
-                    date: income.date,
-                    type: 'income',
-                    icon: income.icon,
-                    isEditable: true
-                });
+        // Доходы (новый формат с категориями)
+        this.incomes.getOperations().forEach(operation => {
+            const category = this.incomes.getCategory(operation.categoryId);
+            let description = category?.name || 'Доход';
+            
+            if (operation.subcategoryId && category) {
+                const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
+                if (subcategory) {
+                    description = `${category.name} - ${subcategory.name}`;
+                }
             }
+            
+            operations.push({
+                id: operation.id,
+                amount: operation.amount,
+                displayAmount: operation.amount,
+                description: description,
+                date: operation.date,
+                type: 'income',
+                icon: category?.icon || '💰',
+                isEditable: true,
+                categoryId: operation.categoryId,
+                subcategoryId: operation.subcategoryId
+            });
         });
 
         // Долги
