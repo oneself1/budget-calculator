@@ -227,6 +227,33 @@ html {
     color: white;
 }
 
+/* Income buttons container */
+.income-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.add-income-operation-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 30px;
+    background: var(--ios-green);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.add-income-operation-btn:active {
+    transform: scale(0.95);
+    background: #2a9c47;
+}
+
 /* Add Circle Button */
 .add-circle-btn {
     width: 60px;
@@ -249,7 +276,32 @@ html {
     color: white;
 }
 
-/* Add Expense Button */
+/* Operation buttons container */
+.operation-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.add-income-btn {
+    width: 100%;
+    padding: 18px;
+    background: var(--ios-green);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-income-btn:active {
+    background: #2a9c47;
+    transform: scale(0.98);
+}
+
 .add-expense-btn {
     width: 100%;
     padding: 18px;
@@ -260,7 +312,6 @@ html {
     font-size: 18px;
     font-weight: 600;
     cursor: pointer;
-    margin: 20px 0;
     transition: all 0.2s;
 }
 
@@ -802,6 +853,12 @@ html {
         width: 50px;
         height: 50px;
         font-size: 20px;
+    }
+    
+    .add-income-operation-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
     }
     
     .balance-amount {
