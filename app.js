@@ -1,7 +1,7 @@
 class BudgetApp {
     constructor() {
         this.storage = new StorageService();
-        this.incomes = new IncomesService(this.storage);
+        this.incomes = new StructuredIncomesService(this.storage);
         this.debts = new DebtsService(this.storage);
         this.expenses = new ExpensesService(this.storage);
         this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
@@ -11,7 +11,8 @@ class BudgetApp {
         this.currentState = {
             editingCategoryId: null,
             editingSubcategory: null,
-            selectedCategoryId: null
+            selectedCategoryId: null,
+            selectedIncomeCategoryId: null
         };
     }
 
@@ -43,6 +44,8 @@ class BudgetApp {
     saveData() {
         const data = {
             incomes: this.incomes.getAll(),
+            incomeCategories: this.incomes.getCategories(),
+            incomeOperations: this.incomes.getOperations(),
             debts: this.debts.getAll(),
             expenseCategories: this.expenses.getCategories(),
             expenseOperations: this.expenses.getOperations(),
@@ -56,8 +59,7 @@ class BudgetApp {
     }
 
     resetToDefaults() {
-        // Создаем новые экземпляры сервисов для сброса
-        this.incomes = new IncomesService(this.storage);
+        this.incomes = new StructuredIncomesService(this.storage);
         this.debts = new DebtsService(this.storage);
         this.expenses = new ExpensesService(this.storage);
         this.operations = new OperationsService(this.incomes, this.debts, this.expenses);
@@ -84,24 +86,26 @@ class BudgetApp {
         const container = document.getElementById('income-circles');
         if (!container) return;
         
-        const incomes = this.incomes.getAll();
-        if (!incomes || incomes.length === 0) {
+        const categories = this.incomes.getCategories();
+        if (!categories || categories.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
             return;
         }
         
-        container.innerHTML = incomes.map(income => {
-            const showAmount = income.amount > 0;
-            const icon = income.icon || '💰';
+        container.innerHTML = categories.map(category => {
+            const totalAmount = this.incomes.calculateCategoryTotal(category);
+            const showAmount = totalAmount > 0;
+            const icon = category.icon || '💰';
+            const hasSubcategories = category.subcategories && category.subcategories.length > 0;
             
             return `
-                <div class="circle-item circle-income" onclick="editIncomeCategory(${income.id})">
+                <div class="circle-item circle-income" onclick="editIncomeCategory(${category.id})">
                     <div class="circle-actions">
-                        <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteIncomeCategory(${income.id})">×</button>
+                        <button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteIncomeCategory(${category.id})">×</button>
                     </div>
                     <div class="circle-icon">${icon}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${income.amount}</div>` : ''}
-                    <div class="circle-label">${income.name}</div>
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
+                    <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
                 </div>
             `;
         }).join('');
@@ -151,7 +155,8 @@ class BudgetApp {
         }
         
         container.innerHTML = categories.map(category => {
-            const showAmount = category.amount > 0;
+            const totalAmount = this.expenses.calculateCategoryTotal(category);
+            const showAmount = totalAmount > 0;
             const icon = category.icon || '🛒';
             const hasSubcategories = category.subcategories && category.subcategories.length > 0;
             
@@ -161,7 +166,7 @@ class BudgetApp {
                 <div class="circle-item circle-expense" onclick="editExpenseCategory(${category.id})">
                     <div class="circle-actions">${deleteButton}</div>
                     <div class="circle-icon">${icon}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${category.amount}</div>` : ''}
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${totalAmount}</div>` : ''}
                     <div class="circle-label">${category.name} ${hasSubcategories ? '📁' : ''}</div>
                 </div>
             `;
@@ -223,7 +228,6 @@ class BudgetApp {
             return;
         }
         
-        // Группируем операции по типу
         const incomeOperations = operations.filter(op => op.type === 'income');
         const expenseOperations = operations.filter(op => op.type === 'expense');
         const debtOperations = operations.filter(op => op.type === 'debt' || op.type === 'debt-payment');
@@ -427,26 +431,16 @@ class BudgetApp {
         const categoryName = prompt('Введите название категории доходов:');
         if (!categoryName) return;
         
-        const amountStr = prompt(`Введите сумму для категории "${categoryName}":`, "0");
-        if (amountStr === null) return;
-        
-        const amount = parseFloat(amountStr) || 0;
-        if (amount < 0) {
-            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-            return;
-        }
-        
         const icon = prompt('Введите смайлик (иконку) для категории (например: 💰, 💵, 💳):', '💰') || '💰';
         
         try {
-            this.incomes.add({
+            this.incomes.addCategory({
                 name: categoryName,
-                amount: amount,
                 icon: icon
             });
             this.saveData();
         } catch (error) {
-            alert("Ошибка при добавлении дохода: " + error.message);
+            alert("Ошибка при добавлении категории доходов: " + error.message);
         }
     }
 
@@ -498,32 +492,9 @@ class BudgetApp {
         }
     }
 
-    // Редактирование
+    // Редактирование доходов
     editIncomeCategory(categoryId) {
-        const category = this.incomes.get(categoryId);
-        if (category) {
-            const newName = prompt('Изменить название категории:', category.name);
-            if (newName) {
-                category.name = newName;
-            }
-            
-            const newAmountStr = prompt('Изменить сумму:', category.amount);
-            if (newAmountStr !== null) {
-                const newAmount = parseFloat(newAmountStr) || 0;
-                if (newAmount >= 0) {
-                    category.amount = newAmount;
-                } else {
-                    alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
-                }
-            }
-            
-            const newIcon = prompt('Изменить иконку (смайлик):', category.icon);
-            if (newIcon) {
-                category.icon = newIcon;
-            }
-            
-            this.saveData();
-        }
+        this.showEditIncomeCategoryModal(categoryId);
     }
 
     editExpenseCategory(categoryId) {
@@ -562,7 +533,7 @@ class BudgetApp {
     // Удаление
     deleteIncomeCategory(categoryId) {
         if (confirm('Удалить эту категорию доходов?')) {
-            this.incomes.delete(categoryId);
+            this.incomes.deleteCategory(categoryId);
             this.saveData();
         }
     }
@@ -670,11 +641,9 @@ class BudgetApp {
         if (category) {
             this.currentState.selectedCategoryId = categoryId;
             
-            // Если у категории есть подкатегории, показываем их выбор
             if (category.subcategories && category.subcategories.length > 0) {
                 this.showSubcategorySelection(category);
             } else {
-                // Иначе сразу запрашиваем сумму для категории
                 this.hideCategorySelection();
                 this.addExpenseToCategory(categoryId, null);
             }
@@ -690,7 +659,6 @@ class BudgetApp {
         
         let optionsHTML = '';
         
-        // Добавляем вариант для добавления расхода в основную категорию
         optionsHTML += `
             <button class="category-option" onclick="selectSubcategory(null)">
                 <div class="category-option-icon">${category.icon}</div>
@@ -699,7 +667,6 @@ class BudgetApp {
             </button>
         `;
         
-        // Добавляем подкатегории
         if (category.subcategories) {
             category.subcategories.forEach(subcategory => {
                 optionsHTML += `
@@ -714,7 +681,6 @@ class BudgetApp {
         
         subcategoryList.innerHTML = optionsHTML;
         
-        // Скрываем выбор категорий и показываем выбор подкатегорий
         this.hideCategorySelection();
         modal.classList.add('active');
     }
@@ -722,7 +688,7 @@ class BudgetApp {
     hideSubcategorySelection() {
         const modal = document.getElementById('subcategory-modal');
         modal.classList.remove('active');
-        this.showCategorySelection(); // Возвращаемся к выбору категории
+        this.showCategorySelection();
     }
 
     selectSubcategory(subcategoryId) {
@@ -773,7 +739,140 @@ class BudgetApp {
         }
     }
 
-    // Модальные окна редактирования категорий
+    // Модальные окна для доходов
+    showIncomeCategorySelection() {
+        const modal = document.getElementById('income-category-modal');
+        const categoryList = document.getElementById('income-category-list');
+        
+        const categories = this.incomes.getCategories();
+        if (!categories || categories.length === 0) {
+            alert('Сначала добавьте категории доходов!');
+            return;
+        }
+        
+        categoryList.innerHTML = categories.map(category => {
+            const totalAmount = this.incomes.calculateCategoryTotal(category);
+            return `
+                <button class="category-option" onclick="selectIncomeCategory(${category.id})">
+                    <div class="category-option-icon">${category.icon}</div>
+                    <div class="category-option-name">${category.name}</div>
+                    <div class="category-option-amount">${this.settings.currency}${totalAmount}</div>
+                </button>
+            `;
+        }).join('');
+        
+        modal.classList.add('active');
+    }
+
+    hideIncomeCategorySelection() {
+        const modal = document.getElementById('income-category-modal');
+        modal.classList.remove('active');
+    }
+
+    selectIncomeCategory(categoryId) {
+        const category = this.incomes.getCategory(categoryId);
+        if (category) {
+            this.currentState.selectedIncomeCategoryId = categoryId;
+            
+            if (category.subcategories && category.subcategories.length > 0) {
+                this.showIncomeSubcategorySelection(category);
+            } else {
+                this.hideIncomeCategorySelection();
+                this.addIncomeToCategory(categoryId, null);
+            }
+        }
+    }
+
+    showIncomeSubcategorySelection(category) {
+        const modal = document.getElementById('income-subcategory-modal');
+        const subcategoryList = document.getElementById('income-subcategory-list');
+        const title = document.getElementById('income-subcategory-modal-title');
+        
+        title.textContent = `Выберите подкатегорию для ${category.name}`;
+        
+        let optionsHTML = '';
+        
+        optionsHTML += `
+            <button class="category-option" onclick="selectIncomeSubcategory(null)">
+                <div class="category-option-icon">${category.icon}</div>
+                <div class="category-option-name">${category.name} (основная)</div>
+                <div class="category-option-amount">${this.settings.currency}${category.amount || 0}</div>
+            </button>
+        `;
+        
+        if (category.subcategories) {
+            category.subcategories.forEach(subcategory => {
+                optionsHTML += `
+                    <button class="category-option" onclick="selectIncomeSubcategory(${subcategory.id})">
+                        <div class="category-option-icon">${subcategory.icon}</div>
+                        <div class="category-option-name">${subcategory.name}</div>
+                        <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
+                    </button>
+                `;
+            });
+        }
+        
+        subcategoryList.innerHTML = optionsHTML;
+        
+        this.hideIncomeCategorySelection();
+        modal.classList.add('active');
+    }
+
+    hideIncomeSubcategorySelection() {
+        const modal = document.getElementById('income-subcategory-modal');
+        modal.classList.remove('active');
+        this.showIncomeCategorySelection();
+    }
+
+    selectIncomeSubcategory(subcategoryId) {
+        this.hideIncomeSubcategorySelection();
+        this.addIncomeToCategory(this.currentState.selectedIncomeCategoryId, subcategoryId);
+    }
+
+    addIncomeToCategory(categoryId, subcategoryId) {
+        const category = this.incomes.getCategory(categoryId);
+        if (!category) return;
+        
+        let targetName = category.name;
+        let targetIcon = category.icon;
+        
+        if (subcategoryId) {
+            const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+            if (subcategory) {
+                targetName = subcategory.name;
+                targetIcon = subcategory.icon;
+            }
+        }
+        
+        const amountStr = prompt(`Введите сумму дохода для "${targetName}":`, "0");
+        if (amountStr === null) return;
+        
+        const amount = parseFloat(amountStr) || 0;
+        if (amount < 0) {
+            alert("Пожалуйста, введите корректную сумму (неотрицательное число)");
+            return;
+        }
+        
+        try {
+            const operation = this.incomes.addOperation({
+                categoryId: category.id,
+                subcategoryId: subcategoryId,
+                categoryName: category.name,
+                subcategoryName: subcategoryId ? targetName : null,
+                amount: amount,
+                description: `${category.name}${subcategoryId ? ` - ${targetName}` : ''}`,
+                icon: targetIcon
+            });
+            
+            this.saveData();
+            
+            alert(`Доход ${this.settings.currency}${amount.toFixed(2)} добавлен в "${targetName}"`);
+        } catch (error) {
+            alert("Ошибка при добавлении дохода: " + error.message);
+        }
+    }
+
+    // Модальные окна редактирования категорий расходов
     showEditCategoryModal(categoryId) {
         const category = this.expenses.getCategory(categoryId);
         if (!category) return;
@@ -910,7 +1009,7 @@ class BudgetApp {
     }
 
     deleteSubcategory(subcategoryId) {
-        if (!confirm("Удалить эту подкатегорию? Все связанные расходы будут перемещены в основную категорию.")) {
+        if (!confirm("Удалить эту подкатегорию? Все связанные расходы будут удалены.")) {
             return;
         }
         
@@ -918,6 +1017,156 @@ class BudgetApp {
             this.expenses.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
             this.saveData();
             this.updateSubcategoriesList();
+        } catch (error) {
+            alert("Ошибка при удалении: " + error.message);
+        }
+    }
+
+    // Модальные окна редактирования категорий доходов
+    showEditIncomeCategoryModal(categoryId) {
+        const category = this.incomes.getCategory(categoryId);
+        if (!category) return;
+        
+        this.currentState.editingCategoryId = categoryId;
+        
+        document.getElementById('edit-income-category-title').textContent = `Редактировать ${category.name}`;
+        document.getElementById('edit-income-category-name').value = category.name;
+        document.getElementById('edit-income-category-icon').value = category.icon;
+        
+        this.updateIncomeSubcategoriesList();
+        
+        document.getElementById('edit-income-category-modal').classList.add('active');
+    }
+
+    hideEditIncomeCategoryModal() {
+        document.getElementById('edit-income-category-modal').classList.remove('active');
+        this.currentState.editingCategoryId = null;
+    }
+
+    updateIncomeSubcategoriesList() {
+        const container = document.getElementById('income-subcategories-list');
+        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
+        
+        if (!category) return;
+        
+        if (!category.subcategories || category.subcategories.length === 0) {
+            container.innerHTML = '<div class="empty-state">Нет подкатегорий</div>';
+            return;
+        }
+        
+        container.innerHTML = category.subcategories.map(subcategory => `
+            <div class="subcategory-item">
+                <div class="subcategory-info">
+                    <div class="category-option-icon">${subcategory.icon}</div>
+                    <div class="category-option-name">${subcategory.name}</div>
+                    <div class="category-option-amount">${this.settings.currency}${subcategory.amount || 0}</div>
+                </div>
+                <div class="subcategory-actions">
+                    <button class="subcategory-action-btn subcategory-edit" onclick="editIncomeSubcategory(${subcategory.id})">✏️</button>
+                    <button class="subcategory-action-btn subcategory-delete" onclick="deleteIncomeSubcategory(${subcategory.id})">×</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    saveIncomeCategoryChanges() {
+        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
+        if (!category) return;
+        
+        const newName = document.getElementById('edit-income-category-name').value.trim();
+        const newIcon = document.getElementById('edit-income-category-icon').value.trim();
+        
+        if (!newName) {
+            alert("Введите название категории");
+            return;
+        }
+        
+        try {
+            this.incomes.updateCategory(category.id, {
+                name: newName,
+                icon: newIcon
+            });
+            this.saveData();
+            this.hideEditIncomeCategoryModal();
+        } catch (error) {
+            alert("Ошибка при сохранении: " + error.message);
+        }
+    }
+
+    addNewIncomeSubcategory() {
+        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
+        if (!category) return;
+        
+        try {
+            this.incomes.addSubcategory(category.id, {
+                name: "Новая подкатегория",
+                icon: "📁"
+            });
+            this.updateIncomeSubcategoriesList();
+        } catch (error) {
+            alert("Ошибка при добавлении подкатегории: " + error.message);
+        }
+    }
+
+    editIncomeSubcategory(subcategoryId) {
+        const category = this.incomes.getCategory(this.currentState.editingCategoryId);
+        if (!category || !category.subcategories) return;
+        
+        const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+        if (!subcategory) return;
+        
+        this.currentState.editingSubcategory = subcategory;
+        
+        document.getElementById('edit-income-subcategory-title').textContent = `Редактировать ${subcategory.name}`;
+        document.getElementById('edit-income-subcategory-name').value = subcategory.name;
+        document.getElementById('edit-income-subcategory-icon').value = subcategory.icon;
+        
+        this.hideEditIncomeCategoryModal();
+        document.getElementById('edit-income-subcategory-modal').classList.add('active');
+    }
+
+    hideEditIncomeSubcategoryModal() {
+        document.getElementById('edit-income-subcategory-modal').classList.remove('active');
+        this.currentState.editingSubcategory = null;
+        this.showEditIncomeCategoryModal(this.currentState.editingCategoryId);
+    }
+
+    saveIncomeSubcategoryChanges() {
+        if (!this.currentState.editingSubcategory) return;
+        
+        const newName = document.getElementById('edit-income-subcategory-name').value.trim();
+        const newIcon = document.getElementById('edit-income-subcategory-icon').value.trim();
+        
+        if (!newName) {
+            alert("Введите название подкатегории");
+            return;
+        }
+        
+        try {
+            this.incomes.updateSubcategory(
+                this.currentState.editingCategoryId,
+                this.currentState.editingSubcategory.id,
+                {
+                    name: newName,
+                    icon: newIcon
+                }
+            );
+            this.saveData();
+            this.hideEditIncomeSubcategoryModal();
+        } catch (error) {
+            alert("Ошибка при сохранении: " + error.message);
+        }
+    }
+
+    deleteIncomeSubcategory(subcategoryId) {
+        if (!confirm("Удалить эту подкатегорию? Все связанные доходы будут удалены.")) {
+            return;
+        }
+        
+        try {
+            this.incomes.deleteSubcategory(this.currentState.editingCategoryId, subcategoryId);
+            this.saveData();
+            this.updateIncomeSubcategoriesList();
         } catch (error) {
             alert("Ошибка при удалении: " + error.message);
         }
@@ -978,13 +1227,27 @@ class BudgetApp {
     }
 
     editIncomeOperation(id) {
-        const income = this.incomes.get(id);
-        if (!income) {
-            alert("Доход не найден");
+        const operation = this.incomes.getOperation(id);
+        if (!operation) {
+            alert("Операция дохода не найдена");
             return;
         }
 
-        const newAmountStr = prompt(`Введите новую сумму дохода для "${income.name}":`, income.amount.toString());
+        const category = this.incomes.getCategory(operation.categoryId);
+        if (!category) {
+            alert("Категория не найдена");
+            return;
+        }
+
+        let targetName = category.name;
+        if (operation.subcategoryId) {
+            const subcategory = category.subcategories?.find(s => s.id === operation.subcategoryId);
+            if (subcategory) {
+                targetName = subcategory.name;
+            }
+        }
+
+        const newAmountStr = prompt(`Введите новую сумму дохода для "${targetName}":`, operation.amount.toString());
         if (newAmountStr === null) return;
 
         const newAmount = parseFloat(newAmountStr) || 0;
@@ -993,19 +1256,8 @@ class BudgetApp {
             return;
         }
 
-        const newName = prompt(`Введите новое название дохода:`, income.name);
-        if (newName === null) return;
-
-        if (!newName.trim()) {
-            alert("Название дохода не может быть пустым");
-            return;
-        }
-
         try {
-            this.incomes.update(id, {
-                name: newName.trim(),
-                amount: newAmount
-            });
+            this.incomes.updateOperation(id, { amount: newAmount });
             this.saveData();
             this.updateOperationsList();
             alert("Доход успешно обновлен!");
@@ -1017,7 +1269,7 @@ class BudgetApp {
     deleteIncomeOperation(id) {
         if (confirm('Удалить эту операцию дохода?')) {
             try {
-                this.incomes.delete(id);
+                this.incomes.deleteOperation(id);
                 this.saveData();
                 this.updateOperationsList();
                 alert("Доход успешно удален!");
@@ -1113,7 +1365,7 @@ class BudgetApp {
         try {
             this.debts.updatePayment(debtId, paymentIndex, {
                 amount: newAmount,
-                date: new Date().toISOString() // Обновляем дату платежа
+                date: new Date().toISOString()
             });
             this.saveData();
             this.updateOperationsList();
@@ -1146,7 +1398,7 @@ class BudgetApp {
         const debugInfo = `
 === ИНФОРМАЦИЯ О ПРИЛОЖЕНИИ ===
 
-Доходы: ${this.incomes.getAll().length} категорий
+Доходы: ${this.incomes.getCategories().length} категорий
 Долги: ${this.debts.getAll().length} записей
 Категории расходов: ${this.expenses.getCategories().length}
 Операции расходов: ${this.expenses.getOperations().length}
@@ -1170,5 +1422,10 @@ class BudgetApp {
             this.resetToDefaults();
             alert('Все данные очищены!');
         }
+    }
+
+    // Кнопка добавления дохода
+    addIncomeOperation() {
+        this.showIncomeCategorySelection();
     }
 }
