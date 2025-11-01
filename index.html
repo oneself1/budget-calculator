@@ -129,12 +129,14 @@
                 </div>
             </header>
 
-            <div class="operations-list" id="operations-list">
-                <div class="empty-state">
-                    <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
-                    <div>Нет операций</div>
-                    <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
-                        Добавьте доходы, расходы или долги чтобы увидеть их здесь
+            <div class="virtual-scroll-container">
+                <div class="operations-list" id="operations-list">
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
+                        <div>Нет операций</div>
+                        <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
+                            Добавьте доходы, расходы или долги чтобы увидеть их здесь
+                        </div>
                     </div>
                 </div>
             </div>
@@ -188,8 +190,10 @@
                 </div>
             </header>
 
-            <div class="goals-container" id="goals-container">
-                <!-- Goals will be loaded here -->
+            <div class="virtual-scroll-container">
+                <div class="goals-container" id="goals-container">
+                    <!-- Goals will be loaded here -->
+                </div>
             </div>
         </div>
 
@@ -208,7 +212,7 @@
 
     <div class="category-modal" id="subcategory-modal">
         <div class="category-modal-content">
-            <h2 class="category-modal-title" id="subcategory-modal-title">Выберите подкатегорию</h2>
+            <h2 class="category-modal-title" id="subcategory-modal-title">Выберите подкатегориу</h2>
             <div class="category-list" id="subcategory-list"></div>
             <div class="modal-actions">
                 <button class="modal-btn cancel" onclick="hideSubcategorySelection()">Назад</button>
