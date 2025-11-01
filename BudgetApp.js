@@ -348,20 +348,22 @@ class BudgetApp {
         
         return `
             <div class="operation-item">
-                <div class="operation-info">
-                    <div class="operation-icon" style="background: ${typeColor}">
-                        ${typeIcon}
-                    </div>
-                    <div class="operation-details">
-                        <div class="operation-title">${operation.description}</div>
-                        <div class="operation-meta">
-                            <span>${this.formatDate(operation.date)}</span>
-                            <span class="operation-time">${this.formatTime(operation.date)}</span>
+                <div class="operation-main-content">
+                    <div class="operation-info">
+                        <div class="operation-icon" style="background: ${typeColor}">
+                            ${typeIcon}
+                        </div>
+                        <div class="operation-details">
+                            <div class="operation-title">${operation.description}</div>
+                            <div class="operation-meta">
+                                <span>${this.formatDate(operation.date)}</span>
+                                <span class="operation-time">${this.formatTime(operation.date)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="operation-amount ${typeClass}">
-                    ${amountSign}${this.settings.currency}${displayAmount.toFixed(2)}
+                    <div class="operation-amount ${typeClass}">
+                        ${amountSign}${this.settings.currency}${displayAmount.toFixed(2)}
+                    </div>
                 </div>
                 ${actionButtons}
             </div>
