@@ -64,16 +64,15 @@
                 <div class="circles-container" id="expense-circles">
                     <div class="empty-state">Нажми + чтобы добавить</div>
                 </div>
-                <button class="add-circle-btn" onclick="addNewExpenseCategory()">
-                    <span class="plus-icon">+</span>
-                </button>
+                <div class="expense-buttons">
+                    <button class="add-circle-btn" onclick="addNewExpenseCategory()">
+                        <span class="plus-icon">+</span>
+                    </button>
+                    <button class="add-expense-operation-btn" onclick="showCategorySelection()">
+                        <span class="plus-icon">🛒</span>
+                    </button>
+                </div>
             </section>
-
-            <!-- Кнопки добавления операций -->
-            <div class="operation-buttons">
-                <button class="add-income-btn" onclick="addIncomeOperation()">Добавить доход</button>
-                <button class="add-expense-btn" onclick="showCategorySelection()">Добавить расход</button>
-            </div>
         </div>
 
         <!-- ЭКРАН 2: ОПЕРАЦИИ -->
