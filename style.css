@@ -259,6 +259,33 @@ html {
     background: #2a9c47;
 }
 
+/* Expense buttons container */
+.expense-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.add-expense-operation-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 30px;
+    background: var(--ios-red);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 20px;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.add-expense-operation-btn:active {
+    transform: scale(0.95);
+    background: #cc2a2a;
+}
+
 /* Add Circle Button */
 .add-circle-btn {
     width: 60px;
@@ -279,50 +306,6 @@ html {
     transform: scale(0.95);
     background: var(--ios-gray);
     color: white;
-}
-
-/* Operation buttons container */
-.operation-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin: 20px 0 80px; /* Увеличили нижний отступ для навигации */
-}
-
-.add-income-btn {
-    width: 100%;
-    padding: 18px;
-    background: var(--ios-green);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-income-btn:active {
-    background: #2a9c47;
-    transform: scale(0.98);
-}
-
-.add-expense-btn {
-    width: 100%;
-    padding: 18px;
-    background: var(--ios-blue);
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-expense-btn:active {
-    background: #0056CC;
-    transform: scale(0.98);
 }
 
 /* Results Card */
@@ -887,6 +870,12 @@ html {
     }
     
     .add-income-operation-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+    }
+    
+    .add-expense-operation-btn {
         width: 50px;
         height: 50px;
         font-size: 18px;
