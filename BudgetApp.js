@@ -36,7 +36,7 @@ class BudgetApp {
             
         } catch (error) {
             console.error("❌ Budget App initialization failed:", error);
-            this.showError("Ошибка загрузки приложения");
+            this.showError("Ошибка загрузки приложения. Попробуйте обновить страницу.");
         }
     }
 
@@ -62,7 +62,13 @@ class BudgetApp {
             console.error("❌ Error loading data:", error);
             // Используем данные по умолчанию
             const defaultData = this.storage.getDefaultData();
-            Object.assign(this, defaultData);
+            this.expenseCategories = defaultData.expenseCategories;
+            this.incomeCategories = defaultData.incomeCategories;
+            this.debts = defaultData.debts;
+            this.savingsGoals = defaultData.savingsGoals;
+            this.expenseOperations = defaultData.expenseOperations;
+            this.incomeOperations = defaultData.incomes;
+            this.settings = defaultData.settings;
         }
     }
 
@@ -78,6 +84,7 @@ class BudgetApp {
         this.updateOperationsList();
         this.updateSavingsGoals();
         this.updateReport();
+        this.updateClock(); // Добавляем обновление времени сразу
     }
 
     updateBalance() {
@@ -142,7 +149,7 @@ class BudgetApp {
             html += `
                 <div class="circle-item circle-expense" onclick="app.addExpenseToCategory(${category.id})">
                     <div class="circle-icon">${category.icon || '🛒'}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal}</div>` : ''}
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal.toFixed(2)}</div>` : ''}
                     <div class="circle-label">${category.name}</div>
                 </div>
             `;
@@ -173,7 +180,7 @@ class BudgetApp {
             html += `
                 <div class="circle-item circle-income" onclick="app.addIncomeToCategory(${category.id})">
                     <div class="circle-icon">${category.icon || '💰'}</div>
-                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal}</div>` : ''}
+                    ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal.toFixed(2)}</div>` : ''}
                     <div class="circle-label">${category.name}</div>
                 </div>
             `;
@@ -204,7 +211,7 @@ class BudgetApp {
             html += `
                 <div class="circle-item circle-debt ${isPaid ? 'paid' : ''}" onclick="app.makeDebtPayment(${debt.id})">
                     <div class="circle-icon">${debt.icon || '💳'}</div>
-                    <div class="circle-amount">${this.settings.currency}${remaining}</div>
+                    <div class="circle-amount">${this.settings.currency}${remaining.toFixed(2)}</div>
                     <div class="circle-label">${debt.description || 'Долг'}</div>
                 </div>
             `;
@@ -423,7 +430,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -463,7 +470,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -551,7 +558,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -595,11 +602,11 @@ class BudgetApp {
                 return;
             }
             
-            const amountStr = prompt(`Введите сумму платежа (осталось: ${this.settings.currency}${remaining}):`, remaining.toString());
+            const amountStr = prompt(`Введите сумму платежа (осталось: ${this.settings.currency}${remaining.toFixed(2)}):`, remaining.toString());
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0 || amount > remaining) {
+            if (isNaN(amount) || amount <= 0 || amount > remaining) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -626,31 +633,36 @@ class BudgetApp {
     }
 
     startClock() {
-        const updateTime = () => {
-            try {
-                const now = new Date();
-                const timeElement = document.getElementById('current-time');
-                const dateElement = document.getElementById('current-date');
-                
-                if (timeElement) {
-                    timeElement.textContent = 
-                        now.getHours().toString().padStart(2, '0') + ':' + 
-                        now.getMinutes().toString().padStart(2, '0');
-                }
-                
-                if (dateElement) {
-                    dateElement.textContent = 
-                        now.getDate().toString().padStart(2, '0') + '.' + 
-                        (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
-                        now.getFullYear();
-                }
-            } catch (e) {
-                console.error("❌ Error updating time:", e);
-            }
-        };
+        // Обновляем время сразу
+        this.updateClock();
         
-        updateTime();
-        setInterval(updateTime, 60000);
+        // Затем каждую минуту
+        setInterval(() => {
+            this.updateClock();
+        }, 60000);
+    }
+
+    updateClock() {
+        try {
+            const now = new Date();
+            const timeElement = document.getElementById('current-time');
+            const dateElement = document.getElementById('current-date');
+            
+            if (timeElement) {
+                timeElement.textContent = 
+                    now.getHours().toString().padStart(2, '0') + ':' + 
+                    now.getMinutes().toString().padStart(2, '0');
+            }
+            
+            if (dateElement) {
+                dateElement.textContent = 
+                    now.getDate().toString().padStart(2, '0') + '.' + 
+                    (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+                    now.getFullYear();
+            }
+        } catch (e) {
+            console.error("❌ Error updating time:", e);
+        }
     }
 
     formatDate(dateString) {
@@ -714,6 +726,110 @@ class BudgetApp {
             case 'report':
                 this.updateReport();
                 break;
+        }
+    }
+
+    // Новые методы для работы с целями
+    async showAddGoalModal() {
+        try {
+            const name = prompt('Введите название цели:');
+            if (!name) return;
+            
+            const targetStr = prompt('Введите целевую сумму:', '1000');
+            if (!targetStr) return;
+            
+            const targetAmount = parseFloat(targetStr);
+            if (isNaN(targetAmount) || targetAmount <= 0) {
+                this.showError("Введите корректную сумму");
+                return;
+            }
+            
+            const icon = prompt('Введите иконку:', '🎯') || '🎯';
+            
+            const newGoal = {
+                id: Date.now(),
+                name: name,
+                targetAmount: targetAmount,
+                currentAmount: 0,
+                icon: icon,
+                isCompleted: false,
+                date: new Date().toISOString()
+            };
+            
+            this.savingsGoals.push(newGoal);
+            await this.storage.add('savingsGoals', newGoal);
+            
+            await this.saveData();
+            this.updateAllUI();
+            this.showSuccess('Цель добавлена!');
+            
+        } catch (error) {
+            console.error("❌ Error adding goal:", error);
+            this.showError("Ошибка при добавлении цели");
+        }
+    }
+
+    async addToGoal(goalId) {
+        try {
+            const goal = this.savingsGoals.find(g => g.id === goalId);
+            if (!goal) {
+                this.showError("Цель не найдена");
+                return;
+            }
+            
+            if (goal.isCompleted) {
+                this.showInfo("Цель уже достигнута");
+                return;
+            }
+            
+            const amountStr = prompt(`Введите сумму для цели "${goal.name}" (текущий прогресс: ${this.settings.currency}${goal.currentAmount.toFixed(2)} / ${this.settings.currency}${goal.targetAmount.toFixed(2)}):`, "0");
+            if (!amountStr) return;
+            
+            const amount = parseFloat(amountStr);
+            if (isNaN(amount) || amount <= 0) {
+                this.showError("Введите корректную сумму");
+                return;
+            }
+            
+            goal.currentAmount += amount;
+            if (goal.currentAmount >= goal.targetAmount) {
+                goal.currentAmount = goal.targetAmount;
+                goal.isCompleted = true;
+                this.showSuccess(`Цель "${goal.name}" достигнута! 🎉`);
+            }
+            
+            await this.storage.put('savingsGoals', goal);
+            
+            await this.saveData();
+            this.updateAllUI();
+            this.showSuccess(`Внесено ${this.settings.currency}${amount.toFixed(2)} в цель "${goal.name}"`);
+            
+        } catch (error) {
+            console.error("❌ Error adding to goal:", error);
+            this.showError("Ошибка при внесении средств в цель");
+        }
+    }
+
+    // Метод для очистки всех данных
+    async clearAllData() {
+        try {
+            if (confirm('Вы уверены, что хотите удалить ВСЕ данные? Это действие нельзя отменить.')) {
+                await this.storage.clearAllData();
+                
+                // Сбрасываем локальные данные
+                this.expenseCategories = this.storage.getDefaultExpenseCategories();
+                this.incomeCategories = this.storage.getDefaultIncomeCategories();
+                this.debts = [];
+                this.savingsGoals = [];
+                this.expenseOperations = [];
+                this.incomeOperations = [];
+                
+                this.updateAllUI();
+                this.showSuccess('Все данные очищены');
+            }
+        } catch (error) {
+            console.error("❌ Error clearing data:", error);
+            this.showError("Ошибка при очистке данных");
         }
     }
 }
