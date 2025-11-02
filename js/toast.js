@@ -11,7 +11,7 @@ class Toast {
 
         // Create toast element
         const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
+        toast.className = `toast ${type}`;
         
         const icons = {
             success: '✅',
@@ -60,4 +60,9 @@ class Toast {
     static info(message, duration = 3000) {
         return this.show(message, 'info', duration);
     }
+}
+
+// Fallback for Toast if not loaded
+if (typeof window.Toast === 'undefined') {
+    window.Toast = Toast;
 }
