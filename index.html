@@ -2,236 +2,299 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Budget Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Pro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Top Status Bar -->
-    <div class="status-bar">
-        <div class="status-time" id="current-time">--:--</div>
-        <div class="status-date" id="current-date">--.--.----</div>
-    </div>
+    <div class="app">
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div class="status-time" id="current-time">--:--</div>
+            <div class="status-date" id="current-date">--.--.----</div>
+        </div>
 
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast-container"></div>
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container"></div>
 
-    <!-- Main App Container -->
-    <div class="app-container">
-        
-        <!-- ЭКРАН 1: ОБЗОР (Главная) -->
-        <div class="screen active" id="overview-screen">
-            <header class="app-header">
-                <h1 class="app-title">Budget Pro</h1>
+        <!-- Main Screens -->
+        <div class="screen active" id="main-screen">
+            <header class="header">
+                <h1 class="app-title">Finance Pro</h1>
                 <div class="header-actions">
-                    <button class="icon-btn settings-btn" onclick="showSettingsModal()">⚙️</button>
-                    <button class="icon-btn recurring-btn" onclick="showRecurringTransactionsModal()">🔄</button>
+                    <button class="icon-btn" onclick="app.showSettings()">⚙️</button>
                 </div>
             </header>
 
-            <!-- Карта баланса -->
-            <section class="balance-card">
-                <div class="balance-amount" id="balance-amount">₽0</div>
-                <div class="balance-label">Общий баланс</div>
+            <!-- Balance Card -->
+            <div class="balance-card">
+                <div class="balance-amount" id="balance-amount">₽0.00</div>
+                <div class="balance-label">Текущий баланс</div>
                 <div class="balance-stats">
-                    <span class="stat-income">Доходы: ₽0</span>
-                    <span class="stat-expense">Расходы: ₽0</span>
-                </div>
-            </section>
-
-            <!-- Быстрые действия -->
-            <section class="quick-actions">
-                <button class="quick-action-btn" onclick="addIncomeOperation()">
-                    <span class="quick-action-icon">💰</span>
-                    <span class="quick-action-label">Доход</span>
-                </button>
-                <button class="quick-action-btn" onclick="showCategorySelection()">
-                    <span class="quick-action-icon">🛒</span>
-                    <span class="quick-action-label">Расход</span>
-                </button>
-                <button class="quick-action-btn" onclick="addNewCircle('debt')">
-                    <span class="quick-action-icon">💳</span>
-                    <span class="quick-action-label">Долг</span>
-                </button>
-                <button class="quick-action-btn" onclick="showAddGoalModal()">
-                    <span class="quick-action-icon">🎯</span>
-                    <span class="quick-action-label">Цель</span>
-                </button>
-            </section>
-
-            <!-- Цели накоплений -->
-            <section class="savings-section">
-                <h2 class="section-title">
-                    Цели накоплений
-                    <button class="section-action-btn" onclick="showAddGoalModal()">+</button>
-                </h2>
-                <div class="savings-goals" id="savings-goals">
-                    <div class="empty-state">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🎯</div>
-                        <div>Нет целей накоплений</div>
-                        <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
-                            Добавьте цель чтобы отслеживать прогресс
-                        </div>
+                    <div class="stat income">
+                        <span class="stat-label">Доходы</span>
+                        <span class="stat-value" id="total-income">₽0.00</span>
+                    </div>
+                    <div class="stat expense">
+                        <span class="stat-label">Расходы</span>
+                        <span class="stat-value" id="total-expense">₽0.00</span>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Доходы с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Доходы</h2>
-                <div class="circles-container" id="income-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
-                </div>
-                <div class="income-buttons">
-                    <button class="add-circle-btn" onclick="addNewIncomeCategory()">
-                        <span class="plus-icon">+</span>
-                    </button>
-                    <button class="add-income-operation-btn" onclick="addIncomeOperation()">
-                        <span class="plus-icon">💰</span>
-                    </button>
-                </div>
-            </section>
-
-            <!-- Долги с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Долги</h2>
-                <div class="circles-container" id="debt-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
-                </div>
-                <button class="add-circle-btn" onclick="addNewCircle('debt')">
-                    <span class="plus-icon">+</span>
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="quick-btn" onclick="app.showAddIncomeModal()">
+                    <span class="quick-icon">💰</span>
+                    <span class="quick-text">Доход</span>
                 </button>
-            </section>
+                <button class="quick-btn" onclick="app.showAddExpenseModal()">
+                    <span class="quick-icon">🛒</span>
+                    <span class="quick-text">Расход</span>
+                </button>
+                <button class="quick-btn" onclick="app.showAddDebtModal()">
+                    <span class="quick-icon">💳</span>
+                    <span class="quick-text">Долг</span>
+                </button>
+                <button class="quick-btn" onclick="app.showAddGoalModal()">
+                    <span class="quick-icon">🎯</span>
+                    <span class="quick-text">Цель</span>
+                </button>
+            </div>
 
-            <!-- Расходы с кружками -->
-            <section class="circles-section">
-                <h2 class="section-title">Расходы</h2>
-                <div class="circles-container" id="expense-circles">
-                    <div class="empty-state">Нажми + чтобы добавить</div>
+            <!-- Categories Sections -->
+            <div class="categories-section">
+                <h2 class="section-title">Категории доходов</h2>
+                <div class="categories-grid" id="income-categories">
+                    <!-- Income categories will be loaded here -->
                 </div>
-                <div class="expense-buttons">
-                    <button class="add-circle-btn" onclick="addNewExpenseCategory()">
-                        <span class="plus-icon">+</span>
-                    </button>
-                    <button class="add-expense-operation-btn" onclick="showCategorySelection()">
-                        <span class="plus-icon">🛒</span>
-                    </button>
-                </div>
-            </section>
-        </div>
+                <button class="add-category-btn" onclick="app.showAddCategoryModal('income')">
+                    + Добавить категорию
+                </button>
+            </div>
 
-        <!-- ЭКРАН 2: ОПЕРАЦИИ -->
-        <div class="screen" id="operations-screen">
-            <header class="app-header">
-                <h1 class="app-title">Операции</h1>
-                <div class="header-actions">
-                    <button class="icon-btn filter-btn" onclick="showOperationsFilter()">🔍</button>
+            <div class="categories-section">
+                <h2 class="section-title">Категории расходов</h2>
+                <div class="categories-grid" id="expense-categories">
+                    <!-- Expense categories will be loaded here -->
                 </div>
-            </header>
+                <button class="add-category-btn" onclick="app.showAddCategoryModal('expense')">
+                    + Добавить категорию
+                </button>
+            </div>
 
-            <div class="virtual-scroll-container">
-                <div class="operations-list" id="operations-list">
-                    <div class="empty-state">
-                        <div style="font-size: 48px; margin-bottom: 10px;">📝</div>
-                        <div>Нет операций</div>
-                        <div style="font-size: 12px; margin-top: 10px; color: #8E8E93;">
-                            Добавьте доходы, расходы или долги чтобы увидеть их здесь
-                        </div>
-                    </div>
+            <!-- Recent Transactions -->
+            <div class="transactions-section">
+                <h2 class="section-title">Последние операции</h2>
+                <div class="transactions-list" id="recent-transactions">
+                    <!-- Transactions will be loaded here -->
                 </div>
             </div>
         </div>
 
-        <!-- ЭКРАН 3: ОТЧЕТ -->
-        <div class="screen" id="report-screen">
-            <header class="app-header">
-                <h1 class="app-title">Отчет</h1>
+        <!-- Transactions Screen -->
+        <div class="screen" id="transactions-screen">
+            <header class="header">
+                <button class="back-btn" onclick="app.showScreen('main-screen')">←</button>
+                <h1 class="screen-title">Все операции</h1>
             </header>
-
-            <div class="report-section">
-                <h2 class="section-title">Финансовый отчет</h2>
-                <div class="report-summary">
-                    <div class="report-item">
-                        <div class="report-value income" id="report-income">₽0</div>
-                        <div class="report-label">Доходы</div>
-                    </div>
-                    <div class="report-item">
-                        <div class="report-value expense" id="report-expense">₽0</div>
-                        <div class="report-label">Расходы</div>
-                    </div>
-                    <div class="report-item">
-                        <div class="report-value debt" id="report-debt">₽0</div>
-                        <div class="report-label">Оплаченные долги</div>
-                    </div>
-                    <div class="report-item">
-                        <div class="report-value balance" id="report-balance">₽0</div>
-                        <div class="report-label">Баланс</div>
-                    </div>
-                </div>
-
-                <div class="results-card">
-                    <h3>Детализация</h3>
-                    <div id="report-details"></div>
-                </div>
+            <div class="transactions-list full" id="all-transactions">
+                <!-- All transactions will be loaded here -->
             </div>
         </div>
 
-        <!-- ЭКРАН 4: ЦЕЛИ -->
+        <!-- Goals Screen -->
         <div class="screen" id="goals-screen">
-            <header class="app-header">
-                <h1 class="app-title">Цели</h1>
-                <div class="header-actions">
-                    <button class="icon-btn" onclick="showAddGoalModal()">+</button>
-                </div>
+            <header class="header">
+                <button class="back-btn" onclick="app.showScreen('main-screen')">←</button>
+                <h1 class="screen-title">Цели накоплений</h1>
+                <button class="icon-btn" onclick="app.showAddGoalModal()">+</button>
             </header>
-
-            <div class="virtual-scroll-container">
-                <div class="goals-container" id="goals-container">
-                    <!-- Goals will be loaded here -->
-                </div>
+            <div class="goals-list" id="goals-list">
+                <!-- Goals will be loaded here -->
             </div>
         </div>
 
+        <!-- Reports Screen -->
+        <div class="screen" id="reports-screen">
+            <header class="header">
+                <button class="back-btn" onclick="app.showScreen('main-screen')">←</button>
+                <h1 class="screen-title">Отчеты</h1>
+            </header>
+            <div class="reports-content" id="reports-content">
+                <!-- Reports will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" onclick="app.showScreen('main-screen')">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Главная</span>
+            </button>
+            <button class="nav-btn" onclick="app.showScreen('transactions-screen')">
+                <span class="nav-icon">📝</span>
+                <span class="nav-label">Операции</span>
+            </button>
+            <button class="nav-btn" onclick="app.showScreen('goals-screen')">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-label">Цели</span>
+            </button>
+            <button class="nav-btn" onclick="app.showScreen('reports-screen')">
+                <span class="nav-icon">📊</span>
+                <span class="nav-label">Отчеты</span>
+            </button>
+        </nav>
     </div>
 
-    <!-- Модальные окна -->
-    <div class="category-modal" id="add-goal-modal">
-        <div class="category-modal-content">
-            <h2 class="category-modal-title">Новая цель накопления</h2>
+    <!-- Modal Overlay -->
+    <div id="modal-overlay" class="modal-overlay"></div>
+
+    <!-- All Modals -->
+    <div id="add-income-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Добавить доход</h2>
             <div class="form-group">
-                <label for="goal-name">Название цели:</label>
-                <input type="text" id="goal-name" class="modal-input" placeholder="Например: Новый телефон">
+                <label>Категория</label>
+                <select id="income-category-select" class="form-input">
+                    <option value="">Выберите категорию</option>
+                </select>
             </div>
             <div class="form-group">
-                <label for="goal-target">Целевая сумма:</label>
-                <input type="number" id="goal-target" class="modal-input" placeholder="10000" min="1" step="0.01">
+                <label>Подкатегория</label>
+                <select id="income-subcategory-select" class="form-input">
+                    <option value="">Выберите подкатегорию</option>
+                </select>
             </div>
             <div class="form-group">
-                <label for="goal-icon">Иконка:</label>
-                <input type="text" id="goal-icon" class="modal-input" value="🎯" maxlength="2">
+                <label>Сумма</label>
+                <input type="number" id="income-amount" class="form-input" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <input type="text" id="income-description" class="form-input" placeholder="Описание дохода">
             </div>
             <div class="modal-actions">
-                <button class="modal-btn cancel" onclick="hideAddGoalModal()">Отмена</button>
-                <button class="modal-btn confirm" onclick="createNewGoal()">Создать цель</button>
+                <button class="btn secondary" onclick="app.hideModal()">Отмена</button>
+                <button class="btn primary" onclick="app.addIncome()">Добавить</button>
             </div>
         </div>
     </div>
 
-    <div class="category-modal" id="settings-modal">
-        <div class="category-modal-content">
-            <h2 class="category-modal-title">Настройки</h2>
+    <div id="add-expense-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Добавить расход</h2>
+            <div class="form-group">
+                <label>Категория</label>
+                <select id="expense-category-select" class="form-input">
+                    <option value="">Выберите категорию</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Подкатегория</label>
+                <select id="expense-subcategory-select" class="form-input">
+                    <option value="">Выберите подкатегорию</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Сумма</label>
+                <input type="number" id="expense-amount" class="form-input" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <input type="text" id="expense-description" class="form-input" placeholder="Описание расхода">
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="app.hideModal()">Отмена</button>
+                <button class="btn primary" onclick="app.addExpense()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-debt-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Добавить долг</h2>
+            <div class="form-group">
+                <label>Сумма долга</label>
+                <input type="number" id="debt-amount" class="form-input" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <input type="text" id="debt-description" class="form-input" placeholder="Описание долга">
+            </div>
+            <div class="form-group">
+                <label>Иконка</label>
+                <input type="text" id="debt-icon" class="form-input" value="💳" maxlength="2">
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="app.hideModal()">Отмена</button>
+                <button class="btn primary" onclick="app.addDebt()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-goal-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Новая цель</h2>
+            <div class="form-group">
+                <label>Название цели</label>
+                <input type="text" id="goal-name" class="form-input" placeholder="Например: Новый телефон">
+            </div>
+            <div class="form-group">
+                <label>Целевая сумма</label>
+                <input type="number" id="goal-target" class="form-input" placeholder="10000" step="0.01">
+            </div>
+            <div class="form-group">
+                <label>Иконка</label>
+                <input type="text" id="goal-icon" class="form-input" value="🎯" maxlength="2">
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="app.hideModal()">Отмена</button>
+                <button class="btn primary" onclick="app.addGoal()">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-category-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="add-category-title">Добавить категорию</h2>
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" id="category-name" class="form-input" placeholder="Название категории">
+            </div>
+            <div class="form-group">
+                <label>Иконка</label>
+                <input type="text" id="category-icon" class="form-input" value="📁" maxlength="2">
+            </div>
+            <div class="form-group">
+                <label>Тип</label>
+                <select id="category-type" class="form-input">
+                    <option value="income">Доход</option>
+                    <option value="expense">Расход</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn secondary" onclick="app.hideModal()">Отмена</button>
+                <button class="btn primary" onclick="app.addCategory()">Добавить</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Настройки</h2>
             
             <div class="settings-group">
                 <h3>Основные</h3>
                 <div class="setting-item">
                     <label class="setting-label">
-                        <input type="checkbox" id="setting-budget-alerts" checked>
+                        <input type="checkbox" id="budget-alerts" checked>
                         Уведомления о бюджете
                     </label>
                 </div>
                 <div class="setting-item">
                     <label class="setting-label">
-                        <input type="checkbox" id="setting-auto-recurring" checked>
+                        <input type="checkbox" id="auto-recurring" checked>
                         Авто-создание повторяющихся операций
                     </label>
                 </div>
@@ -240,107 +303,32 @@
             <div class="settings-group">
                 <h3>Валюта</h3>
                 <div class="setting-item">
-                    <select id="currency-select" class="modal-input">
+                    <select id="currency" class="form-input">
                         <option value="₽">Рубль (₽)</option>
                         <option value="$">Доллар ($)</option>
                         <option value="€">Евро (€)</option>
-                        <option value="¥">Юань (¥)</option>
                     </select>
                 </div>
             </div>
 
             <div class="settings-group">
-                <h3>Опасная зона</h3>
+                <h3>Данные</h3>
                 <div class="setting-item">
-                    <button class="modal-btn warning" onclick="exportData()">Экспорт данных</button>
+                    <button class="btn warning" onclick="app.exportData()">Экспорт данных</button>
                 </div>
                 <div class="setting-item">
-                    <button class="modal-btn danger" onclick="clearAllData()">Очистить все данные</button>
+                    <button class="btn danger" onclick="app.clearData()">Очистить все данные</button>
                 </div>
             </div>
 
             <div class="modal-actions">
-                <button class="modal-btn cancel" onclick="hideSettingsModal()">Закрыть</button>
-                <button class="modal-btn confirm" onclick="saveSettings()">Сохранить</button>
+                <button class="btn primary" onclick="app.saveSettings()">Сохранить</button>
             </div>
         </div>
     </div>
 
-    <div class="category-modal" id="recurring-transactions-modal">
-        <div class="category-modal-content">
-            <h2 class="category-modal-title">Повторяющиеся операции</h2>
-            <div class="recurring-transactions-list" id="recurring-transactions-list">
-                <div class="empty-state">Нет повторяющихся операций</div>
-            </div>
-            <div class="modal-actions">
-                <button class="modal-btn" onclick="showAddRecurringTransactionModal()">+ Добавить операцию</button>
-                <button class="modal-btn cancel" onclick="hideRecurringTransactionsModal()">Закрыть</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="category-modal" id="add-recurring-modal">
-        <div class="category-modal-content">
-            <h2 class="category-modal-title">Новая повторяющаяся операция</h2>
-            <div class="form-group">
-                <label for="recurring-type">Тип операции:</label>
-                <select id="recurring-type" class="modal-input">
-                    <option value="expense">Расход</option>
-                    <option value="income">Доход</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="recurring-amount">Сумма:</label>
-                <input type="number" id="recurring-amount" class="modal-input" placeholder="0" min="0" step="0.01">
-            </div>
-            <div class="form-group">
-                <label for="recurring-description">Описание:</label>
-                <input type="text" id="recurring-description" class="modal-input" placeholder="Описание операции">
-            </div>
-            <div class="form-group">
-                <label for="recurring-recurrence">Повторение:</label>
-                <select id="recurring-recurrence" class="modal-input">
-                    <option value="daily">Ежедневно</option>
-                    <option value="weekly">Еженедельно</option>
-                    <option value="monthly" selected>Ежемесячно</option>
-                    <option value="yearly">Ежегодно</option>
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button class="modal-btn cancel" onclick="hideAddRecurringModal()">Отмена</button>
-                <button class="modal-btn confirm" onclick="createRecurringTransaction()">Создать</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- ФИКСИРОВАННАЯ нижняя навигация -->
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchScreen('overview')">
-            <div class="nav-icon">🏠</div>
-            <div class="nav-label">Главная</div>
-        </div>
-        <div class="nav-item" onclick="switchScreen('operations')">
-            <div class="nav-icon">📝</div>
-            <div class="nav-label">Операции</div>
-        </div>
-        <div class="nav-item" onclick="switchScreen('goals')">
-            <div class="nav-icon">🎯</div>
-            <div class="nav-label">Цели</div>
-        </div>
-        <div class="nav-item" onclick="switchScreen('report')">
-            <div class="nav-icon">📊</div>
-            <div class="nav-label">Отчет</div>
-        </div>
-    </nav>
-
-    <!-- Подключаем сервисы -->
-    <script src="services/IndexedDBService.js"></script>
-    <script src="services/ToastService.js"></script>
-    
-    <!-- Главное приложение -->
-    <script src="BudgetApp.js"></script>
-    
-    <!-- Инициализация и глобальные функции -->
-    <script src="main.js"></script>
+    <script src="js/database.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
