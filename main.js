@@ -103,6 +103,9 @@ function showErrorScreen(error) {
                 <button onclick="location.reload()" class="btn-primary">
                     Обновить страницу
                 </button>
+                <button onclick="clearAllDataAndReload()" class="btn-secondary">
+                    Сбросить данные и обновить
+                </button>
             </div>
         </div>
     `;
@@ -133,17 +136,26 @@ function addErrorScreenStyles() {
             margin-bottom: 30px;
         }
         .error-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
             margin: 25px 0;
         }
-        .btn-primary {
+        .btn-primary, .btn-secondary {
             padding: 16px 24px;
-            background: #007AFF;
-            color: white;
             border: none;
             border-radius: 12px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
+        }
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+        .btn-secondary {
+            background: #FF3B30;
+            color: white;
         }
     `;
     document.head.appendChild(style);
@@ -174,23 +186,12 @@ function addIncomeToCategory(categoryId) {
 function addIncomeOperation() {
     if (!app) return;
     
-    const amountStr = prompt("Введите сумму дохода:", "0");
-    if (amountStr === null) return;
-    
-    const amount = parseFloat(amountStr) || 0;
-    if (amount <= 0) {
-        ToastService.error("Сумма должна быть больше 0");
-        return;
-    }
-    
-    const description = prompt("Введите описание дохода:", "Доход") || "Доход";
-    
     // Используем первую доступную категорию
     const categories = app.incomes.getCategories();
     if (categories.length > 0) {
         app.addIncomeToCategory(categories[0].id);
     } else {
-        ToastService.error("Нет категорий доходов");
+        ToastService.error("Нет категорий доходов. Сначала добавьте категорию.");
     }
 }
 
@@ -205,27 +206,46 @@ function addExpenseToCategory(categoryId) {
     app.addExpenseToCategory(categoryId);
 }
 
-function addExpenseOperation() {
-    if (!app) return;
+function showCategorySelection() {
+    const modal = document.getElementById('category-modal');
+    if (!modal) return;
     
-    const amountStr = prompt("Введите сумму расхода:", "0");
-    if (amountStr === null) return;
+    const categoryList = document.getElementById('category-list');
+    if (!categoryList) return;
     
-    const amount = parseFloat(amountStr) || 0;
-    if (amount <= 0) {
-        ToastService.error("Сумма должна быть больше 0");
-        return;
-    }
-    
-    const description = prompt("Введите описание расхода:", "Расход") || "Расход";
-    
-    // Используем первую доступную категорию
     const categories = app.expenses.getCategories();
-    if (categories.length > 0) {
-        app.addExpenseToCategory(categories[0].id);
-    } else {
-        ToastService.error("Нет категорий расходов");
+    let html = '';
+    
+    categories.forEach(category => {
+        const totalAmount = app.expenses.calculateCategoryTotal(category);
+        html += `
+            <button class="category-option" onclick="selectExpenseCategory(${category.id})">
+                <span class="category-option-icon">${category.icon || '🛒'}</span>
+                <span class="category-option-name">${category.name}</span>
+                <span class="category-option-amount">${app.settings.currency}${totalAmount.toFixed(2)}</span>
+            </button>
+        `;
+    });
+    
+    categoryList.innerHTML = html;
+    modal.classList.add('active');
+}
+
+function hideCategorySelection() {
+    const modal = document.getElementById('category-modal');
+    if (modal) {
+        modal.classList.remove('active');
     }
+}
+
+function selectExpenseCategory(categoryId) {
+    if (!app) return;
+    app.addExpenseToCategory(categoryId);
+    hideCategorySelection();
+}
+
+function addExpenseOperation() {
+    showCategorySelection();
 }
 
 // Долги
@@ -241,133 +261,157 @@ function makeDebtPayment(debtId) {
     app.makeDebtPayment(debtId);
 }
 
+// Бюджет
+function setCategoryBudget(categoryId) {
+    if (!app) return;
+    app.setCategoryBudget(categoryId);
+}
+
+function editCategoryBudget(categoryId) {
+    if (!app) return;
+    app.editCategoryBudget(categoryId);
+}
+
 // Цели
 function showAddGoalModal() {
-    // Простая реализация без модального окна
-    const name = prompt('Введите название цели:');
-    if (!name) return;
-    
-    const targetStr = prompt('Введите целевую сумму:');
-    if (!targetStr) return;
-    
-    const target = parseFloat(targetStr) || 0;
-    if (target <= 0) {
-        ToastService.error("Сумма должна быть больше 0");
-        return;
-    }
-    
-    ToastService.info("Функция целей будет реализована в следующем обновлении");
+    if (!app) return;
+    app.showAddGoalModal();
+}
+
+function hideAddGoalModal() {
+    if (!app) return;
+    app.hideAddGoalModal();
+}
+
+function createNewGoal() {
+    if (!app) return;
+    app.createNewGoal();
 }
 
 function addToGoal(goalId) {
-    ToastService.info("Функция целей будет реализована в следующем обновлении");
-}
-
-// Модальные окна (упрощенные версии)
-function showCategorySelection() {
-    ToastService.info("Выберите категорию из списка выше");
-}
-
-function hideCategorySelection() {
-    // Просто скрываем любые активные модальные окна
-    document.querySelectorAll('.category-modal').forEach(modal => {
-        modal.classList.remove('active');
-    });
-}
-
-function selectExpenseCategory(categoryId) {
     if (!app) return;
-    app.addExpenseToCategory(categoryId);
-    hideCategorySelection();
+    app.addToGoal(goalId);
 }
 
-function showIncomeCategorySelection() {
-    ToastService.info("Выберите категорию доходов из списка выше");
-}
-
-function hideIncomeCategorySelection() {
-    document.querySelectorAll('.category-modal').forEach(modal => {
-        modal.classList.remove('active');
-    });
-}
-
-function selectIncomeCategory(categoryId) {
+function editGoal(goalId) {
     if (!app) return;
-    app.addIncomeToCategory(categoryId);
-    hideIncomeCategorySelection();
+    app.editGoal(goalId);
+}
+
+function deleteGoal(goalId) {
+    if (!app) return;
+    app.deleteGoal(goalId);
 }
 
 // Настройки
 function showSettingsModal() {
-    ToastService.info("Настройки будут доступны в следующем обновлении");
+    if (!app) return;
+    app.showSettingsModal();
 }
 
+function hideSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function saveSettings() {
+    if (!app) return;
+    app.saveSettings();
+    hideSettingsModal();
+}
+
+function exportData() {
+    if (!app) return;
+    app.exportData();
+}
+
+function clearAllData() {
+    if (!app) return;
+    app.clearAllData();
+}
+
+// Повторяющиеся операции
 function showRecurringTransactionsModal() {
     ToastService.info("Повторяющиеся операции будут доступны в следующем обновлении");
 }
 
-// Удаление операций (заглушки)
-function deleteIncomeOperation(id) {
-    if (confirm('Удалить эту операцию дохода?')) {
-        ToastService.info("Удаление будет реализовано в следующем обновлении");
+function hideRecurringTransactionsModal() {
+    const modal = document.getElementById('recurring-transactions-modal');
+    if (modal) {
+        modal.classList.remove('active');
     }
+}
+
+// Удаление операций
+function deleteIncomeOperation(id) {
+    if (!app) return;
+    app.deleteIncomeOperation(id);
 }
 
 function deleteExpenseOperation(id) {
-    if (confirm('Удалить эту операцию расхода?')) {
-        ToastService.info("Удаление будет реализовано в следующем обновлении");
-    }
+    if (!app) return;
+    app.deleteExpenseOperation(id);
 }
 
-function deleteDebtOperation(id) {
-    if (confirm('Удалить этот долг?')) {
-        ToastService.info("Удаление будет реализовано в следующем обновлении");
-    }
+function deleteDebt(id) {
+    if (!app) return;
+    app.deleteDebt(id);
 }
 
 function deleteIncomeCategory(id) {
-    if (confirm('Удалить эту категорию доходов?')) {
-        ToastService.info("Удаление категорий будет реализовано в следующем обновлении");
-    }
+    if (!app) return;
+    app.deleteIncomeCategory(id);
 }
 
 function deleteExpenseCategory(id) {
-    if (confirm('Удалить эту категорию расходов?')) {
-        ToastService.info("Удаление категорий будет реализовано в следующем обновлении");
-    }
+    if (!app) return;
+    app.deleteExpenseCategory(id);
 }
 
-// Редактирование операций (заглушки)
+// Редактирование операций
 function editIncomeOperation(id) {
-    ToastService.info("Редактирование будет реализовано в следующем обновлении");
+    if (!app) return;
+    app.editIncomeOperation(id);
 }
 
 function editExpenseOperation(id) {
-    ToastService.info("Редактирование будет реализовано в следующем обновлении");
+    if (!app) return;
+    app.editExpenseOperation(id);
 }
 
-function editDebtOperation(id) {
-    ToastService.info("Редактирование будет реализовано в следующем обновлении");
+function editDebt(id) {
+    if (!app) return;
+    app.editDebt(id);
 }
 
-// Бюджет (заглушки)
-function setCategoryBudget(categoryId) {
-    ToastService.info("Бюджеты будут реализованы в следующем обновлении");
+// Фильтрация операций
+function showOperationsFilter() {
+    ToastService.info("Фильтрация операций будет доступна в следующем обновлении");
 }
 
-function editCategoryBudget(categoryId) {
-    ToastService.info("Бюджеты будут реализованы в следующем обновлении");
-}
-
-// Управление данными
-function clearAllData() {
-    if (confirm('Вы уверены? Все данные будут удалены.')) {
-        ToastService.info("Очистка данных будет реализована в следующем обновлении");
+// Полный сброс данных и перезагрузка
+async function clearAllDataAndReload() {
+    if (!confirm('Это действие удалит ВСЕ данные и перезагрузит приложение. Продолжить?')) {
+        return;
     }
-}
-
-function exportData() {
-    ToastService.info("Экспорт данных будет реализован в следующем обновлении");
+    
+    try {
+        if (app) {
+            await app.clearAllData();
+        } else {
+            const storage = new IndexedDBService();
+            await storage.clearAllData();
+        }
+        
+        ToastService.success('Данные сброшены');
+        location.reload();
+        
+    } catch (error) {
+        console.error('Clear data failed:', error);
+        ToastService.error('Не удалось сбросить данные');
+    }
 }
 
 // Резервная инициализация при полной загрузке страницы
