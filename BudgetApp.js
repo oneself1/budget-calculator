@@ -63,16 +63,18 @@ class BudgetApp {
     async loadData() {
         try {
             const data = await this.storage.getAllData();
-            console.log("Loaded data:", data);
+            console.log("Loaded data from storage:", data);
             
             if (data && Object.keys(data).length > 0) {
                 // Загружаем данные в правильном порядке
                 await this.expenses.load(data);
                 await this.incomes.load(data);
                 await this.debts.load(data);
-                await this.budgets.load(data);
-                await this.recurring.load(data);
-                await this.savingsGoals.load(data);
+                
+                // Загружаем дополнительные сервисы если есть данные
+                if (data.budgets) await this.budgets.load(data);
+                if (data.recurringTransactions) await this.recurring.load(data);
+                if (data.savingsGoals) await this.savingsGoals.load(data);
                 
                 // Настройки
                 if (data.settings) {
@@ -116,10 +118,7 @@ class BudgetApp {
             const savePromises = [
                 this.saveExpensesData(),
                 this.saveIncomesData(),
-                this.saveDebtsData(),
-                this.saveBudgetsData(),
-                this.saveRecurringData(),
-                this.saveSavingsGoalsData()
+                this.saveDebtsData()
             ];
             
             await Promise.all(savePromises);
@@ -160,27 +159,6 @@ class BudgetApp {
         const debts = this.debts.getAll();
         for (const debt of debts) {
             await this.storage.put('debts', debt);
-        }
-    }
-
-    async saveBudgetsData() {
-        const budgets = this.budgets.getAllBudgets();
-        for (const budget of budgets) {
-            await this.storage.put('budgets', budget);
-        }
-    }
-
-    async saveRecurringData() {
-        const recurring = this.recurring.getRecurringTransactions();
-        for (const transaction of recurring) {
-            await this.storage.put('recurringTransactions', transaction);
-        }
-    }
-
-    async saveSavingsGoalsData() {
-        const goals = this.savingsGoals.getGoals();
-        for (const goal of goals) {
-            await this.storage.put('savingsGoals', goal);
         }
     }
 
@@ -1252,6 +1230,13 @@ class BudgetApp {
         const totalExpenses = this.expenses.getTotalExpenses();
         const totalPaidDebts = this.debts.getTotalPaid();
         const balance = totalIncome - totalExpenses - totalPaidDebts;
+        
+        console.log('Balance calculation:', {
+            totalIncome,
+            totalExpenses,
+            totalPaidDebts,
+            balance
+        });
         
         const balanceElement = document.getElementById('balance-amount');
         if (balanceElement) {
