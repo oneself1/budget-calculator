@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log("🚀 Starting Budget App...");
     
     try {
+        // Показываем состояние загрузки
+        showLoadingState();
+        
         // Создаем экземпляр приложения
         app = new BudgetApp();
         
@@ -18,13 +21,79 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Фиксим layout
         fixNavigationLayout();
         
+        // Скрываем состояние загрузки
+        hideLoadingState();
+        
         console.log("🎉 Budget App started successfully!");
         
     } catch (error) {
         console.error("💥 Failed to start Budget App:", error);
+        hideLoadingState();
         showErrorScreen(error);
     }
 });
+
+// Показать состояние загрузки
+function showLoadingState() {
+    const appContainer = document.querySelector('.app-container');
+    if (!appContainer) return;
+    
+    appContainer.innerHTML = `
+        <div class="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Загрузка Budget Pro...</div>
+            <div class="loading-subtext">Инициализация приложения</div>
+        </div>
+    `;
+    
+    // Добавляем стили для экрана загрузки
+    if (!document.querySelector('#loading-styles')) {
+        const style = document.createElement('style');
+        style.id = 'loading-styles';
+        style.textContent = `
+            .loading-screen {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 60vh;
+                text-align: center;
+            }
+            .loading-spinner {
+                width: 50px;
+                height: 50px;
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #007AFF;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-bottom: 20px;
+            }
+            .loading-text {
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                color: #000;
+            }
+            .loading-subtext {
+                font-size: 14px;
+                color: #8E8E93;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// Скрыть состояние загрузки
+function hideLoadingState() {
+    const loadingScreen = document.querySelector('.loading-screen');
+    if (loadingScreen) {
+        loadingScreen.remove();
+    }
+}
 
 // Настройка глобальных обработчиков
 function setupGlobalHandlers() {
