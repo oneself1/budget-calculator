@@ -140,7 +140,7 @@ class BudgetApp {
             const showAmount = categoryTotal > 0;
             
             html += `
-                <div class="circle-item circle-expense" onclick="addExpenseToCategory(${category.id})">
+                <div class="circle-item circle-expense" onclick="app.addExpenseToCategory(${category.id})">
                     <div class="circle-icon">${category.icon || '🛒'}</div>
                     ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal}</div>` : ''}
                     <div class="circle-label">${category.name}</div>
@@ -171,7 +171,7 @@ class BudgetApp {
             const showAmount = categoryTotal > 0;
             
             html += `
-                <div class="circle-item circle-income" onclick="addIncomeToCategory(${category.id})">
+                <div class="circle-item circle-income" onclick="app.addIncomeToCategory(${category.id})">
                     <div class="circle-icon">${category.icon || '💰'}</div>
                     ${showAmount ? `<div class="circle-amount">${this.settings.currency}${categoryTotal}</div>` : ''}
                     <div class="circle-label">${category.name}</div>
@@ -202,7 +202,7 @@ class BudgetApp {
             const isPaid = remaining <= 0;
             
             html += `
-                <div class="circle-item circle-debt ${isPaid ? 'paid' : ''}" onclick="makeDebtPayment(${debt.id})">
+                <div class="circle-item circle-debt ${isPaid ? 'paid' : ''}" onclick="app.makeDebtPayment(${debt.id})">
                     <div class="circle-icon">${debt.icon || '💳'}</div>
                     <div class="circle-amount">${this.settings.currency}${remaining}</div>
                     <div class="circle-label">${debt.description || 'Долг'}</div>
