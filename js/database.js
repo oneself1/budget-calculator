@@ -3,99 +3,118 @@ class Database {
         this.dbName = 'FinanceAppDB';
         this.version = 4;
         this.db = null;
+        this.isInitialized = false;
     }
 
     async init() {
         return new Promise((resolve, reject) => {
+            console.log('🔄 Initializing database...');
+            
+            if (!window.indexedDB) {
+                const error = 'IndexedDB is not supported in this browser';
+                console.error('❌', error);
+                reject(new Error(error));
+                return;
+            }
+
             const request = indexedDB.open(this.dbName, this.version);
 
-            request.onerror = () => {
-                console.error('❌ Database error:', request.error);
-                reject(request.error);
+            request.onerror = (event) => {
+                console.error('❌ Database error:', event.target.error);
+                reject(event.target.error);
             };
 
-            request.onsuccess = () => {
-                this.db = request.result;
+            request.onsuccess = (event) => {
+                this.db = event.target.result;
+                this.isInitialized = true;
                 console.log('✅ Database initialized successfully');
                 
-                // Проверяем и добавляем данные по умолчанию если нужно
+                // Проверяем и добавляем данные по умолчанию
                 this.ensureDefaultData().then(resolve).catch(reject);
             };
 
             request.onupgradeneeded = (event) => {
+                console.log('🔄 Database upgrade needed');
                 const db = event.target.result;
                 this.createStores(db);
+            };
+
+            request.onblocked = () => {
+                console.warn('⚠️ Database opening blocked');
             };
         });
     }
 
+    createStores(db) {
+        console.log('🔄 Creating database stores...');
+        
+        // Удаляем старые хранилища если они существуют
+        const storeNames = ['categories', 'transactions', 'debts', 'goals', 'settings'];
+        
+        for (const storeName of storeNames) {
+            if (db.objectStoreNames.contains(storeName)) {
+                db.deleteObjectStore(storeName);
+            }
+        }
+
+        // Создаем новые хранилища
+        const categoriesStore = db.createObjectStore('categories', { keyPath: 'id', autoIncrement: true });
+        categoriesStore.createIndex('type', 'type', { unique: false });
+
+        const transactionsStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
+        transactionsStore.createIndex('type', 'type', { unique: false });
+        transactionsStore.createIndex('date', 'date', { unique: false });
+
+        db.createObjectStore('debts', { keyPath: 'id', autoIncrement: true });
+        db.createObjectStore('goals', { keyPath: 'id', autoIncrement: true });
+        
+        const settingsStore = db.createObjectStore('settings', { keyPath: 'id' });
+        
+        console.log('✅ Database stores created successfully');
+    }
+
     async ensureDefaultData() {
         try {
+            console.log('🔄 Ensuring default data...');
+            
+            // Проверяем наличие категорий
             const categories = await this.getAll('categories');
             if (categories.length === 0) {
-                await this.addDefaultData();
+                console.log('📥 Adding default categories...');
+                await this.addDefaultCategories();
             }
             
+            // Проверяем наличие настроек
             const settings = await this.get('settings', 1);
             if (!settings) {
+                console.log('📥 Adding default settings...');
                 await this.addDefaultSettings();
             }
+            
+            console.log('✅ Default data ensured');
         } catch (error) {
-            console.error('Error ensuring default data:', error);
+            console.error('❌ Error ensuring default data:', error);
+            throw error;
         }
     }
 
-    createStores(db) {
-        const stores = [
-            'categories', 'transactions', 'debts', 'goals', 'settings'
+    async addDefaultCategories() {
+        const defaultCategories = [
+            // Income Categories
+            { name: 'Зарплата', icon: '💰', type: 'income' },
+            { name: 'Стипендия', icon: '🎓', type: 'income' },
+            { name: 'Инвестиции', icon: '📈', type: 'income' },
+            { name: 'Подарки', icon: '🎁', type: 'income' },
+            
+            // Expense Categories
+            { name: 'Продукты', icon: '🛒', type: 'expense' },
+            { name: 'Транспорт', icon: '🚗', type: 'expense' },
+            { name: 'Жилье', icon: '🏠', type: 'expense' },
+            { name: 'Развлечения', icon: '🎬', type: 'expense' }
         ];
 
-        for (const storeName of stores) {
-            if (!db.objectStoreNames.contains(storeName)) {
-                const store = db.createObjectStore(storeName, { 
-                    keyPath: 'id', 
-                    autoIncrement: true 
-                });
-                
-                // Создаем индексы для категорий
-                if (storeName === 'categories') {
-                    store.createIndex('type', 'type', { unique: false });
-                }
-                // Создаем индексы для транзакций
-                if (storeName === 'transactions') {
-                    store.createIndex('type', 'type', { unique: false });
-                    store.createIndex('date', 'date', { unique: false });
-                }
-                
-                console.log(`✅ Created store: ${storeName}`);
-            }
-        }
-    }
-
-    async addDefaultData() {
-        try {
-            const defaultCategories = [
-                // Income Categories
-                { id: 1, name: 'Зарплата', icon: '💰', type: 'income', subcategories: [] },
-                { id: 2, name: 'Стипендия', icon: '🎓', type: 'income', subcategories: [] },
-                { id: 3, name: 'Инвестиции', icon: '📈', type: 'income', subcategories: [] },
-                { id: 4, name: 'Подарки', icon: '🎁', type: 'income', subcategories: [] },
-                
-                // Expense Categories
-                { id: 5, name: 'Продукты', icon: '🛒', type: 'expense', subcategories: [] },
-                { id: 6, name: 'Транспорт', icon: '🚗', type: 'expense', subcategories: [] },
-                { id: 7, name: 'Жилье', icon: '🏠', type: 'expense', subcategories: [] },
-                { id: 8, name: 'Развлечения', icon: '🎬', type: 'expense', subcategories: [] }
-            ];
-
-            for (const category of defaultCategories) {
-                await this.add('categories', category);
-            }
-
-            await this.addDefaultSettings();
-            
-        } catch (error) {
-            console.error('Error adding default data:', error);
+        for (const category of defaultCategories) {
+            await this.add('categories', category);
         }
     }
 
@@ -109,7 +128,7 @@ class Database {
         await this.put('settings', defaultSettings);
     }
 
-    // Упрощенные методы работы с базой данных
+    // Basic CRUD operations
     async getAll(storeName) {
         return new Promise((resolve, reject) => {
             if (!this.db) {
@@ -117,12 +136,23 @@ class Database {
                 return;
             }
 
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.getAll();
+            try {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
 
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    resolve(request.result || []);
+                };
+
+                request.onerror = () => {
+                    console.error(`Error getting all from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
+            } catch (error) {
+                console.error(`Error in getAll for ${storeName}:`, error);
+                reject(error);
+            }
         });
     }
 
@@ -133,12 +163,23 @@ class Database {
                 return;
             }
 
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(id);
+            try {
+                const transaction = this.db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.get(id);
 
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error(`Error getting from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
+            } catch (error) {
+                console.error(`Error in get for ${storeName}:`, error);
+                reject(error);
+            }
         });
     }
 
@@ -149,19 +190,37 @@ class Database {
                 return;
             }
 
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            
-            // Убедимся, что у данных есть ID
-            const itemWithId = {
-                ...data,
-                id: data.id || Date.now()
-            };
-            
-            const request = store.add(itemWithId);
+            try {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                // Убедимся, что у данных есть временная метка
+                const itemWithTimestamp = {
+                    ...data,
+                    createdAt: data.createdAt || new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                const request = store.add(itemWithTimestamp);
 
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    console.log(`✅ Added to ${storeName}:`, itemWithTimestamp);
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error(`Error adding to ${storeName}:`, request.error);
+                    reject(request.error);
+                };
+
+                transaction.oncomplete = () => {
+                    console.log(`✅ Transaction completed for adding to ${storeName}`);
+                };
+
+            } catch (error) {
+                console.error(`Error in add for ${storeName}:`, error);
+                reject(error);
+            }
         });
     }
 
@@ -172,12 +231,30 @@ class Database {
                 return;
             }
 
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(data);
+            try {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                const itemWithTimestamp = {
+                    ...data,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                const request = store.put(itemWithTimestamp);
 
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    console.log(`✅ Updated in ${storeName}:`, itemWithTimestamp);
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error(`Error updating in ${storeName}:`, request.error);
+                    reject(request.error);
+                };
+            } catch (error) {
+                console.error(`Error in put for ${storeName}:`, error);
+                reject(error);
+            }
         });
     }
 
@@ -203,20 +280,35 @@ class Database {
         });
     }
 
-    // Специфичные методы
+    // Specific methods
     async getCategoriesByType(type) {
-        const allCategories = await this.getAll('categories');
-        return allCategories.filter(category => category.type === type);
+        try {
+            const allCategories = await this.getAll('categories');
+            return allCategories.filter(category => category.type === type);
+        } catch (error) {
+            console.error('Error getting categories by type:', error);
+            return [];
+        }
     }
 
     async getSettings() {
-        const settings = await this.get('settings', 1);
-        return settings || {
-            id: 1,
-            currency: '₽',
-            budgetAlerts: true,
-            autoProcessRecurring: true
-        };
+        try {
+            const settings = await this.get('settings', 1);
+            return settings || {
+                id: 1,
+                currency: '₽',
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            };
+        } catch (error) {
+            console.error('Error getting settings:', error);
+            return {
+                id: 1,
+                currency: '₽',
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            };
+        }
     }
 
     async saveSettings(settings) {
@@ -224,11 +316,50 @@ class Database {
     }
 
     async clearAllData() {
-        const stores = ['categories', 'transactions', 'debts', 'goals'];
-        for (const store of stores) {
-            await this.clear(store);
+        try {
+            console.log('🔄 Clearing all data...');
+            const stores = ['categories', 'transactions', 'debts', 'goals'];
+            
+            for (const store of stores) {
+                await this.clear(store);
+            }
+            
+            // Восстанавливаем настройки и категории по умолчанию
+            await this.addDefaultCategories();
+            await this.addDefaultSettings();
+            
+            console.log('✅ All data cleared and defaults restored');
+            return true;
+        } catch (error) {
+            console.error('❌ Error clearing data:', error);
+            throw error;
         }
-        // Восстанавливаем настройки и категории по умолчанию
-        await this.addDefaultData();
+    }
+
+    async exportData() {
+        try {
+            const data = {
+                categories: await this.getAll('categories'),
+                transactions: await this.getAll('transactions'),
+                debts: await this.getAll('debts'),
+                goals: await this.getAll('goals'),
+                settings: await this.getSettings(),
+                exportDate: new Date().toISOString(),
+                version: '1.0'
+            };
+            return data;
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            throw error;
+        }
+    }
+
+    // Проверка состояния базы данных
+    getStatus() {
+        return {
+            isInitialized: this.isInitialized,
+            dbName: this.dbName,
+            version: this.version
+        };
     }
 }
