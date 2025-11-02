@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         await app.init();
         console.log("🎉 Budget App started successfully!");
         
+        // Сделаем app глобальной для вызовов из HTML
         window.app = app;
         
     } catch (error) {
