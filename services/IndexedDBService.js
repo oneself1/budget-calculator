@@ -1,219 +1,283 @@
 class IndexedDBService {
     constructor() {
         this.dbName = 'BudgetAppDB';
-        this.version = 3; // Увеличиваем версию для пересоздания базы
+        this.version = 4; // Увеличиваем версию для пересоздания базы
         this.db = null;
+        this.initialized = false;
     }
 
     async init() {
+        if (this.initialized) return this.db;
+        
         return new Promise((resolve, reject) => {
+            console.log('Opening IndexedDB...');
             const request = indexedDB.open(this.dbName, this.version);
 
-            request.onerror = () => {
-                console.error('IndexedDB error:', request.error);
-                reject(request.error);
+            request.onerror = (event) => {
+                console.error('IndexedDB open error:', request.error);
+                reject(new Error(`Ошибка открытия базы данных: ${request.error}`));
             };
             
-            request.onsuccess = () => {
+            request.onsuccess = (event) => {
+                console.log('IndexedDB opened successfully');
                 this.db = request.result;
-                console.log('IndexedDB initialized successfully');
-                resolve(this.db);
+                this.initialized = true;
+                
+                // Проверяем наличие базовых данных
+                this.ensureBasicData().then(() => {
+                    resolve(this.db);
+                }).catch(error => {
+                    console.error('Error ensuring basic data:', error);
+                    resolve(this.db); // Все равно разрешаем, т.к. база открыта
+                });
             };
 
             request.onupgradeneeded = (event) => {
+                console.log('IndexedDB upgrade needed, version:', event.oldVersion, '->', event.newVersion);
                 const db = event.target.result;
-                console.log('Upgrading IndexedDB to version:', event.newVersion);
-                
-                // Удаляем старые хранилища если есть
-                if (db.objectStoreNames.contains('incomes')) {
-                    db.deleteObjectStore('incomes');
-                }
-                if (db.objectStoreNames.contains('incomeCategories')) {
-                    db.deleteObjectStore('incomeCategories');
-                }
-                if (db.objectStoreNames.contains('expenseCategories')) {
-                    db.deleteObjectStore('expenseCategories');
-                }
-                if (db.objectStoreNames.contains('expenseOperations')) {
-                    db.deleteObjectStore('expenseOperations');
-                }
+                this.createStores(db);
+            };
 
-                // Создаем новые хранилища с правильной структурой
-                const incomeStore = db.createObjectStore('incomes', { keyPath: 'id', autoIncrement: true });
-                incomeStore.createIndex('categoryId', 'categoryId', { unique: false });
-                incomeStore.createIndex('date', 'date', { unique: false });
-
-                const incomeCatStore = db.createObjectStore('incomeCategories', { keyPath: 'id', autoIncrement: true });
-                incomeCatStore.createIndex('name', 'name', { unique: false });
-
-                const expenseCatStore = db.createObjectStore('expenseCategories', { keyPath: 'id', autoIncrement: true });
-                expenseCatStore.createIndex('name', 'name', { unique: false });
-
-                const expenseOpStore = db.createObjectStore('expenseOperations', { keyPath: 'id', autoIncrement: true });
-                expenseOpStore.createIndex('categoryId', 'categoryId', { unique: false });
-                expenseOpStore.createIndex('date', 'date', { unique: false });
-
-                const debtsStore = db.createObjectStore('debts', { keyPath: 'id', autoIncrement: true });
-                debtsStore.createIndex('date', 'date', { unique: false });
-
-                const settingsStore = db.createObjectStore('settings', { keyPath: 'id' });
-
-                // Инициализируем базовые категории
-                this.initializeDefaultCategories(db);
+            request.onblocked = (event) => {
+                console.warn('IndexedDB blocked, please close other tabs');
+                reject(new Error('База данных заблокирована. Закройте другие вкладки с приложением.'));
             };
         });
     }
 
-    async initializeDefaultCategories(db) {
+    createStores(db) {
         try {
-            // Базовые категории расходов
-            const expenseCategories = this.getDefaultExpenseCategories();
-            for (const category of expenseCategories) {
-                const tx = db.transaction(['expenseCategories'], 'readwrite');
-                const store = tx.objectStore('expenseCategories');
-                store.add(category);
+            // Удаляем старые хранилища если есть проблемы
+            const storeNames = [
+                'incomes', 'incomeCategories', 'debts', 
+                'expenseCategories', 'expenseOperations', 'settings',
+                'budgets', 'recurringTransactions', 'savingsGoals'
+            ];
+
+            for (const storeName of storeNames) {
+                if (db.objectStoreNames.contains(storeName)) {
+                    try {
+                        db.deleteObjectStore(storeName);
+                        console.log('Deleted old store:', storeName);
+                    } catch (error) {
+                        console.warn('Could not delete store:', storeName, error);
+                    }
+                }
             }
 
-            // Базовые категории доходов
-            const incomeCategories = this.getDefaultIncomeCategories();
-            for (const category of incomeCategories) {
-                const tx = db.transaction(['incomeCategories'], 'readwrite');
-                const store = tx.objectStore('incomeCategories');
-                store.add(category);
-            }
+            // Создаем новые хранилища
+            const incomeStore = db.createObjectStore('incomes', { keyPath: 'id' });
+            incomeStore.createIndex('categoryId', 'categoryId', { unique: false });
+            incomeStore.createIndex('date', 'date', { unique: false });
 
-            // Настройки по умолчанию
-            const tx = db.transaction(['settings'], 'readwrite');
-            const store = tx.objectStore('settings');
-            store.add({
-                id: 1,
-                currency: "₽",
-                budgetAlerts: true,
-                autoProcessRecurring: true
-            });
+            const incomeCatStore = db.createObjectStore('incomeCategories', { keyPath: 'id' });
+            incomeCatStore.createIndex('name', 'name', { unique: false });
 
-            console.log('Default categories initialized');
+            const expenseCatStore = db.createObjectStore('expenseCategories', { keyPath: 'id' });
+            expenseCatStore.createIndex('name', 'name', { unique: false });
+
+            const expenseOpStore = db.createObjectStore('expenseOperations', { keyPath: 'id' });
+            expenseOpStore.createIndex('categoryId', 'categoryId', { unique: false });
+            expenseOpStore.createIndex('date', 'date', { unique: false });
+
+            db.createObjectStore('debts', { keyPath: 'id' });
+            db.createObjectStore('settings', { keyPath: 'id' });
+            db.createObjectStore('budgets', { keyPath: 'categoryId' });
+            db.createObjectStore('recurringTransactions', { keyPath: 'id' });
+            db.createObjectStore('savingsGoals', { keyPath: 'id' });
+
+            console.log('All stores created successfully');
+
         } catch (error) {
-            console.error('Error initializing default categories:', error);
+            console.error('Error creating stores:', error);
+            throw error;
+        }
+    }
+
+    async ensureBasicData() {
+        try {
+            // Проверяем и добавляем базовые категории если их нет
+            const existingExpenseCategories = await this.getAll('expenseCategories');
+            if (existingExpenseCategories.length === 0) {
+                console.log('Adding default expense categories...');
+                const defaultCategories = this.getDefaultExpenseCategories();
+                for (const category of defaultCategories) {
+                    await this.put('expenseCategories', category);
+                }
+            }
+
+            const existingIncomeCategories = await this.getAll('incomeCategories');
+            if (existingIncomeCategories.length === 0) {
+                console.log('Adding default income categories...');
+                const defaultCategories = this.getDefaultIncomeCategories();
+                for (const category of defaultCategories) {
+                    await this.put('incomeCategories', category);
+                }
+            }
+
+            // Проверяем настройки
+            const existingSettings = await this.getAll('settings');
+            if (existingSettings.length === 0) {
+                console.log('Adding default settings...');
+                await this.put('settings', {
+                    id: 1,
+                    currency: "₽",
+                    budgetAlerts: true,
+                    autoProcessRecurring: true
+                });
+            }
+
+            console.log('Basic data ensured');
+        } catch (error) {
+            console.error('Error ensuring basic data:', error);
+            throw error;
         }
     }
 
     // Общие методы для работы с данными
     async getAll(storeName) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readonly');
                 const store = transaction.objectStore(storeName);
                 const request = store.getAll();
 
                 request.onsuccess = () => resolve(request.result || []);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error getting all from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in getAll for ${storeName}:`, error);
                 reject(error);
             }
         });
     }
 
     async get(storeName, id) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readonly');
                 const store = transaction.objectStore(storeName);
                 const request = store.get(id);
 
                 request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error getting from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in get for ${storeName}:`, error);
                 reject(error);
             }
         });
     }
 
     async add(storeName, data) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        // Генерируем ID если нет
+        if (!data.id) {
+            data.id = Date.now() + Math.random();
+        }
+
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
                 const request = store.add(data);
 
                 request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error adding to ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in add for ${storeName}:`, error);
                 reject(error);
             }
         });
     }
 
     async put(storeName, data) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        // Генерируем ID если нет
+        if (!data.id) {
+            data.id = Date.now() + Math.random();
+        }
+
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
                 const request = store.put(data);
 
                 request.onsuccess = () => resolve(request.result);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error putting to ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in put for ${storeName}:`, error);
                 reject(error);
             }
         });
     }
 
     async delete(storeName, id) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
                 const request = store.delete(id);
 
                 request.onsuccess = () => resolve(true);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error deleting from ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in delete for ${storeName}:`, error);
                 reject(error);
             }
         });
     }
 
     async clear(storeName) {
-        return new Promise((resolve, reject) => {
-            if (!this.db) {
-                reject(new Error('Database not initialized'));
-                return;
-            }
+        if (!this.db) {
+            throw new Error('Database not initialized');
+        }
 
+        return new Promise((resolve, reject) => {
             try {
                 const transaction = this.db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
                 const request = store.clear();
 
                 request.onsuccess = () => resolve(true);
-                request.onerror = () => reject(request.error);
+                request.onerror = () => {
+                    console.error(`Error clearing ${storeName}:`, request.error);
+                    reject(request.error);
+                };
             } catch (error) {
+                console.error(`Error in clear for ${storeName}:`, error);
                 reject(error);
             }
         });
@@ -251,14 +315,20 @@ class IndexedDBService {
                 debts,
                 expenseCategories,
                 expenseOperations,
-                settings
+                settings,
+                budgets,
+                recurringTransactions,
+                savingsGoals
             ] = await Promise.all([
-                this.getAll('incomes'),
-                this.getAll('incomeCategories'),
-                this.getAll('debts'),
-                this.getAll('expenseCategories'),
-                this.getAll('expenseOperations'),
-                this.getSettings()
+                this.getAll('incomes').catch(() => []),
+                this.getAll('incomeCategories').catch(() => []),
+                this.getAll('debts').catch(() => []),
+                this.getAll('expenseCategories').catch(() => []),
+                this.getAll('expenseOperations').catch(() => []),
+                this.getSettings().catch(() => ({})),
+                this.getAll('budgets').catch(() => []),
+                this.getAll('recurringTransactions').catch(() => []),
+                this.getAll('savingsGoals').catch(() => [])
             ]);
 
             return {
@@ -267,23 +337,62 @@ class IndexedDBService {
                 debts,
                 expenseCategories,
                 expenseOperations,
-                settings
+                settings,
+                budgets,
+                recurringTransactions,
+                savingsGoals
             };
         } catch (error) {
             console.error('Error loading all data:', error);
-            // Возвращаем структуру по умолчанию
-            return {
-                incomes: [],
-                incomeCategories: this.getDefaultIncomeCategories(),
-                debts: [],
-                expenseCategories: this.getDefaultExpenseCategories(),
-                expenseOperations: [],
-                settings: {
-                    currency: "₽",
-                    budgetAlerts: true,
-                    autoProcessRecurring: true
-                }
-            };
+            return this.getDefaultDataStructure();
+        }
+    }
+
+    getDefaultDataStructure() {
+        return {
+            incomes: [],
+            incomeCategories: this.getDefaultIncomeCategories(),
+            debts: [],
+            expenseCategories: this.getDefaultExpenseCategories(),
+            expenseOperations: [],
+            settings: {
+                currency: "₽",
+                budgetAlerts: true,
+                autoProcessRecurring: true
+            },
+            budgets: [],
+            recurringTransactions: [],
+            savingsGoals: []
+        };
+    }
+
+    async clearAllData() {
+        try {
+            console.log('Clearing all data...');
+            
+            const storeNames = [
+                'incomes', 'incomeCategories', 'debts', 
+                'expenseCategories', 'expenseOperations', 'settings',
+                'budgets', 'recurringTransactions', 'savingsGoals'
+            ];
+
+            const clearPromises = storeNames.map(storeName => 
+                this.clear(storeName).catch(error => {
+                    console.warn(`Could not clear ${storeName}:`, error);
+                    return true; // Продолжаем даже при ошибках
+                })
+            );
+
+            await Promise.all(clearPromises);
+            
+            // Восстанавливаем базовые данные
+            await this.ensureBasicData();
+            
+            console.log('All data cleared and reset to defaults');
+            return true;
+        } catch (error) {
+            console.error('Error clearing all data:', error);
+            return false;
         }
     }
 
@@ -316,6 +425,20 @@ class IndexedDBService {
                 amount: 0, 
                 icon: "📱",
                 subcategories: []
+            },
+            { 
+                id: 5, 
+                name: "Одежда", 
+                amount: 0, 
+                icon: "👕",
+                subcategories: []
+            },
+            { 
+                id: 6, 
+                name: "Здоровье", 
+                amount: 0, 
+                icon: "🏥",
+                subcategories: []
             }
         ];
     }
@@ -337,5 +460,38 @@ class IndexedDBService {
                 subcategories: []
             }
         ];
+    }
+
+    // Метод для полного сброса базы данных (крайняя мера)
+    async resetDatabase() {
+        try {
+            if (this.db) {
+                this.db.close();
+                this.db = null;
+                this.initialized = false;
+            }
+
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.deleteDatabase(this.dbName);
+                
+                request.onsuccess = () => {
+                    console.log('Database deleted successfully');
+                    resolve(true);
+                };
+                
+                request.onerror = (event) => {
+                    console.error('Error deleting database:', request.error);
+                    reject(request.error);
+                };
+                
+                request.onblocked = () => {
+                    console.warn('Database deletion blocked');
+                    reject(new Error('Удаление базы заблокировано. Закройте другие вкладки.'));
+                };
+            });
+        } catch (error) {
+            console.error('Error in resetDatabase:', error);
+            throw error;
+        }
     }
 }
