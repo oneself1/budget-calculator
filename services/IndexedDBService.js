@@ -1,31 +1,51 @@
 class IndexedDBService {
     constructor() {
         this.dbName = 'BudgetAppDB';
-        this.version = 2; // Увеличиваем версию
+        this.version = 3; // Увеличиваем версию
         this.db = null;
+        this.isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     }
 
     async init() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.version);
-
-            request.onerror = () => {
-                console.error('❌ IndexedDB error:', request.error);
-                reject(request.error);
-            };
+            console.log('🔄 Initializing IndexedDB...');
             
-            request.onsuccess = () => {
-                this.db = request.result;
-                console.log('✅ IndexedDB initialized successfully');
-                resolve(this.db);
-            };
-
-            request.onupgradeneeded = (event) => {
-                console.log('🔄 Database upgrade needed');
-                const db = event.target.result;
-                this.createStores(db);
-            };
+            // Для Safari добавляем таймаут
+            if (this.isSafari) {
+                console.log('🌐 Safari detected, using timeout workaround');
+                setTimeout(() => {
+                    this.openDatabase(resolve, reject);
+                }, 100);
+            } else {
+                this.openDatabase(resolve, reject);
+            }
         });
+    }
+
+    openDatabase(resolve, reject) {
+        const request = indexedDB.open(this.dbName, this.version);
+
+        request.onerror = () => {
+            console.error('❌ IndexedDB error:', request.error);
+            reject(new Error(`Database error: ${request.error}`));
+        };
+        
+        request.onsuccess = () => {
+            this.db = request.result;
+            console.log('✅ IndexedDB initialized successfully');
+            resolve(this.db);
+        };
+
+        request.onupgradeneeded = (event) => {
+            console.log('🔄 Database upgrade needed');
+            const db = event.target.result;
+            this.createStores(db);
+        };
+
+        request.onblocked = () => {
+            console.warn('⚠️ Database upgrade blocked');
+            reject(new Error('Database upgrade blocked. Please close other tabs.'));
+        };
     }
 
     createStores(db) {
@@ -37,16 +57,20 @@ class IndexedDBService {
 
         stores.forEach(storeName => {
             if (!db.objectStoreNames.contains(storeName)) {
-                const store = db.createObjectStore(storeName, { keyPath: 'id' });
-                console.log(`✅ Created store: ${storeName}`);
-                
-                // Создаем индексы для основных хранилищ
-                if (storeName === 'expenseCategories' || storeName === 'incomeCategories') {
-                    store.createIndex('name', 'name', { unique: false });
-                }
-                if (storeName === 'expenseOperations' || storeName === 'incomes') {
-                    store.createIndex('date', 'date', { unique: false });
-                    store.createIndex('categoryId', 'categoryId', { unique: false });
+                try {
+                    const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                    console.log(`✅ Created store: ${storeName}`);
+                    
+                    // Создаем индексы для основных хранилищ
+                    if (storeName === 'expenseCategories' || storeName === 'incomeCategories') {
+                        store.createIndex('name', 'name', { unique: false });
+                    }
+                    if (storeName === 'expenseOperations' || storeName === 'incomes') {
+                        store.createIndex('date', 'date', { unique: false });
+                        store.createIndex('categoryId', 'categoryId', { unique: false });
+                    }
+                } catch (error) {
+                    console.error(`❌ Error creating store ${storeName}:`, error);
                 }
             }
         });
@@ -65,13 +89,16 @@ class IndexedDBService {
                 const request = store.getAll();
 
                 request.onsuccess = () => {
-                    console.log(`📁 Loaded ${request.result?.length || 0} items from ${storeName}`);
                     resolve(request.result || []);
                 };
                 
                 request.onerror = () => {
                     console.error(`❌ Error loading from ${storeName}:`, request.error);
                     reject(request.error);
+                };
+
+                transaction.onerror = () => {
+                    reject(transaction.error);
                 };
             } catch (error) {
                 console.error(`❌ Exception in getAll for ${storeName}:`, error);
@@ -80,68 +107,66 @@ class IndexedDBService {
         });
     }
 
-    async get(storeName, id) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
     async add(storeName, data) {
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            
-            // Убедимся, что у данных есть ID
-            const itemWithId = {
-                ...data,
-                id: data.id || Date.now() + Math.floor(Math.random() * 1000)
-            };
-            
-            const request = store.add(itemWithId);
+            try {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                
+                // Убедимся, что у данных есть ID
+                const itemWithId = {
+                    ...data,
+                    id: data.id || Date.now() + Math.floor(Math.random() * 1000)
+                };
+                
+                const request = store.add(itemWithId);
 
-            request.onsuccess = () => {
-                console.log(`✅ Added to ${storeName}:`, itemWithId);
-                resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                console.error(`❌ Error adding to ${storeName}:`, request.error);
-                reject(request.error);
-            };
+                request.onsuccess = () => {
+                    resolve(request.result);
+                };
+                
+                request.onerror = () => {
+                    reject(request.error);
+                };
+
+                transaction.onerror = () => {
+                    reject(transaction.error);
+                };
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
     async put(storeName, data) {
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.put(data);
+            try {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(data);
 
-            request.onsuccess = () => {
-                console.log(`✅ Updated in ${storeName}:`, data);
-                resolve(request.result);
-            };
-            
-            request.onerror = () => {
-                console.error(`❌ Error updating in ${storeName}:`, request.error);
-                reject(request.error);
-            };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+                transaction.onerror = () => reject(transaction.error);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
     async delete(storeName, id) {
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.delete(id);
+            try {
+                const transaction = this.db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(id);
 
-            request.onsuccess = () => resolve(true);
-            request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(true);
+                request.onerror = () => reject(request.error);
+                transaction.onerror = () => reject(transaction.error);
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 
@@ -204,7 +229,17 @@ class IndexedDBService {
             };
         } catch (error) {
             console.error('❌ Error ensuring basic data:', error);
-            throw error;
+            // Возвращаем данные по умолчанию вместо выброса ошибки
+            return {
+                expenseCategories: this.getDefaultExpenseCategories(),
+                incomeCategories: this.getDefaultIncomeCategories(),
+                settings: {
+                    id: 1,
+                    currency: "₽",
+                    budgetAlerts: true,
+                    autoProcessRecurring: true
+                }
+            };
         }
     }
 
@@ -232,54 +267,42 @@ class IndexedDBService {
         try {
             console.log('📊 Loading all data...');
             
+            const data = await this.ensureBasicData(); // Сначала убедимся, что базовые данные есть
+            
             const [
-                expenseCategories,
                 expenseOperations,
-                incomeCategories,
                 incomes,
                 debts,
-                savingsGoals,
-                settings
+                savingsGoals
             ] = await Promise.all([
-                this.getAll('expenseCategories'),
-                this.getAll('expenseOperations'),
-                this.getAll('incomeCategories'),
-                this.getAll('incomes'),
-                this.getAll('debts'),
-                this.getAll('savingsGoals'),
-                this.getAll('settings')
+                this.getAll('expenseOperations').catch(() => []),
+                this.getAll('incomes').catch(() => []),
+                this.getAll('debts').catch(() => []),
+                this.getAll('savingsGoals').catch(() => [])
             ]);
 
-            const settingsObj = settings.length > 0 ? settings[0] : {
-                id: 1,
-                currency: "₽",
-                budgetAlerts: true,
-                autoProcessRecurring: true
-            };
-
-            const data = {
-                expenseCategories,
+            const result = {
+                expenseCategories: data.expenseCategories,
                 expenseOperations,
-                incomeCategories,
+                incomeCategories: data.incomeCategories,
                 incomes,
                 debts,
                 savingsGoals,
-                settings: settingsObj
+                settings: data.settings
             };
 
             console.log('📊 Loaded data summary:', {
-                expenseCategories: expenseCategories.length,
-                expenseOperations: expenseOperations.length,
-                incomeCategories: incomeCategories.length,
-                incomes: incomes.length,
-                debts: debts.length,
-                savingsGoals: savingsGoals.length
+                expenseCategories: result.expenseCategories.length,
+                expenseOperations: result.expenseOperations.length,
+                incomeCategories: result.incomeCategories.length,
+                incomes: result.incomes.length,
+                debts: result.debts.length,
+                savingsGoals: result.savingsGoals.length
             });
 
-            return data;
+            return result;
         } catch (error) {
             console.error('❌ Error loading all data:', error);
-            // Возвращаем данные по умолчанию вместо выброса ошибки
             return this.getDefaultData();
         }
     }
@@ -317,7 +340,9 @@ class IndexedDBService {
             
             // Очищаем все хранилища кроме настроек
             for (const storeName of stores) {
-                await this.clear(storeName);
+                await this.clear(storeName).catch(error => {
+                    console.warn(`⚠️ Could not clear ${storeName}:`, error);
+                });
             }
             
             // Пересоздаем базовые данные
