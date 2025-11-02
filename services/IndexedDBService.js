@@ -1,7 +1,7 @@
 class IndexedDBService {
     constructor() {
         this.dbName = 'BudgetAppDB';
-        this.version = 7;
+        this.version = 1;
         this.db = null;
     }
 
@@ -19,7 +19,6 @@ class IndexedDBService {
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 this.createStores(db);
-                console.log('🔄 Database upgrade completed');
             };
         });
     }
@@ -33,13 +32,7 @@ class IndexedDBService {
 
         stores.forEach(storeName => {
             if (!db.objectStoreNames.contains(storeName)) {
-                const store = db.createObjectStore(storeName, { keyPath: 'id' });
-                if (storeName === 'expenseCategories' || storeName === 'incomeCategories') {
-                    store.createIndex('name', 'name', { unique: false });
-                }
-                if (storeName === 'expenseOperations' || storeName === 'incomes') {
-                    store.createIndex('date', 'date', { unique: false });
-                }
+                db.createObjectStore(storeName, { keyPath: 'id' });
                 console.log(`✅ Created store: ${storeName}`);
             }
         });
@@ -52,17 +45,6 @@ class IndexedDBService {
             const request = store.getAll();
 
             request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
-    async get(storeName, id) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readonly');
-            const store = transaction.objectStore(storeName);
-            const request = store.get(id);
-
-            request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
     }
@@ -103,51 +85,24 @@ class IndexedDBService {
         });
     }
 
-    async clear(storeName) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            const request = store.clear();
-
-            request.onsuccess = () => resolve(true);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
     async ensureBasicData() {
         try {
             // Проверяем и создаем базовые категории расходов
             const expenseCategories = await this.getAll('expenseCategories');
             if (expenseCategories.length === 0) {
-                console.log('📦 Creating default expense categories...');
                 const defaultCategories = this.getDefaultExpenseCategories();
                 for (const category of defaultCategories) {
                     await this.add('expenseCategories', category);
                 }
-                console.log(`✅ Created ${defaultCategories.length} expense categories`);
             }
 
             // Проверяем и создаем базовые категории доходов
             const incomeCategories = await this.getAll('incomeCategories');
             if (incomeCategories.length === 0) {
-                console.log('💰 Creating default income categories...');
                 const defaultCategories = this.getDefaultIncomeCategories();
                 for (const category of defaultCategories) {
                     await this.add('incomeCategories', category);
                 }
-                console.log(`✅ Created ${defaultCategories.length} income categories`);
-            }
-
-            // Проверяем настройки
-            const settings = await this.getAll('settings');
-            if (settings.length === 0) {
-                console.log('⚙️ Creating default settings...');
-                await this.add('settings', {
-                    id: 1,
-                    currency: "₽",
-                    budgetAlerts: true,
-                    autoProcessRecurring: true
-                });
             }
 
             console.log('✅ Basic data ensured successfully');
@@ -161,9 +116,7 @@ class IndexedDBService {
             { id: 1, name: "Продукты", amount: 0, icon: "🛒" },
             { id: 2, name: "Транспорт", amount: 0, icon: "🚗" },
             { id: 3, name: "Жилье", amount: 0, icon: "🏠" },
-            { id: 4, name: "Связь", amount: 0, icon: "📱" },
-            { id: 5, name: "Одежда", amount: 0, icon: "👕" },
-            { id: 6, name: "Здоровье", amount: 0, icon: "🏥" }
+            { id: 4, name: "Связь", amount: 0, icon: "📱" }
         ];
     }
 
@@ -193,7 +146,8 @@ class IndexedDBService {
                 this.getAll('savingsGoals')
             ]);
 
-            const settings = await this.get('settings', 1) || {
+            const settings = await this.getAll('settings');
+            const settingsObj = settings.length > 0 ? settings[0] : {
                 currency: "₽",
                 budgetAlerts: true,
                 autoProcessRecurring: true
@@ -206,7 +160,7 @@ class IndexedDBService {
                 incomes,
                 debts,
                 savingsGoals,
-                settings
+                settings: settingsObj
             };
         } catch (error) {
             console.error('❌ Error loading all data:', error);
