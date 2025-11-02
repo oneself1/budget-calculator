@@ -1,42 +1,25 @@
-// Глобальные переменные
 let app = null;
 
-// Основная инициализация приложения
 document.addEventListener('DOMContentLoaded', async function() {
     console.log("🚀 DOM loaded, starting Budget App...");
     
     try {
-        // Показываем простой loading
-        document.body.style.opacity = '0.8';
-        
-        // Создаем экземпляр приложения
         app = new BudgetApp();
-        
-        // Инициализируем приложение
         await app.init();
-        
-        // Восстанавливаем opacity
-        document.body.style.opacity = '1';
-        
         console.log("🎉 Budget App started successfully!");
+        
+        // Сделаем app глобальной для вызовов из HTML
+        window.app = app;
         
     } catch (error) {
         console.error("💥 Failed to start Budget App:", error);
-        document.body.innerHTML = `
-            <div style="padding: 20px; text-align: center;">
-                <h1>Ошибка загрузки</h1>
-                <p>Не удалось загрузить приложение. Пожалуйста, обновите страницу.</p>
-                <button onclick="location.reload()">Обновить</button>
-            </div>
-        `;
+        ToastService.error("Ошибка загрузки приложения");
     }
 });
 
 // Глобальные функции для HTML
 function switchScreen(screenName) {
-    if (app) {
-        app.switchScreen(screenName);
-    }
+    if (app) app.switchScreen(screenName);
 }
 
 function addNewIncomeCategory() {
@@ -176,51 +159,4 @@ function clearAllData() {
 
 function exportData() {
     ToastService.info("Экспорт данных будет добавлен в следующем обновлении");
-}
-
-// Упрощенный ToastService
-class ToastService {
-    static show(message, type = 'info', duration = 3000) {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <div class="toast-content">
-                <span class="toast-message">${message}</span>
-            </div>
-        `;
-
-        const container = document.getElementById('toast-container') || this.createContainer();
-        container.appendChild(toast);
-
-        setTimeout(() => toast.classList.add('show'), 10);
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-
-    static createContainer() {
-        const container = document.createElement('div');
-        container.id = 'toast-container';
-        container.className = 'toast-container';
-        document.body.appendChild(container);
-        return container;
-    }
-
-    static success(message, duration = 3000) {
-        this.show(message, 'success', duration);
-    }
-
-    static error(message, duration = 4000) {
-        this.show(message, 'error', duration);
-    }
-
-    static info(message, duration = 3000) {
-        this.show(message, 'info', duration);
-    }
-
-    static warning(message, duration = 3500) {
-        this.show(message, 'warning', duration);
-    }
 }
