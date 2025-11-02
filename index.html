@@ -173,11 +173,6 @@
                     <h3>Детализация</h3>
                     <div id="report-details"></div>
                 </div>
-
-                <div class="budget-alerts-card" id="budget-alerts">
-                    <h3>Уведомления о бюджете</h3>
-                    <div class="alerts-list" id="alerts-list"></div>
-                </div>
             </div>
         </div>
 
@@ -197,6 +192,125 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Модальные окна -->
+    <div class="category-modal" id="add-goal-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Новая цель накопления</h2>
+            <div class="form-group">
+                <label for="goal-name">Название цели:</label>
+                <input type="text" id="goal-name" class="modal-input" placeholder="Например: Новый телефон">
+            </div>
+            <div class="form-group">
+                <label for="goal-target">Целевая сумма:</label>
+                <input type="number" id="goal-target" class="modal-input" placeholder="10000" min="1" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="goal-icon">Иконка:</label>
+                <input type="text" id="goal-icon" class="modal-input" value="🎯" maxlength="2">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideAddGoalModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="createNewGoal()">Создать цель</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="category-modal" id="settings-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Настройки</h2>
+            
+            <div class="settings-group">
+                <h3>Основные</h3>
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="setting-budget-alerts" checked>
+                        Уведомления о бюджете
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <label class="setting-label">
+                        <input type="checkbox" id="setting-auto-recurring" checked>
+                        Авто-создание повторяющихся операций
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>Валюта</h3>
+                <div class="setting-item">
+                    <select id="currency-select" class="modal-input">
+                        <option value="₽">Рубль (₽)</option>
+                        <option value="$">Доллар ($)</option>
+                        <option value="€">Евро (€)</option>
+                        <option value="¥">Юань (¥)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>Опасная зона</h3>
+                <div class="setting-item">
+                    <button class="modal-btn warning" onclick="exportData()">Экспорт данных</button>
+                </div>
+                <div class="setting-item">
+                    <button class="modal-btn danger" onclick="clearAllData()">Очистить все данные</button>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideSettingsModal()">Закрыть</button>
+                <button class="modal-btn confirm" onclick="saveSettings()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="category-modal" id="recurring-transactions-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Повторяющиеся операции</h2>
+            <div class="recurring-transactions-list" id="recurring-transactions-list">
+                <div class="empty-state">Нет повторяющихся операций</div>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn" onclick="showAddRecurringTransactionModal()">+ Добавить операцию</button>
+                <button class="modal-btn cancel" onclick="hideRecurringTransactionsModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="category-modal" id="add-recurring-modal">
+        <div class="category-modal-content">
+            <h2 class="category-modal-title">Новая повторяющаяся операция</h2>
+            <div class="form-group">
+                <label for="recurring-type">Тип операции:</label>
+                <select id="recurring-type" class="modal-input">
+                    <option value="expense">Расход</option>
+                    <option value="income">Доход</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="recurring-amount">Сумма:</label>
+                <input type="number" id="recurring-amount" class="modal-input" placeholder="0" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label for="recurring-description">Описание:</label>
+                <input type="text" id="recurring-description" class="modal-input" placeholder="Описание операции">
+            </div>
+            <div class="form-group">
+                <label for="recurring-recurrence">Повторение:</label>
+                <select id="recurring-recurrence" class="modal-input">
+                    <option value="daily">Ежедневно</option>
+                    <option value="weekly">Еженедельно</option>
+                    <option value="monthly" selected>Ежемесячно</option>
+                    <option value="yearly">Ежегодно</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="hideAddRecurringModal()">Отмена</button>
+                <button class="modal-btn confirm" onclick="createRecurringTransaction()">Создать</button>
+            </div>
+        </div>
     </div>
 
     <!-- ФИКСИРОВАННАЯ нижняя навигация -->
