@@ -1,6 +1,6 @@
-
 class ToastService {
     static show(message, type = 'info', duration = 3000) {
+        // Создаем контейнер для тостов если его нет
         let container = document.getElementById('toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -28,16 +28,20 @@ class ToastService {
 
         container.appendChild(toast);
 
+        // Анимация появления
         setTimeout(() => toast.classList.add('show'), 10);
 
-        setTimeout(() => {
-            toast.classList.remove('show');
+        // Автоматическое скрытие
+        if (duration > 0) {
             setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
-        }, duration);
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, duration);
+        }
 
         return toast;
     }
