@@ -87,11 +87,161 @@ function clearAllData() {
     if (app) app.clearAllData();
 }
 
-// Заглушки для остальных функций
+// Функции для модальных окон
 function showSettingsModal() {
-    ToastService.info("Настройки будут добавлены в следующем обновлении");
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+        // Загружаем текущие настройки
+        if (app) {
+            document.getElementById('setting-budget-alerts').checked = app.settings.budgetAlerts;
+            document.getElementById('setting-auto-recurring').checked = app.settings.autoProcessRecurring;
+            document.getElementById('currency-select').value = app.settings.currency;
+        }
+        modal.classList.add('active');
+    }
+}
+
+function hideSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function saveSettings() {
+    if (app) {
+        app.settings.budgetAlerts = document.getElementById('setting-budget-alerts').checked;
+        app.settings.autoProcessRecurring = document.getElementById('setting-auto-recurring').checked;
+        app.settings.currency = document.getElementById('currency-select').value;
+        
+        app.saveData();
+        app.updateAllUI();
+        hideSettingsModal();
+        ToastService.success('Настройки сохранены');
+    }
 }
 
 function showRecurringTransactionsModal() {
-    ToastService.info("Повторяющиеся операции будут добавлены в следующем обновлении");
+    const modal = document.getElementById('recurring-transactions-modal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function hideRecurringTransactionsModal() {
+    const modal = document.getElementById('recurring-transactions-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function showAddRecurringTransactionModal() {
+    const modal = document.getElementById('add-recurring-modal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function hideAddRecurringModal() {
+    const modal = document.getElementById('add-recurring-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function createRecurringTransaction() {
+    ToastService.info("Функция повторяющихся операций будет добавлена в следующем обновлении");
+    hideAddRecurringModal();
+}
+
+function hideAddGoalModal() {
+    const modal = document.getElementById('add-goal-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+function createNewGoal() {
+    if (app) {
+        const name = document.getElementById('goal-name').value;
+        const target = document.getElementById('goal-target').value;
+        const icon = document.getElementById('goal-icon').value;
+
+        if (!name || !target) {
+            ToastService.error("Заполните все поля");
+            return;
+        }
+
+        const targetAmount = parseFloat(target);
+        if (isNaN(targetAmount) || targetAmount <= 0) {
+            ToastService.error("Введите корректную сумму");
+            return;
+        }
+
+        const newGoal = {
+            id: Date.now(),
+            name: name,
+            targetAmount: targetAmount,
+            currentAmount: 0,
+            icon: icon || '🎯',
+            isCompleted: false,
+            date: new Date().toISOString()
+        };
+
+        app.savingsGoals.push(newGoal);
+        app.storage.add('savingsGoals', newGoal);
+        app.saveData();
+        app.updateAllUI();
+        hideAddGoalModal();
+        ToastService.success('Цель добавлена!');
+    }
+}
+
+// Заглушки для функций, которые будут добавлены позже
+function deleteIncomeOperation(id) {
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
+}
+
+function deleteExpenseOperation(id) {
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
+}
+
+function deleteDebt(id) {
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
+}
+
+function deleteIncomeCategory(id) {
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
+}
+
+function deleteExpenseCategory(id) {
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
+}
+
+function editIncomeOperation(id) {
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
+}
+
+function editExpenseOperation(id) {
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
+}
+
+function editDebt(id) {
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
+}
+
+function setCategoryBudget(categoryId) {
+    ToastService.info("Бюджеты будут добавлены в следующем обновлении");
+}
+
+function editCategoryBudget(categoryId) {
+    ToastService.info("Бюджеты будут добавлены в следующем обновлении");
+}
+
+function showOperationsFilter() {
+    ToastService.info("Фильтрация будет добавлена в следующем обновлении");
+}
+
+function exportData() {
+    ToastService.info("Экспорт данных будет добавлен в следующем обновлении");
 }
