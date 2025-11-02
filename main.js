@@ -3,11 +3,11 @@ let app = null;
 
 // Основная инициализация приложения
 document.addEventListener('DOMContentLoaded', async function() {
-    console.log("🚀 Starting Budget App...");
+    console.log("🚀 DOM loaded, starting Budget App...");
     
     try {
-        // Показываем состояние загрузки
-        showLoadingState();
+        // Показываем простой loading
+        document.body.style.opacity = '0.8';
         
         // Создаем экземпляр приложения
         app = new BudgetApp();
@@ -15,478 +15,212 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Инициализируем приложение
         await app.init();
         
-        // Настраиваем глобальные обработчики
-        setupGlobalHandlers();
-        
-        // Фиксим layout
-        fixNavigationLayout();
-        
-        // Скрываем состояние загрузки
-        hideLoadingState();
+        // Восстанавливаем opacity
+        document.body.style.opacity = '1';
         
         console.log("🎉 Budget App started successfully!");
         
     } catch (error) {
         console.error("💥 Failed to start Budget App:", error);
-        hideLoadingState();
-        showErrorScreen(error);
+        document.body.innerHTML = `
+            <div style="padding: 20px; text-align: center;">
+                <h1>Ошибка загрузки</h1>
+                <p>Не удалось загрузить приложение. Пожалуйста, обновите страницу.</p>
+                <button onclick="location.reload()">Обновить</button>
+            </div>
+        `;
     }
 });
 
-// Показать состояние загрузки
-function showLoadingState() {
-    const appContainer = document.querySelector('.app-container');
-    if (!appContainer) return;
-    
-    appContainer.innerHTML = `
-        <div class="loading-screen">
-            <div class="loading-spinner"></div>
-            <div class="loading-text">Загрузка Budget Pro...</div>
-            <div class="loading-subtext">Инициализация приложения</div>
-        </div>
-    `;
-    
-    // Добавляем стили для экрана загрузки
-    if (!document.querySelector('#loading-styles')) {
-        const style = document.createElement('style');
-        style.id = 'loading-styles';
-        style.textContent = `
-            .loading-screen {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 60vh;
-                text-align: center;
-            }
-            .loading-spinner {
-                width: 50px;
-                height: 50px;
-                border: 4px solid #f3f3f3;
-                border-top: 4px solid #007AFF;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin-bottom: 20px;
-            }
-            .loading-text {
-                font-size: 18px;
-                font-weight: 600;
-                margin-bottom: 8px;
-                color: #000;
-            }
-            .loading-subtext {
-                font-size: 14px;
-                color: #8E8E93;
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
-
-// Скрыть состояние загрузки
-function hideLoadingState() {
-    const loadingScreen = document.querySelector('.loading-screen');
-    if (loadingScreen) {
-        loadingScreen.remove();
-    }
-}
-
-// Настройка глобальных обработчиков
-function setupGlobalHandlers() {
-    setupNavigationHandlers();
-    setupBeforeUnloadHandler();
-    
-    // Реинициализация при изменении ориентации
-    window.addEventListener('resize', fixNavigationLayout);
-    window.addEventListener('orientationchange', function() {
-        setTimeout(fixNavigationLayout, 300);
-    });
-}
-
-// Настройка обработчиков навигации
-function setupNavigationHandlers() {
-    // Обработчики для нижней навигации
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(item => {
-        item.addEventListener('click', handleNavigationClick);
-    });
-}
-
-// Обработчик клика по навигации
-function handleNavigationClick(event) {
-    const navItem = event.currentTarget;
-    const screenName = getScreenNameFromNavItem(navItem);
-    
-    if (screenName && app) {
-        event.preventDefault();
-        switchScreen(screenName);
-    }
-}
-
-// Получить имя экрана из элемента навигации
-function getScreenNameFromNavItem(navItem) {
-    const onclick = navItem.getAttribute('onclick');
-    const match = onclick?.match(/switchScreen\('(\w+)'\)/);
-    return match ? match[1] : null;
-}
-
-// Фикс для навигации
-function fixNavigationLayout() {
-    const nav = document.querySelector('.bottom-nav');
-    const appContainer = document.querySelector('.app-container');
-    
-    if (!nav || !appContainer) {
-        console.log("Navigation elements not found");
-        return;
-    }
-    
-    const navHeight = nav.offsetHeight;
-    document.body.style.paddingBottom = navHeight + 'px';
-    appContainer.style.paddingBottom = '20px';
-}
-
-// Обработчик beforeunload
-function setupBeforeUnloadHandler() {
-    window.addEventListener('beforeunload', (event) => {
-        if (app) {
-            app.saveData().catch(console.error);
-        }
-    });
-}
-
-// Показать экран ошибки
-function showErrorScreen(error) {
-    const appContainer = document.querySelector('.app-container');
-    if (!appContainer) return;
-    
-    appContainer.innerHTML = `
-        <div class="error-screen">
-            <div class="error-icon">💥</div>
-            <h1>Ошибка приложения</h1>
-            <p>Не удалось загрузить приложение. Пожалуйста, обновите страницу.</p>
-            <div class="error-actions">
-                <button onclick="location.reload()" class="btn-primary">
-                    Обновить страницу
-                </button>
-                <button onclick="clearAllDataAndReload()" class="btn-secondary">
-                    Сбросить данные и обновить
-                </button>
-            </div>
-        </div>
-    `;
-    
-    addErrorScreenStyles();
-}
-
-// Добавить стили для экрана ошибки
-function addErrorScreenStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .error-screen {
-            text-align: center;
-            padding: 40px 20px;
-            max-width: 400px;
-            margin: 50px auto;
-        }
-        .error-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-        .error-screen h1 {
-            color: #FF3B30;
-            margin-bottom: 16px;
-        }
-        .error-screen p {
-            color: #8E8E93;
-            margin-bottom: 30px;
-        }
-        .error-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin: 25px 0;
-        }
-        .btn-primary, .btn-secondary {
-            padding: 16px 24px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-primary {
-            background: #007AFF;
-            color: white;
-        }
-        .btn-secondary {
-            background: #FF3B30;
-            color: white;
-        }
-    `;
-    document.head.appendChild(style);
-}
-
 // Глобальные функции для HTML
-
-// Навигация
 function switchScreen(screenName) {
-    if (!app) {
-        console.error("App not initialized");
-        return;
+    if (app) {
+        app.switchScreen(screenName);
     }
-    app.switchScreen(screenName);
 }
 
-// Доходы
 function addNewIncomeCategory() {
-    if (!app) return;
-    app.addNewIncomeCategory();
+    if (app) app.addNewIncomeCategory();
 }
 
 function addIncomeToCategory(categoryId) {
-    if (!app) return;
-    app.addIncomeToCategory(categoryId);
+    if (app) app.addIncomeToCategory(categoryId);
 }
 
 function addIncomeOperation() {
-    if (!app) return;
-    
-    // Используем первую доступную категорию
-    const categories = app.incomes.getCategories();
-    if (categories.length > 0) {
-        app.addIncomeToCategory(categories[0].id);
-    } else {
-        ToastService.error("Нет категорий доходов. Сначала добавьте категорию.");
+    if (app) {
+        const categories = app.incomeCategories;
+        if (categories.length > 0) {
+            app.addIncomeToCategory(categories[0].id);
+        } else {
+            ToastService.error("Сначала добавьте категорию доходов");
+        }
     }
 }
 
-// Расходы
 function addNewExpenseCategory() {
-    if (!app) return;
-    app.addNewExpenseCategory();
+    if (app) app.addNewExpenseCategory();
 }
 
 function addExpenseToCategory(categoryId) {
-    if (!app) return;
-    app.addExpenseToCategory(categoryId);
+    if (app) app.addExpenseToCategory(categoryId);
 }
 
 function showCategorySelection() {
-    const modal = document.getElementById('category-modal');
-    if (!modal) return;
-    
-    const categoryList = document.getElementById('category-list');
-    if (!categoryList) return;
-    
-    const categories = app.expenses.getCategories();
-    let html = '';
-    
-    categories.forEach(category => {
-        const totalAmount = app.expenses.calculateCategoryTotal(category);
-        html += `
-            <button class="category-option" onclick="selectExpenseCategory(${category.id})">
-                <span class="category-option-icon">${category.icon || '🛒'}</span>
-                <span class="category-option-name">${category.name}</span>
-                <span class="category-option-amount">${app.settings.currency}${totalAmount.toFixed(2)}</span>
-            </button>
-        `;
-    });
-    
-    categoryList.innerHTML = html;
-    modal.classList.add('active');
-}
-
-function hideCategorySelection() {
-    const modal = document.getElementById('category-modal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
-}
-
-function selectExpenseCategory(categoryId) {
-    if (!app) return;
-    app.addExpenseToCategory(categoryId);
-    hideCategorySelection();
+    ToastService.info("Выберите категорию из списка выше");
 }
 
 function addExpenseOperation() {
-    showCategorySelection();
+    if (app) {
+        const categories = app.expenseCategories;
+        if (categories.length > 0) {
+            app.addExpenseToCategory(categories[0].id);
+        } else {
+            ToastService.error("Сначала добавьте категорию расходов");
+        }
+    }
 }
 
-// Долги
 function addNewCircle(type) {
-    if (!app) return;
-    if (type === 'debt') {
+    if (app && type === 'debt') {
         app.addNewDebt();
     }
 }
 
 function makeDebtPayment(debtId) {
-    if (!app) return;
-    app.makeDebtPayment(debtId);
+    if (app) app.makeDebtPayment(debtId);
 }
 
-// Бюджет
-function setCategoryBudget(categoryId) {
-    if (!app) return;
-    app.setCategoryBudget(categoryId);
-}
-
-function editCategoryBudget(categoryId) {
-    if (!app) return;
-    app.editCategoryBudget(categoryId);
-}
-
-// Цели
 function showAddGoalModal() {
-    if (!app) return;
-    app.showAddGoalModal();
+    ToastService.info("Функция целей будет добавлена в следующем обновлении");
 }
 
 function hideAddGoalModal() {
-    if (!app) return;
-    app.hideAddGoalModal();
+    // Заглушка
 }
 
 function createNewGoal() {
-    if (!app) return;
-    app.createNewGoal();
+    ToastService.info("Функция целей будет добавлена в следующем обновлении");
 }
 
 function addToGoal(goalId) {
-    if (!app) return;
-    app.addToGoal(goalId);
+    ToastService.info("Функция целей будет добавлена в следующем обновлении");
 }
 
-function editGoal(goalId) {
-    if (!app) return;
-    app.editGoal(goalId);
-}
-
-function deleteGoal(goalId) {
-    if (!app) return;
-    app.deleteGoal(goalId);
-}
-
-// Настройки
 function showSettingsModal() {
-    if (!app) return;
-    app.showSettingsModal();
+    ToastService.info("Настройки будут добавлены в следующем обновлении");
 }
 
 function hideSettingsModal() {
-    const modal = document.getElementById('settings-modal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
+    // Заглушка
 }
 
-function saveSettings() {
-    if (!app) return;
-    app.saveSettings();
-    hideSettingsModal();
-}
-
-function exportData() {
-    if (!app) return;
-    app.exportData();
-}
-
-function clearAllData() {
-    if (!app) return;
-    app.clearAllData();
-}
-
-// Повторяющиеся операции
 function showRecurringTransactionsModal() {
-    ToastService.info("Повторяющиеся операции будут доступны в следующем обновлении");
+    ToastService.info("Повторяющиеся операции будут добавлены в следующем обновлении");
 }
 
 function hideRecurringTransactionsModal() {
-    const modal = document.getElementById('recurring-transactions-modal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
+    // Заглушка
 }
 
-// Удаление операций
+// Заглушки для функций, которые будут добавлены позже
 function deleteIncomeOperation(id) {
-    if (!app) return;
-    app.deleteIncomeOperation(id);
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
 }
 
 function deleteExpenseOperation(id) {
-    if (!app) return;
-    app.deleteExpenseOperation(id);
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
 }
 
 function deleteDebt(id) {
-    if (!app) return;
-    app.deleteDebt(id);
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
 }
 
 function deleteIncomeCategory(id) {
-    if (!app) return;
-    app.deleteIncomeCategory(id);
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
 }
 
 function deleteExpenseCategory(id) {
-    if (!app) return;
-    app.deleteExpenseCategory(id);
+    ToastService.info("Удаление будет добавлено в следующем обновлении");
 }
 
-// Редактирование операций
 function editIncomeOperation(id) {
-    if (!app) return;
-    app.editIncomeOperation(id);
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
 }
 
 function editExpenseOperation(id) {
-    if (!app) return;
-    app.editExpenseOperation(id);
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
 }
 
 function editDebt(id) {
-    if (!app) return;
-    app.editDebt(id);
+    ToastService.info("Редактирование будет добавлено в следующем обновлении");
 }
 
-// Фильтрация операций
+function setCategoryBudget(categoryId) {
+    ToastService.info("Бюджеты будут добавлены в следующем обновлении");
+}
+
+function editCategoryBudget(categoryId) {
+    ToastService.info("Бюджеты будут добавлены в следующем обновлении");
+}
+
 function showOperationsFilter() {
-    ToastService.info("Фильтрация операций будет доступна в следующем обновлении");
+    ToastService.info("Фильтрация будет добавлена в следующем обновлении");
 }
 
-// Полный сброс данных и перезагрузка
-async function clearAllDataAndReload() {
-    if (!confirm('Это действие удалит ВСЕ данные и перезагрузит приложение. Продолжить?')) {
-        return;
-    }
-    
-    try {
-        if (app) {
-            await app.clearAllData();
-        } else {
-            const storage = new IndexedDBService();
-            await storage.clearAllData();
-        }
-        
-        ToastService.success('Данные сброшены');
-        location.reload();
-        
-    } catch (error) {
-        console.error('Clear data failed:', error);
-        ToastService.error('Не удалось сбросить данные');
+function clearAllData() {
+    if (confirm('Вы уверены? Все данные будут удалены.')) {
+        ToastService.info("Очистка данных будет добавлена в следующем обновлении");
     }
 }
 
-// Резервная инициализация при полной загрузке страницы
-window.addEventListener('load', () => {
-    console.log('🌐 Page fully loaded');
-    
-    // Фиксим layout после полной загрузки
-    setTimeout(fixNavigationLayout, 100);
-});
+function exportData() {
+    ToastService.info("Экспорт данных будет добавлен в следующем обновлении");
+}
+
+// Упрощенный ToastService
+class ToastService {
+    static show(message, type = 'info', duration = 3000) {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+
+        const container = document.getElementById('toast-container') || this.createContainer();
+        container.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    static createContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    static success(message, duration = 3000) {
+        this.show(message, 'success', duration);
+    }
+
+    static error(message, duration = 4000) {
+        this.show(message, 'error', duration);
+    }
+
+    static info(message, duration = 3000) {
+        this.show(message, 'info', duration);
+    }
+
+    static warning(message, duration = 3500) {
+        this.show(message, 'warning', duration);
+    }
+}
