@@ -56,11 +56,19 @@ class BudgetApp {
                 this.settings = { ...this.settings, ...data.settings };
             }
 
+            console.log("✅ Data loaded successfully");
+            
         } catch (error) {
             console.error("❌ Error loading data:", error);
             // Используем данные по умолчанию
             const defaultData = this.storage.getDefaultData();
-            Object.assign(this, defaultData);
+            this.expenseCategories = defaultData.expenseCategories;
+            this.incomeCategories = defaultData.incomeCategories;
+            this.debts = defaultData.debts;
+            this.savingsGoals = defaultData.savingsGoals;
+            this.expenseOperations = defaultData.expenseOperations;
+            this.incomeOperations = defaultData.incomes;
+            this.settings = defaultData.settings;
         }
     }
 
@@ -76,6 +84,7 @@ class BudgetApp {
         this.updateOperationsList();
         this.updateSavingsGoals();
         this.updateReport();
+        this.updateClock(); // Добавляем немедленное обновление времени
     }
 
     updateBalance() {
@@ -120,7 +129,12 @@ class BudgetApp {
 
     updateExpenseCategories() {
         const container = document.getElementById('expense-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Expense circles container not found");
+            return;
+        }
+        
+        console.log("📦 Rendering expense categories:", this.expenseCategories);
         
         if (this.expenseCategories.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
@@ -146,7 +160,12 @@ class BudgetApp {
 
     updateIncomeCategories() {
         const container = document.getElementById('income-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Income circles container not found");
+            return;
+        }
+        
+        console.log("💰 Rendering income categories:", this.incomeCategories);
         
         if (this.incomeCategories.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
@@ -172,7 +191,12 @@ class BudgetApp {
 
     updateDebtCategories() {
         const container = document.getElementById('debt-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Debt circles container not found");
+            return;
+        }
+        
+        console.log("💳 Rendering debts:", this.debts);
         
         if (this.debts.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
@@ -324,6 +348,8 @@ class BudgetApp {
         const container = document.getElementById('savings-goals');
         if (!container) return;
         
+        console.log("🎯 Rendering savings goals:", this.savingsGoals);
+        
         if (this.savingsGoals.length === 0) {
             container.innerHTML = this.createEmptySavingsGoalsState();
             return;
@@ -404,7 +430,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -444,7 +470,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -532,7 +558,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -576,11 +602,11 @@ class BudgetApp {
                 return;
             }
             
-            const amountStr = prompt(`Введите сумму платежа (осталось: ${this.settings.currency}${remaining}):`, remaining.toString());
+            const amountStr = prompt(`Введите сумму платежа (осталось: ${this.settings.currency}${remaining.toFixed(2)}):`, remaining.toString());
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0 || amount > remaining) {
+            if (isNaN(amount) || amount <= 0 || amount > remaining) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -607,31 +633,36 @@ class BudgetApp {
     }
 
     startClock() {
-        const updateTime = () => {
-            try {
-                const now = new Date();
-                const timeElement = document.getElementById('current-time');
-                const dateElement = document.getElementById('current-date');
-                
-                if (timeElement) {
-                    timeElement.textContent = 
-                        now.getHours().toString().padStart(2, '0') + ':' + 
-                        now.getMinutes().toString().padStart(2, '0');
-                }
-                
-                if (dateElement) {
-                    dateElement.textContent = 
-                        now.getDate().toString().padStart(2, '0') + '.' + 
-                        (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
-                        now.getFullYear();
-                }
-            } catch (e) {
-                console.error("❌ Error updating time:", e);
-            }
-        };
+        // Обновляем время сразу
+        this.updateClock();
         
-        updateTime();
-        setInterval(updateTime, 60000);
+        // Затем каждую минуту
+        setInterval(() => {
+            this.updateClock();
+        }, 60000);
+    }
+
+    updateClock() {
+        try {
+            const now = new Date();
+            const timeElement = document.getElementById('current-time');
+            const dateElement = document.getElementById('current-date');
+            
+            if (timeElement) {
+                timeElement.textContent = 
+                    now.getHours().toString().padStart(2, '0') + ':' + 
+                    now.getMinutes().toString().padStart(2, '0');
+            }
+            
+            if (dateElement) {
+                dateElement.textContent = 
+                    now.getDate().toString().padStart(2, '0') + '.' + 
+                    (now.getMonth() + 1).toString().padStart(2, '0') + '.' + 
+                    now.getFullYear();
+            }
+        } catch (e) {
+            console.error("❌ Error updating time:", e);
+        }
     }
 
     formatDate(dateString) {
@@ -708,7 +739,7 @@ class BudgetApp {
             if (!targetStr) return;
             
             const targetAmount = parseFloat(targetStr);
-            if (!targetAmount || targetAmount <= 0) {
+            if (isNaN(targetAmount) || targetAmount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
@@ -755,7 +786,7 @@ class BudgetApp {
             if (!amountStr) return;
             
             const amount = parseFloat(amountStr);
-            if (!amount || amount <= 0) {
+            if (isNaN(amount) || amount <= 0) {
                 this.showError("Введите корректную сумму");
                 return;
             }
