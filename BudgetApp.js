@@ -48,7 +48,13 @@ class BudgetApp {
     async loadData() {
         try {
             const data = await this.storage.getAllData();
-            console.log("📊 Loaded data:", data);
+            console.log("📊 Loaded data structure:", {
+                expenseCategories: data.expenseCategories?.length || 0,
+                incomeCategories: data.incomeCategories?.length || 0,
+                debts: data.debts?.length || 0,
+                expenseOperations: data.expenseOperations?.length || 0,
+                incomes: data.incomes?.length || 0
+            });
             
             // Загружаем данные в сервисы
             await this.expenses.load(data);
@@ -62,6 +68,8 @@ class BudgetApp {
             if (data.settings) {
                 this.settings = { ...this.settings, ...data.settings };
             }
+
+            console.log("✅ Data loaded successfully");
             
         } catch (error) {
             console.error('❌ Error loading data:', error);
@@ -141,9 +149,13 @@ class BudgetApp {
 
     updateExpenseCategories() {
         const container = document.getElementById('expense-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Expense circles container not found");
+            return;
+        }
         
         const categories = this.expenses.getCategories();
+        console.log("📦 Rendering expense categories:", categories);
         
         if (!categories || categories.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
@@ -167,7 +179,7 @@ class BudgetApp {
                             `<button class="circle-action-btn circle-budget" onclick="event.stopPropagation(); editCategoryBudget(${category.id})">📊</button>` :
                             `<button class="circle-action-btn circle-budget-add" onclick="event.stopPropagation(); setCategoryBudget(${category.id})">💸</button>`
                         }
-                        ${category.id > 6 ? 
+                        ${category.id > 12 ? 
                             `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteExpenseCategory(${category.id})">×</button>` :
                             ''
                         }
@@ -181,7 +193,7 @@ class BudgetApp {
                             <div class="budget-progress-bar" style="width: ${Math.min(usagePercent, 100)}%"></div>
                         </div>
                         <div class="budget-remaining">
-                            ${this.settings.currency}${remaining}
+                            ${this.settings.currency}${remaining ? remaining.toFixed(2) : '0'}
                         </div>
                     ` : ''}
                 </div>
@@ -193,9 +205,13 @@ class BudgetApp {
 
     updateIncomeCategories() {
         const container = document.getElementById('income-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Income circles container not found");
+            return;
+        }
         
         const categories = this.incomes.getCategories();
+        console.log("💰 Rendering income categories:", categories);
         
         if (!categories || categories.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
@@ -211,7 +227,7 @@ class BudgetApp {
             html += `
                 <div class="circle-item circle-income" onclick="addIncomeToCategory(${category.id})">
                     <div class="circle-actions">
-                        ${category.id > 2 ? 
+                        ${category.id > 5 ? 
                             `<button class="circle-action-btn circle-delete" onclick="event.stopPropagation(); deleteIncomeCategory(${category.id})">×</button>` :
                             ''
                         }
@@ -228,9 +244,13 @@ class BudgetApp {
 
     updateDebtCategories() {
         const container = document.getElementById('debt-circles');
-        if (!container) return;
+        if (!container) {
+            console.log("❌ Debt circles container not found");
+            return;
+        }
         
         const debts = this.debts.getAll();
+        console.log("💳 Rendering debts:", debts);
         
         if (!debts || debts.length === 0) {
             container.innerHTML = '<div class="empty-state">Нажми + чтобы добавить</div>';
