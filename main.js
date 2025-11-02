@@ -4,16 +4,27 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log("🚀 DOM loaded, starting Budget App...");
     
     try {
+        // Показываем loading state
+        document.body.style.opacity = '0.8';
+        
         app = new BudgetApp();
         await app.init();
         console.log("🎉 Budget App started successfully!");
+        
+        // Восстанавливаем opacity
+        document.body.style.opacity = '1';
         
         // Сделаем app глобальной для вызовов из HTML
         window.app = app;
         
     } catch (error) {
         console.error("💥 Failed to start Budget App:", error);
-        ToastService.error("Ошибка загрузки приложения");
+        
+        // Показываем пользователю ошибку
+        ToastService.error("Ошибка загрузки приложения. Пожалуйста, обновите страницу.");
+        
+        // Восстанавливаем opacity даже при ошибке
+        document.body.style.opacity = '1';
     }
 });
 
@@ -74,36 +85,27 @@ function makeDebtPayment(debtId) {
     if (app) app.makeDebtPayment(debtId);
 }
 
+// Работающие функции для целей
 function showAddGoalModal() {
-    ToastService.info("Функция целей будет добавлена в следующем обновлении");
-}
-
-function hideAddGoalModal() {
-    // Заглушка
-}
-
-function createNewGoal() {
-    ToastService.info("Функция целей будет добавлена в следующем обновлении");
+    if (app) app.showAddGoalModal();
 }
 
 function addToGoal(goalId) {
-    ToastService.info("Функция целей будет добавлена в следующем обновлении");
+    if (app) app.addToGoal(goalId);
 }
 
+// Работающая функция очистки данных
+function clearAllData() {
+    if (app) app.clearAllData();
+}
+
+// Заглушки для остальных функций
 function showSettingsModal() {
     ToastService.info("Настройки будут добавлены в следующем обновлении");
 }
 
-function hideSettingsModal() {
-    // Заглушка
-}
-
 function showRecurringTransactionsModal() {
     ToastService.info("Повторяющиеся операции будут добавлены в следующем обновлении");
-}
-
-function hideRecurringTransactionsModal() {
-    // Заглушка
 }
 
 // Заглушки для функций, которые будут добавлены позже
@@ -149,12 +151,6 @@ function editCategoryBudget(categoryId) {
 
 function showOperationsFilter() {
     ToastService.info("Фильтрация будет добавлена в следующем обновлении");
-}
-
-function clearAllData() {
-    if (confirm('Вы уверены? Все данные будут удалены.')) {
-        ToastService.info("Очистка данных будет добавлена в следующем обновлении");
-    }
 }
 
 function exportData() {
