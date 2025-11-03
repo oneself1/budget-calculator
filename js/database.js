@@ -49,12 +49,20 @@ class Database {
         console.log('🔄 Creating database stores...');
         
         // Удаляем старые хранилища если они существуют
-        const storeNames = ['categories', 'transactions', 'debts', 'goals', 'settings'];
-        
-        for (const storeName of storeNames) {
-            if (db.objectStoreNames.contains(storeName)) {
-                db.deleteObjectStore(storeName);
-            }
+        if (db.objectStoreNames.contains('categories')) {
+            db.deleteObjectStore('categories');
+        }
+        if (db.objectStoreNames.contains('transactions')) {
+            db.deleteObjectStore('transactions');
+        }
+        if (db.objectStoreNames.contains('debts')) {
+            db.deleteObjectStore('debts');
+        }
+        if (db.objectStoreNames.contains('goals')) {
+            db.deleteObjectStore('goals');
+        }
+        if (db.objectStoreNames.contains('settings')) {
+            db.deleteObjectStore('settings');
         }
 
         // Создаем новые хранилища
@@ -67,8 +75,7 @@ class Database {
 
         db.createObjectStore('debts', { keyPath: 'id', autoIncrement: true });
         db.createObjectStore('goals', { keyPath: 'id', autoIncrement: true });
-        
-        const settingsStore = db.createObjectStore('settings', { keyPath: 'id' });
+        db.createObjectStore('settings', { keyPath: 'id' });
         
         console.log('✅ Database stores created successfully');
     }
