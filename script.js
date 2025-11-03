@@ -1,101 +1,153 @@
 // Инициализация базы данных
 let db;
 const DB_NAME = 'BudgetCalculator';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Увеличиваем версию для принудительного обновления
+
+// Базовые категории расходов
+const DEFAULT_EXPENSES = [
+    { name: 'Продукты', amount: 0, icon: '🛒', subcategories: [] },
+    { name: 'Транспорт', amount: 0, icon: '🚗', subcategories: [] },
+    { name: 'Жилье', amount: 0, icon: '🏠', subcategories: [] },
+    { name: 'Коммуналка', amount: 0, icon: '💡', subcategories: [] },
+    { name: 'Одежда', amount: 0, icon: '👕', subcategories: [] },
+    { name: 'Развлечения', amount: 0, icon: '🎬', subcategories: [] },
+    { name: 'Здоровье', amount: 0, icon: '💊', subcategories: [] },
+    { name: 'Образование', amount: 0, icon: '📚', subcategories: [] },
+    { name: 'Рестораны', amount: 0, icon: '🍔', subcategories: [] },
+    { name: 'Подарки', amount: 0, icon: '🎁', subcategories: [] },
+    { name: 'Путешествия', amount: 0, icon: '✈️', subcategories: [] },
+    { name: 'Прочее', amount: 0, icon: '📦', subcategories: [] }
+];
 
 class Database {
     static async init() {
         return new Promise((resolve, reject) => {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
             
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+                console.error('Ошибка открытия базы данных:', request.error);
+                reject(request.error);
+            };
+            
             request.onsuccess = () => {
                 db = request.result;
+                console.log('База данных успешно открыта');
                 resolve(db);
             };
             
             request.onupgradeneeded = (event) => {
+                console.log('Обновление базы данных с версии', event.oldVersion, 'до', DB_VERSION);
                 const db = event.target.result;
                 
-                // Создаем хранилища если их нет
-                if (!db.objectStoreNames.contains('incomes')) {
-                    db.createObjectStore('incomes', { keyPath: 'id', autoIncrement: true });
+                // Удаляем старые хранилища если они есть
+                if (db.objectStoreNames.contains('incomes')) {
+                    db.deleteObjectStore('incomes');
+                }
+                if (db.objectStoreNames.contains('debts')) {
+                    db.deleteObjectStore('debts');
+                }
+                if (db.objectStoreNames.contains('expenses')) {
+                    db.deleteObjectStore('expenses');
+                }
+                if (db.objectStoreNames.contains('operations')) {
+                    db.deleteObjectStore('operations');
                 }
                 
-                if (!db.objectStoreNames.contains('debts')) {
-                    db.createObjectStore('debts', { keyPath: 'id', autoIncrement: true });
-                }
+                // Создаем новые хранилища
+                const incomeStore = db.createObjectStore('incomes', { keyPath: 'id', autoIncrement: true });
+                const debtStore = db.createObjectStore('debts', { keyPath: 'id', autoIncrement: true });
+                const expenseStore = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
+                const operationStore = db.createObjectStore('operations', { keyPath: 'id', autoIncrement: true });
                 
-                if (!db.objectStoreNames.contains('expenses')) {
-                    const expenseStore = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
-                    
-                    // Добавляем базовые категории расходов
-                    const basicExpenses = [
-                        { name: 'Продукты', amount: 0, icon: '🛒', subcategories: [] },
-                        { name: 'Транспорт', amount: 0, icon: '🚗', subcategories: [] },
-                        { name: 'Жилье', amount: 0, icon: '🏠', subcategories: [] },
-                        { name: 'Коммуналка', amount: 0, icon: '💡', subcategories: [] },
-                        { name: 'Одежда', amount: 0, icon: '👕', subcategories: [] },
-                        { name: 'Развлечения', amount: 0, icon: '🎬', subcategories: [] },
-                        { name: 'Здоровье', amount: 0, icon: '💊', subcategories: [] },
-                        { name: 'Образование', amount: 0, icon: '📚', subcategories: [] },
-                        { name: 'Рестораны', amount: 0, icon: '🍔', subcategories: [] },
-                        { name: 'Подарки', amount: 0, icon: '🎁', subcategories: [] },
-                        { name: 'Путешествия', amount: 0, icon: '✈️', subcategories: [] },
-                        { name: 'Прочее', amount: 0, icon: '📦', subcategories: [] }
-                    ];
-                    
-                    basicExpenses.forEach(expense => {
-                        expenseStore.add(expense);
-                    });
-                }
+                // Добавляем базовые категории расходов
+                DEFAULT_EXPENSES.forEach(expense => {
+                    expenseStore.add(expense);
+                });
                 
-                if (!db.objectStoreNames.contains('operations')) {
-                    db.createObjectStore('operations', { keyPath: 'id', autoIncrement: true });
-                }
+                console.log('Базовые категории расходов добавлены');
             };
         });
     }
 
     static async getAll(storeName) {
         return new Promise((resolve, reject) => {
+            if (!db) {
+                reject(new Error('База данных не инициализирована'));
+                return;
+            }
+            
             const transaction = db.transaction([storeName], 'readonly');
             const store = transaction.objectStore(storeName);
             const request = store.getAll();
             
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => {
+                console.error('Ошибка получения данных из', storeName, request.error);
+                reject(request.error);
+            };
+            
+            request.onsuccess = () => {
+                console.log(`Получено ${request.result.length} записей из ${storeName}`);
+                resolve(request.result);
+            };
         });
     }
 
     static async add(storeName, data) {
         return new Promise((resolve, reject) => {
+            if (!db) {
+                reject(new Error('База данных не инициализирована'));
+                return;
+            }
+            
             const transaction = db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.add(data);
             
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => {
+                console.error('Ошибка добавления в', storeName, data, request.error);
+                reject(request.error);
+            };
+            
+            request.onsuccess = () => {
+                console.log('Успешно добавлено в', storeName, 'ID:', request.result);
+                resolve(request.result);
+            };
         });
     }
 
     static async update(storeName, id, data) {
         return new Promise((resolve, reject) => {
+            if (!db) {
+                reject(new Error('База данных не инициализирована'));
+                return;
+            }
+            
             const transaction = db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const getRequest = store.get(id);
             
-            getRequest.onerror = () => reject(getRequest.error);
+            getRequest.onerror = () => {
+                console.error('Ошибка получения элемента для обновления', getRequest.error);
+                reject(getRequest.error);
+            };
+            
             getRequest.onsuccess = () => {
                 const item = getRequest.result;
                 if (item) {
                     const updatedItem = { ...item, ...data };
                     const putRequest = store.put(updatedItem);
                     
-                    putRequest.onerror = () => reject(putRequest.error);
-                    putRequest.onsuccess = () => resolve(putRequest.result);
+                    putRequest.onerror = () => {
+                        console.error('Ошибка обновления', putRequest.error);
+                        reject(putRequest.error);
+                    };
+                    
+                    putRequest.onsuccess = () => {
+                        console.log('Успешно обновлено в', storeName, 'ID:', id);
+                        resolve(putRequest.result);
+                    };
                 } else {
-                    reject(new Error('Item not found'));
+                    reject(new Error('Элемент не найден'));
                 }
             };
         });
@@ -103,12 +155,24 @@ class Database {
 
     static async delete(storeName, id) {
         return new Promise((resolve, reject) => {
+            if (!db) {
+                reject(new Error('База данных не инициализирована'));
+                return;
+            }
+            
             const transaction = db.transaction([storeName], 'readwrite');
             const store = transaction.objectStore(storeName);
             const request = store.delete(id);
             
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => {
+                console.error('Ошибка удаления', request.error);
+                reject(request.error);
+            };
+            
+            request.onsuccess = () => {
+                console.log('Успешно удалено из', storeName, 'ID:', id);
+                resolve(request.result);
+            };
         });
     }
 }
@@ -123,11 +187,11 @@ class BudgetApp {
     async init() {
         try {
             await Database.init();
-            console.log('База данных инициализирована');
+            console.log('Приложение инициализировано');
             this.setupEventListeners();
             await this.loadData();
         } catch (error) {
-            console.error('Ошибка инициализации:', error);
+            console.error('Ошибка инициализации приложения:', error);
             this.showError('Ошибка загрузки приложения. Пожалуйста, обновите страницу.');
         }
     }
@@ -191,17 +255,14 @@ class BudgetApp {
     }
 
     switchTab(tabName) {
-        // Убираем активный класс у всех вкладок и контента
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
         
-        // Добавляем активный класс к выбранной вкладке и контенту
         document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
         document.getElementById(tabName).classList.add('active');
         
-        // Если открыта вкладка операций, загружаем операции
         if (tabName === 'operations') {
             this.loadOperations();
         }
@@ -216,11 +277,14 @@ class BudgetApp {
 
     async loadData() {
         try {
+            console.log('Загрузка данных...');
             const [incomes, debts, expenses] = await Promise.all([
                 Database.getAll('incomes'),
                 Database.getAll('debts'),
                 Database.getAll('expenses')
             ]);
+            
+            console.log('Загружены данные:', { incomes, debts, expenses });
             
             this.renderCategories('incomeCategories', incomes, 'income');
             this.renderCategories('debtCategories', debts, 'debt');
@@ -240,7 +304,7 @@ class BudgetApp {
         // Добавляем кнопку создания новой категории (кроме расходов, где есть базовые)
         if (type !== 'expense') {
             const addCard = document.createElement('div');
-            addCard.className = 'category-card';
+            addCard.className = 'category-card add-category-card';
             addCard.innerHTML = `
                 <div class="category-icon" style="background-color: #c7c7cc;">
                     <span>+</span>
@@ -330,13 +394,13 @@ class BudgetApp {
     openCategoryModal(type) {
         const modal = document.getElementById('categoryModal');
         const title = document.getElementById('modalTitle');
-        const form = document.getElementById('categoryForm');
         const typeField = document.getElementById('categoryType');
         
         // Сбрасываем форму
-        form.reset();
+        document.getElementById('categoryForm').reset();
         document.getElementById('categoryAmount').value = 0;
         document.getElementById('categoryId').value = '';
+        document.getElementById('customIconInput').value = '';
         
         // Сбрасываем выделение иконок
         modal.querySelectorAll('.icon-option').forEach(option => {
@@ -411,7 +475,8 @@ class BudgetApp {
         const parentIdField = document.getElementById('parentCategoryId');
         
         // Сбрасываем форму
-        modal.querySelector('form').reset();
+        document.getElementById('subcategoryForm').reset();
+        document.getElementById('customSubIconInput').value = '';
         
         // Сбрасываем выделение иконок
         modal.querySelectorAll('.icon-option').forEach(option => {
@@ -482,6 +547,8 @@ class BudgetApp {
                     break;
             }
             
+            console.log('Сохранение категории:', { storeName, categoryData, id });
+            
             if (id) {
                 // Редактируем существующую категорию
                 await Database.update(storeName, parseInt(id), categoryData);
@@ -508,7 +575,7 @@ class BudgetApp {
             this.showSuccess('Категория сохранена');
         } catch (error) {
             console.error('Ошибка сохранения категории:', error);
-            this.showError('Ошибка сохранения категории');
+            this.showError('Ошибка сохранения категории: ' + error.message);
         }
     }
 
@@ -529,9 +596,8 @@ class BudgetApp {
         
         try {
             // Получаем родительскую категорию
-            const parentCategory = await Database.getAll('expenses').then(expenses => 
-                expenses.find(exp => exp.id === parentId)
-            );
+            const expenses = await Database.getAll('expenses');
+            const parentCategory = expenses.find(exp => exp.id === parentId);
             
             if (!parentCategory) {
                 throw new Error('Родительская категория не найдена');
@@ -572,7 +638,7 @@ class BudgetApp {
             this.showSuccess('Подкатегория добавлена');
         } catch (error) {
             console.error('Ошибка добавления подкатегории:', error);
-            this.showError('Ошибка добавления подкатегории');
+            this.showError('Ошибка добавления подкатегории: ' + error.message);
         }
     }
 
@@ -623,7 +689,7 @@ class BudgetApp {
             this.showSuccess('Выплата внесена');
         } catch (error) {
             console.error('Ошибка выплаты долга:', error);
-            this.showError('Ошибка при внесении выплаты');
+            this.showError('Ошибка при внесении выплаты: ' + error.message);
         }
     }
 
@@ -787,7 +853,9 @@ class BudgetApp {
         
         // Удаляем через 3 секунды
         setTimeout(() => {
-            notification.remove();
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
         }, 3000);
     }
 }
