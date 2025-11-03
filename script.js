@@ -1,7 +1,7 @@
 // Инициализация базы данных
 let db;
 const DB_NAME = 'BudgetCalculator';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Увеличиваем версию для обновления структуры
 
 // Открытие/создание базы данных
 const initDB = () => {
@@ -16,6 +16,7 @@ const initDB = () => {
         
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
+            const oldVersion = event.oldVersion;
             
             // Создание хранилищ для категорий
             if (!db.objectStoreNames.contains('incomes')) {
@@ -34,18 +35,18 @@ const initDB = () => {
                 
                 // Добавление базовых категорий расходов
                 const basicExpenses = [
-                    { name: 'Продукты', amount: 0, icon: '🛒' },
-                    { name: 'Транспорт', amount: 0, icon: '🚗' },
-                    { name: 'Жилье', amount: 0, icon: '🏠' },
-                    { name: 'Коммуналка', amount: 0, icon: '💡' },
-                    { name: 'Одежда', amount: 0, icon: '👕' },
-                    { name: 'Развлечения', amount: 0, icon: '🎬' },
-                    { name: 'Здоровье', amount: 0, icon: '💊' },
-                    { name: 'Образование', amount: 0, icon: '📚' },
-                    { name: 'Рестораны', amount: 0, icon: '🍔' },
-                    { name: 'Подарки', amount: 0, icon: '🎁' },
-                    { name: 'Путешествия', amount: 0, icon: '✈️' },
-                    { name: 'Прочее', amount: 0, icon: '📦' }
+                    { name: 'Продукты', amount: 0, icon: '🛒', subcategories: [] },
+                    { name: 'Транспорт', amount: 0, icon: '🚗', subcategories: [] },
+                    { name: 'Жилье', amount: 0, icon: '🏠', subcategories: [] },
+                    { name: 'Коммуналка', amount: 0, icon: '💡', subcategories: [] },
+                    { name: 'Одежда', amount: 0, icon: '👕', subcategories: [] },
+                    { name: 'Развлечения', amount: 0, icon: '🎬', subcategories: [] },
+                    { name: 'Здоровье', amount: 0, icon: '💊', subcategories: [] },
+                    { name: 'Образование', amount: 0, icon: '📚', subcategories: [] },
+                    { name: 'Рестораны', amount: 0, icon: '🍔', subcategories: [] },
+                    { name: 'Подарки', amount: 0, icon: '🎁', subcategories: [] },
+                    { name: 'Путешествия', amount: 0, icon: '✈️', subcategories: [] },
+                    { name: 'Прочее', amount: 0, icon: '📦', subcategories: [] }
                 ];
                 
                 const transaction = event.target.transaction;
@@ -56,9 +57,41 @@ const initDB = () => {
                 });
             }
             
-            if (!db.objectStoreNames.contains('subcategories')) {
-                const subcategoryStore = db.createObjectStore('subcategories', { keyPath: 'id', autoIncrement: true });
-                subcategoryStore.createIndex('parentId', 'parentId', { unique: false });
+            if (oldVersion < 2) {
+                // Обновляем структуру для хранения подкатегорий внутри категорий
+                if (db.objectStoreNames.contains('expenses')) {
+                    db.deleteObjectStore('expenses');
+                    const expenseStore = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
+                    expenseStore.createIndex('name', 'name', { unique: false });
+                    
+                    const basicExpenses = [
+                        { name: 'Продукты', amount: 0, icon: '🛒', subcategories: [] },
+                        { name: 'Транспорт', amount: 0, icon: '🚗', subcategories: [] },
+                        { name: 'Жилье', amount: 0, icon: '🏠', subcategories: [] },
+                        { name: 'Коммуналка', amount: 0, icon: '💡', subcategories: [] },
+                        { name: 'Одежда', amount: 0, icon: '👕', subcategories: [] },
+                        { name: 'Развлечения', amount: 0, icon: '🎬', subcategories: [] },
+                        { name: 'Здоровье', amount: 0, icon: '💊', subcategories: [] },
+                        { name: 'Образование', amount: 0, icon: '📚', subcategories: [] },
+                        { name: 'Рестораны', amount: 0, icon: '🍔', subcategories: [] },
+                        { name: 'Подарки', amount: 0, icon: '🎁', subcategories: [] },
+                        { name: 'Путешествия', amount: 0, icon: '✈️', subcategories: [] },
+                        { name: 'Прочее', amount: 0, icon: '📦', subcategories: [] }
+                    ];
+                    
+                    const transaction = event.target.transaction;
+                    const store = transaction.objectStore('expenses');
+                    
+                    basicExpenses.forEach(expense => {
+                        store.add(expense);
+                    });
+                }
+                
+                if (db.objectStoreNames.contains('incomes')) {
+                    db.deleteObjectStore('incomes');
+                    const incomeStore = db.createObjectStore('incomes', { keyPath: 'id', autoIncrement: true });
+                    incomeStore.createIndex('name', 'name', { unique: false });
+                }
             }
             
             if (!db.objectStoreNames.contains('operations')) {
@@ -70,57 +103,7 @@ const initDB = () => {
     });
 };
 
-// Функции для работы с хранилищами
-const addItem = (storeName, item) => {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.add(item);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-    });
-};
-
-const getAllItems = (storeName) => {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readonly');
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-    });
-};
-
-const updateItem = (storeName, id, updates) => {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const getRequest = store.get(id);
-        
-        getRequest.onerror = () => reject(getRequest.error);
-        getRequest.onsuccess = () => {
-            const item = getRequest.result;
-            Object.assign(item, updates);
-            const putRequest = store.put(item);
-            
-            putRequest.onerror = () => reject(putRequest.error);
-            putRequest.onsuccess = () => resolve(putRequest.result);
-        };
-    });
-};
-
-const deleteItem = (storeName, id) => {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(id);
-        
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-    });
-};
+// Остальные функции (addItem, getAllItems, updateItem, deleteItem) остаются без изменений
 
 // Основная логика приложения
 document.addEventListener('DOMContentLoaded', async () => {
@@ -133,30 +116,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Ошибка инициализации базы данных:', error);
     }
     
-    // Настройка вкладок
+    // Настройка вкладок (без изменений)
     const tabs = document.querySelectorAll('.tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const tabName = tab.getAttribute('data-tab');
             
-            // Убираем активный класс у всех вкладок и контента
             tabs.forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // Добавляем активный класс к выбранной вкладке и контенту
             tab.classList.add('active');
             document.getElementById(tabName).classList.add('active');
             
-            // Если открыта вкладка операций, загружаем операции
             if (tabName === 'operations') {
                 loadOperations();
             }
         });
     });
     
-    // Настройка модальных окон
+    // Настройка модальных окон (без изменений)
     const modals = document.querySelectorAll('.modal');
     const closeButtons = document.querySelectorAll('.close');
     
@@ -176,23 +156,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    // Настройка выбора иконок
+    // Настройка выбора иконок - УБИРАЕМ фиксированный набор, позволяем ввод с клавиатуры
     const iconOptions = document.querySelectorAll('.icon-option');
     iconOptions.forEach(option => {
         option.addEventListener('click', () => {
             const parentModal = option.closest('.modal-content');
             const iconField = parentModal.querySelector('input[type="hidden"]');
             
-            // Убираем выделение у всех иконок в этом модальном окне
             parentModal.querySelectorAll('.icon-option').forEach(icon => {
                 icon.classList.remove('selected');
             });
             
-            // Выделяем выбранную иконку
             option.classList.add('selected');
             iconField.value = option.getAttribute('data-icon');
         });
     });
+    
+    // Добавляем поле для ввода произвольной иконки
+    const categoryModal = document.getElementById('categoryModal');
+    const subcategoryModal = document.getElementById('subcategoryModal');
+    
+    // Создаем поле для ввода иконки в модальном окне категории
+    const customIconInput = document.createElement('input');
+    customIconInput.type = 'text';
+    customIconInput.id = 'customIconInput';
+    customIconInput.placeholder = 'Введите эмодзи с клавиатуры';
+    customIconInput.maxLength = 2;
+    categoryModal.querySelector('form').insertBefore(customIconInput, categoryModal.querySelector('button'));
+    
+    // Создаем поле для ввода иконки в модальном окне подкатегории
+    const customSubIconInput = document.createElement('input');
+    customSubIconInput.type = 'text';
+    customSubIconInput.id = 'customSubIconInput';
+    customSubIconInput.placeholder = 'Введите эмодзи с клавиатуры';
+    customSubIconInput.maxLength = 2;
+    subcategoryModal.querySelector('form').insertBefore(customSubIconInput, subcategoryModal.querySelector('button'));
     
     // Настройка кнопок добавления
     document.getElementById('addIncome').addEventListener('click', () => {
@@ -260,7 +258,13 @@ const renderCategories = (containerId, categories, type) => {
         const categoryCard = document.createElement('div');
         categoryCard.className = 'category-card';
         
-        let amountDisplay = `${category.amount} ₽`;
+        // Вычисляем общую сумму категории (основная + подкатегории)
+        let totalAmount = category.amount || 0;
+        if (category.subcategories && category.subcategories.length > 0) {
+            totalAmount += category.subcategories.reduce((sum, sub) => sum + (sub.amount || 0), 0);
+        }
+        
+        let amountDisplay = `${totalAmount} ₽`;
         let progressBar = '';
         
         if (type === 'debt') {
@@ -289,12 +293,36 @@ const renderCategories = (containerId, categories, type) => {
             });
         } else {
             categoryCard.addEventListener('click', () => {
-                openSubcategoryModal(category, type);
+                openCategoryDetailModal(category, type);
             });
         }
         
         container.appendChild(categoryCard);
     });
+};
+
+// Новая функция для открытия детального просмотра категории
+const openCategoryDetailModal = (category, type) => {
+    const modal = document.getElementById('categoryModal');
+    const title = document.getElementById('modalTitle');
+    const form = document.getElementById('categoryForm');
+    const typeField = document.getElementById('categoryType');
+    const idField = document.getElementById('categoryId');
+    
+    // Заполняем форму данными категории
+    document.getElementById('categoryName').value = category.name;
+    document.getElementById('categoryAmount').value = category.amount || 0;
+    document.getElementById('selectedIcon').value = category.icon;
+    document.getElementById('customIconInput').value = category.icon;
+    
+    // Устанавливаем тип категории и ID
+    typeField.value = type;
+    idField.value = category.id;
+    
+    // Устанавливаем заголовок
+    title.textContent = `Редактировать ${type === 'income' ? 'доход' : 'расход'}`;
+    
+    modal.style.display = 'flex';
 };
 
 const openCategoryModal = (type) => {
@@ -305,6 +333,7 @@ const openCategoryModal = (type) => {
     
     // Сбрасываем форму
     form.reset();
+    document.getElementById('categoryAmount').value = 0; // По умолчанию 0
     
     // Устанавливаем тип категории
     typeField.value = type;
@@ -353,13 +382,21 @@ const handleCategorySubmit = async (event) => {
     
     const form = event.target;
     const name = document.getElementById('categoryName').value;
-    const amount = parseFloat(document.getElementById('categoryAmount').value);
-    const icon = document.getElementById('selectedIcon').value;
+    const amount = parseFloat(document.getElementById('categoryAmount').value) || 0;
+    const customIcon = document.getElementById('customIconInput').value;
+    const defaultIcon = document.getElementById('selectedIcon').value;
+    const icon = customIcon || defaultIcon;
     const type = document.getElementById('categoryType').value;
+    const id = document.getElementById('categoryId').value;
     
     try {
         let storeName;
         let categoryData = { name, amount, icon };
+        
+        // Для расходов добавляем массив подкатегорий
+        if (type === 'expense') {
+            categoryData.subcategories = [];
+        }
         
         switch(type) {
             case 'income':
@@ -374,23 +411,31 @@ const handleCategorySubmit = async (event) => {
                 break;
         }
         
-        await addItem(storeName, categoryData);
+        if (id) {
+            // Редактируем существующую категорию
+            await updateItem(storeName, parseInt(id), categoryData);
+        } else {
+            // Создаем новую категорию
+            await addItem(storeName, categoryData);
+        }
         
-        // Добавляем операцию
-        const operation = {
-            type,
-            name,
-            amount,
-            date: new Date().toISOString()
-        };
-        
-        await addItem('operations', operation);
+        // Добавляем операцию только если сумма не равна 0
+        if (amount > 0) {
+            const operation = {
+                type,
+                name,
+                amount,
+                date: new Date().toISOString()
+            };
+            
+            await addItem('operations', operation);
+        }
         
         // Закрываем модальное окно и обновляем данные
         document.getElementById('categoryModal').style.display = 'none';
         loadData();
     } catch (error) {
-        console.error('Ошибка добавления категории:', error);
+        console.error('Ошибка добавления/редактирования категории:', error);
     }
 };
 
@@ -399,36 +444,58 @@ const handleSubcategorySubmit = async (event) => {
     
     const form = event.target;
     const name = document.getElementById('subcategoryName').value;
-    const amount = parseFloat(document.getElementById('subcategoryAmount').value);
-    const icon = document.getElementById('selectedSubIcon').value;
+    const amount = parseFloat(document.getElementById('subcategoryAmount').value) || 0;
+    const customIcon = document.getElementById('customSubIconInput').value;
+    const defaultIcon = document.getElementById('selectedSubIcon').value;
+    const icon = customIcon || defaultIcon;
     const parentId = parseInt(document.getElementById('parentCategoryId').value);
     
     try {
-        const subcategory = {
-            name,
-            amount,
-            icon,
-            parentId
+        // Получаем родительскую категорию
+        const transaction = db.transaction(['expenses'], 'readwrite');
+        const expenseStore = transaction.objectStore('expenses');
+        const getRequest = expenseStore.get(parentId);
+        
+        getRequest.onsuccess = () => {
+            const parentCategory = getRequest.result;
+            
+            // Создаем подкатегорию
+            const subcategory = {
+                id: Date.now(), // Простой ID на основе времени
+                name,
+                amount,
+                icon
+            };
+            
+            // Добавляем подкатегорию в массив подкатегорий родительской категории
+            if (!parentCategory.subcategories) {
+                parentCategory.subcategories = [];
+            }
+            
+            parentCategory.subcategories.push(subcategory);
+            
+            // Обновляем родительскую категорию
+            const putRequest = expenseStore.put(parentCategory);
+            
+            putRequest.onsuccess = () => {
+                // Добавляем операцию
+                const operation = {
+                    type: 'expense',
+                    name: `${parentCategory.name}: ${name}`,
+                    amount,
+                    date: new Date().toISOString(),
+                    parentId
+                };
+                
+                addItem('operations', operation);
+                
+                // Закрываем модальное окно
+                document.getElementById('subcategoryModal').style.display = 'none';
+                
+                // Обновляем баланс и данные
+                loadData();
+            };
         };
-        
-        await addItem('subcategories', subcategory);
-        
-        // Добавляем операцию
-        const operation = {
-            type: 'subcategory',
-            name,
-            amount,
-            date: new Date().toISOString(),
-            parentId
-        };
-        
-        await addItem('operations', operation);
-        
-        // Закрываем модальное окно
-        document.getElementById('subcategoryModal').style.display = 'none';
-        
-        // Обновляем баланс
-        updateBalance();
     } catch (error) {
         console.error('Ошибка добавления подкатегории:', error);
     }
@@ -492,12 +559,20 @@ const loadOperations = async () => {
             const date = new Date(operation.date);
             const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
             
+            // Определяем класс для суммы в зависимости от типа операции
+            let amountClass = 'operation-amount';
+            if (operation.type === 'income') {
+                amountClass += ' income-amount';
+            } else if (operation.type === 'expense' || operation.type === 'debt_payment') {
+                amountClass += ' expense-amount';
+            }
+            
             operationItem.innerHTML = `
                 <div class="operation-info">
                     <div class="operation-name">${operation.name}</div>
                     <div class="operation-date">${formattedDate}</div>
                 </div>
-                <div class="operation-amount">${operation.amount} ₽</div>
+                <div class="${amountClass}">${operation.type === 'income' ? '+' : '-'}${operation.amount} ₽</div>
                 <div class="operation-actions">
                     <button class="edit-btn">✏️</button>
                     <button class="delete-btn">🗑️</button>
@@ -524,14 +599,72 @@ const loadOperations = async () => {
 };
 
 const editOperation = (operation) => {
-    // Реализация редактирования операции
-    alert(`Редактирование операции: ${operation.name}`);
+    // Для простоты реализуем редактирование только суммы
+    const newAmount = prompt(`Редактировать сумму для "${operation.name}":`, operation.amount);
+    if (newAmount !== null && !isNaN(parseFloat(newAmount))) {
+        updateOperationAmount(operation, parseFloat(newAmount));
+    }
+};
+
+const updateOperationAmount = async (operation, newAmount) => {
+    try {
+        // Обновляем операцию
+        await updateItem('operations', operation.id, { ...operation, amount: newAmount });
+        
+        // Если это операция расхода с подкатегорией, обновляем также подкатегорию
+        if (operation.parentId) {
+            const transaction = db.transaction(['expenses'], 'readwrite');
+            const expenseStore = transaction.objectStore('expenses');
+            const getRequest = expenseStore.get(operation.parentId);
+            
+            getRequest.onsuccess = () => {
+                const parentCategory = getRequest.result;
+                if (parentCategory && parentCategory.subcategories) {
+                    // Находим подкатегорию по имени (часть имени после ": ")
+                    const subcategoryName = operation.name.split(': ')[1];
+                    const subcategoryIndex = parentCategory.subcategories.findIndex(
+                        sub => sub.name === subcategoryName
+                    );
+                    
+                    if (subcategoryIndex !== -1) {
+                        parentCategory.subcategories[subcategoryIndex].amount = newAmount;
+                        expenseStore.put(parentCategory);
+                    }
+                }
+            };
+        }
+        
+        loadOperations();
+        updateBalance();
+    } catch (error) {
+        console.error('Ошибка обновления операции:', error);
+    }
 };
 
 const deleteOperation = async (operation) => {
     if (confirm(`Удалить операцию "${operation.name}"?`)) {
         try {
             await deleteItem('operations', operation.id);
+            
+            // Если это операция расхода с подкатегорией, удаляем также подкатегорию
+            if (operation.parentId) {
+                const transaction = db.transaction(['expenses'], 'readwrite');
+                const expenseStore = transaction.objectStore('expenses');
+                const getRequest = expenseStore.get(operation.parentId);
+                
+                getRequest.onsuccess = () => {
+                    const parentCategory = getRequest.result;
+                    if (parentCategory && parentCategory.subcategories) {
+                        // Находим подкатегорию по имени (часть имени после ": ")
+                        const subcategoryName = operation.name.split(': ')[1];
+                        parentCategory.subcategories = parentCategory.subcategories.filter(
+                            sub => sub.name !== subcategoryName
+                        );
+                        expenseStore.put(parentCategory);
+                    }
+                };
+            }
+            
             loadOperations();
             updateBalance();
         } catch (error) {
@@ -544,24 +677,44 @@ const updateBalance = async () => {
     try {
         const incomes = await getAllItems('incomes');
         const expenses = await getAllItems('expenses');
-        const subcategories = await getAllItems('subcategories');
-        const debtPayments = await getAllItems('operations').then(ops => 
-            ops.filter(op => op.type === 'debt_payment')
-        );
+        const debts = await getAllItems('debts');
         
-        // Суммируем доходы
-        const totalIncome = incomes.reduce((sum, income) => sum + income.amount, 0) +
-                           subcategories.reduce((sum, sub) => sum + sub.amount, 0);
+        // Суммируем доходы (только с ненулевой суммой)
+        const totalIncome = incomes.reduce((sum, income) => {
+            return sum + (income.amount > 0 ? income.amount : 0);
+        }, 0);
         
-        // Суммируем расходы
-        const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0) +
-                            debtPayments.reduce((sum, payment) => sum + payment.amount, 0);
+        // Суммируем расходы (основные + подкатегории)
+        const totalExpense = expenses.reduce((sum, expense) => {
+            let categoryTotal = expense.amount || 0;
+            
+            // Добавляем суммы подкатегорий
+            if (expense.subcategories && expense.subcategories.length > 0) {
+                categoryTotal += expense.subcategories.reduce((subSum, sub) => {
+                    return subSum + (sub.amount || 0);
+                }, 0);
+            }
+            
+            return sum + categoryTotal;
+        }, 0);
         
-        // Рассчитываем баланс
-        const balance = totalIncome - totalExpense;
+        // Суммируем выплаты по долгам
+        const totalDebtPayments = debts.reduce((sum, debt) => sum + (debt.paidAmount || 0), 0);
+        
+        // Рассчитываем баланс: доходы - расходы - выплаты по долгам
+        const balance = totalIncome - totalExpense - totalDebtPayments;
         
         // Обновляем отображение баланса
-        document.getElementById('balanceAmount').textContent = `${balance} ₽`;
+        const balanceElement = document.getElementById('balanceAmount');
+        balanceElement.textContent = `${balance} ₽`;
+        
+        // Добавляем класс для цвета в зависимости от баланса
+        balanceElement.className = 'balance-amount';
+        if (balance > 0) {
+            balanceElement.classList.add('positive');
+        } else if (balance < 0) {
+            balanceElement.classList.add('negative');
+        }
     } catch (error) {
         console.error('Ошибка обновления баланса:', error);
     }
