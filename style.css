@@ -616,4 +616,35 @@ button:focus, input:focus {
     .close:hover {
         background-color: #2c2c2e;
     }
+    
+    /* Добавляем стиль для кнопки добавления категории */
+.add-category-card {
+    background-color: #f8f8f8;
+    border: 2px dashed #c7c7cc;
+}
+
+.add-category-card .category-icon {
+    background-color: #c7c7cc !important;
+}
+
+.add-category-card:hover {
+    background-color: #f0f0f0;
+    border-color: #007AFF;
+}
+
+/* Улучшаем видимость полей ввода */
+.modal-content input:focus {
+    border-color: #007AFF;
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+/* Улучшаем отображение кнопок действий */
+.category-actions button {
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.category-card:hover .category-actions button {
+    opacity: 1;
+}
 }
