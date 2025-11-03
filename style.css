@@ -107,6 +107,11 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.add-btn:hover {
+    background-color: #a8a8ad;
 }
 
 .categories-grid {
@@ -528,6 +533,15 @@ button:focus, input:focus {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1001;
     animation: slideIn 0.3s ease;
+    max-width: 300px;
+}
+
+.notification.error {
+    background-color: #ff3b30;
+}
+
+.notification.warning {
+    background-color: #ff9500;
 }
 
 @keyframes slideIn {
@@ -539,59 +553,6 @@ button:focus, input:focus {
         transform: translateX(0);
         opacity: 1;
     }
-}
-
-.notification.error {
-    background-color: #ff3b30;
-}
-
-.notification.warning {
-    background-color: #ff9500;
-}
-
-/* Стили для подкатегорий в детальном просмотре */
-.subcategories-list {
-    margin-top: 16px;
-    border-top: 1px solid #e5e5ea;
-    padding-top: 16px;
-}
-
-.subcategory-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #f2f2f7;
-}
-
-.subcategory-item:last-child {
-    border-bottom: none;
-}
-
-.subcategory-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.subcategory-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    background-color: #f2f2f7;
-}
-
-.subcategory-name {
-    font-weight: 500;
-}
-
-.subcategory-amount {
-    font-weight: 600;
-    color: #ff3b30;
 }
 
 /* Улучшения для Safari на iPhone */
