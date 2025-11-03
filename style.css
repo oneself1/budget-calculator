@@ -293,3 +293,42 @@ body {
     background-color: #007AFF;
     color: white;
 }
+/* Добавляем стили для цветового выделения сумм */
+.income-amount {
+    color: #34c759;
+}
+
+.expense-amount {
+    color: #ff3b30;
+}
+
+.balance-amount.positive {
+    color: #34c759;
+}
+
+.balance-amount.negative {
+    color: #ff3b30;
+}
+
+/* Стили для поля ввода иконки */
+#customIconInput, #customSubIconInput {
+    padding: 12px;
+    border: 1px solid #c7c7cc;
+    border-radius: 8px;
+    font-size: 16px;
+    text-align: center;
+}
+
+/* Улучшаем отображение подсказки для иконок */
+.icon-selector {
+    margin-bottom: 10px;
+}
+
+.icon-selector::after {
+    content: "Или введите эмодзи с клавиатуры:";
+    display: block;
+    font-size: 14px;
+    color: #8e8e93;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
