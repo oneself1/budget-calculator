@@ -40,6 +40,14 @@ body {
     font-weight: 700;
 }
 
+.balance-amount.positive {
+    color: #34c759;
+}
+
+.balance-amount.negative {
+    color: #ff3b30;
+}
+
 .tabs {
     display: flex;
     background-color: white;
@@ -117,6 +125,13 @@ body {
     gap: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     position: relative;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.category-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .category-icon {
@@ -155,6 +170,36 @@ body {
     height: 100%;
     background-color: #34c759;
     border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Стили для кнопок действий в категориях */
+.category-actions {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.edit-category-btn, .add-subcategory-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+}
+
+.edit-category-btn:hover, .add-subcategory-btn:hover {
+    background: white;
+    transform: scale(1.1);
 }
 
 .operations-list {
@@ -177,6 +222,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
 }
 
 .operation-name {
@@ -190,6 +236,15 @@ body {
 
 .operation-amount {
     font-weight: 600;
+    margin: 0 10px;
+}
+
+.income-amount {
+    color: #34c759;
+}
+
+.expense-amount {
+    color: #ff3b30;
 }
 
 .operation-actions {
@@ -202,11 +257,25 @@ body {
     border: none;
     font-size: 16px;
     cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.edit-btn {
     color: #007AFF;
+}
+
+.edit-btn:hover {
+    background-color: rgba(0, 122, 255, 0.1);
 }
 
 .delete-btn {
     color: #ff3b30;
+}
+
+.delete-btn:hover {
+    background-color: rgba(255, 59, 48, 0.1);
 }
 
 .modal {
@@ -220,15 +289,18 @@ body {
     z-index: 1000;
     align-items: center;
     justify-content: center;
+    padding: 20px;
 }
 
 .modal-content {
     background-color: white;
     border-radius: 16px;
     padding: 24px;
-    width: 90%;
+    width: 100%;
     max-width: 400px;
     position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .close {
@@ -238,12 +310,24 @@ body {
     font-size: 24px;
     cursor: pointer;
     color: #8e8e93;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.close:hover {
+    background-color: #f2f2f7;
 }
 
 .modal-content h3 {
     margin-bottom: 16px;
     font-size: 18px;
     font-weight: 600;
+    padding-right: 30px;
 }
 
 .modal-content form {
@@ -257,6 +341,12 @@ body {
     border: 1px solid #c7c7cc;
     border-radius: 8px;
     font-size: 16px;
+    transition: border-color 0.2s;
+}
+
+.modal-content input:focus {
+    border-color: #007AFF;
+    outline: none;
 }
 
 .modal-content button {
@@ -268,12 +358,18 @@ body {
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.modal-content button:hover {
+    background-color: #0056cc;
 }
 
 .icon-selector {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
     gap: 8px;
+    margin-bottom: 10px;
 }
 
 .icon-option {
@@ -292,43 +388,271 @@ body {
 .icon-option.selected {
     background-color: #007AFF;
     color: white;
-}
-/* Добавляем стили для цветового выделения сумм */
-.income-amount {
-    color: #34c759;
+    transform: scale(1.1);
 }
 
-.expense-amount {
-    color: #ff3b30;
+.icon-option:hover {
+    background-color: #e5e5ea;
 }
 
-.balance-amount.positive {
-    color: #34c759;
-}
-
-.balance-amount.negative {
-    color: #ff3b30;
-}
-
-/* Стили для поля ввода иконки */
+/* Стили для полей ввода произвольных иконок */
 #customIconInput, #customSubIconInput {
     padding: 12px;
     border: 1px solid #c7c7cc;
     border-radius: 8px;
     font-size: 16px;
     text-align: center;
+    margin-top: 8px;
 }
 
-/* Улучшаем отображение подсказки для иконок */
-.icon-selector {
-    margin-bottom: 10px;
-}
-
-.icon-selector::after {
-    content: "Или введите эмодзи с клавиатуры:";
-    display: block;
-    font-size: 14px;
+/* Подсказка для полей ввода иконок */
+.icon-input-hint {
+    font-size: 12px;
     color: #8e8e93;
-    margin-top: 10px;
-    margin-bottom: 5px;
+    text-align: center;
+    margin-top: 4px;
+}
+
+/* Стили для модального окна выплаты долга */
+#debtPaymentModal p {
+    margin-bottom: 16px;
+    font-size: 16px;
+}
+
+#debtRemaining {
+    font-weight: 600;
+    color: #007AFF;
+}
+
+/* Адаптивность для маленьких экранов */
+@media (max-width: 380px) {
+    body {
+        padding: 15px;
+    }
+    
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .category-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .balance-amount {
+        font-size: 28px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+    }
+    
+    .icon-selector {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal {
+    animation: fadeIn 0.3s ease;
+}
+
+.category-card {
+    animation: fadeIn 0.5s ease;
+}
+
+/* Стили для скроллбара */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Улучшения для accessibility */
+button:focus, input:focus {
+    outline: 2px solid #007AFF;
+    outline-offset: 2px;
+}
+
+/* Стили для состояния загрузки */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Стили для пустых состояний */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #8e8e93;
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state-text {
+    font-size: 16px;
+}
+
+/* Стили для уведомлений */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #34c759;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.error {
+    background-color: #ff3b30;
+}
+
+.notification.warning {
+    background-color: #ff9500;
+}
+
+/* Стили для подкатегорий в детальном просмотре */
+.subcategories-list {
+    margin-top: 16px;
+    border-top: 1px solid #e5e5ea;
+    padding-top: 16px;
+}
+
+.subcategory-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f2f2f7;
+}
+
+.subcategory-item:last-child {
+    border-bottom: none;
+}
+
+.subcategory-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.subcategory-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    background-color: #f2f2f7;
+}
+
+.subcategory-name {
+    font-weight: 500;
+}
+
+.subcategory-amount {
+    font-weight: 600;
+    color: #ff3b30;
+}
+
+/* Улучшения для Safari на iPhone */
+@supports (-webkit-touch-callout: none) {
+    body {
+        /* Добавляем отступ для безопасной зоны на iPhone */
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    }
+    
+    .modal-content {
+        /* Учитываем безопасную зону в модальных окнах */
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+}
+
+/* Темная тема (опционально) */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #000000;
+        color: #ffffff;
+    }
+    
+    .balance-card {
+        background: linear-gradient(135deg, #0A84FF, #5E5CE6);
+    }
+    
+    .tabs, .category-card, .operation-item, .modal-content {
+        background-color: #1c1c1e;
+    }
+    
+    .category-icon, .icon-option {
+        background-color: #2c2c2e;
+    }
+    
+    .add-btn {
+        background-color: #3a3a3c;
+    }
+    
+    .tab {
+        color: #8e8e93;
+    }
+    
+    .category-name, .operation-date {
+        color: #8e8e93;
+    }
+    
+    .debt-progress {
+        background-color: #3a3a3c;
+    }
+    
+    .modal-content input {
+        background-color: #2c2c2e;
+        border-color: #3a3a3c;
+        color: #ffffff;
+    }
+    
+    .close {
+        color: #8e8e93;
+    }
+    
+    .close:hover {
+        background-color: #2c2c2e;
+    }
 }
